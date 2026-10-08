@@ -88,6 +88,8 @@ public class ElephantAI : MonoBehaviour
     [Header("Optional")]
     public ElephantBody body;
     public AudioSource voice;
+    [Tooltip("Loudness of every trumpet call (0 to 1).")]
+    public float trumpetVolume = 0.55f;
     public Animator animator;
 
     public State CurrentState { get; private set; } = State.Approach;
@@ -795,7 +797,9 @@ public class ElephantAI : MonoBehaviour
         var target = transform.position + away.normalized * 12f;
         if (NavMesh.SamplePosition(target, out var hit, 5f, NavMesh.AllAreas))
             MoveTo(hit.position, fleeSpeed);
-        // No trumpet here: it would cover the bang of the cracker that scared it.
+        // A startled trumpet, but only after the bang that scared it, so both are heard clearly.
+        CancelInvoke(nameof(FleeTrumpet));
+        Invoke(nameof(FleeTrumpet), 0.8f);
         lastFleeTime = Time.time;
         flinchTimer = 4f;
         needsResume = true;
@@ -872,8 +876,13 @@ public class ElephantAI : MonoBehaviour
             Play(SoundBank.Rumble, 0.9f);
     }
 
+    void FleeTrumpet() => Play(SoundBank.Trumpet, 0.8f);
+
     void Play(AudioClip clip, float volume)
     {
-        if (voice != null && clip != null) voice.PlayOneShot(clip, volume);
+        if (voice == null || clip == null) return;
+        // The trumpet is loud and high: kept lower so the other sounds can still be heard.
+        if (clip == SoundBank.Trumpet) volume *= trumpetVolume;
+        voice.PlayOneShot(clip, volume);
     }
 }

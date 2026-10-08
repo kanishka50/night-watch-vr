@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -23,6 +23,7 @@ public static class SoundBank
     public static AudioClip Drum => drum != null ? drum : drum = Make("Drum", 0.7f, MakeDrum);
     public static AudioClip Birds => birds != null ? birds : birds = Make("Birds", 4f, MakeBirds);
     public static AudioClip Ring => ring != null ? ring : ring = Make("Ring", 1.2f, MakeRing);
+    public static AudioClip Cracker => cracker != null ? cracker : cracker = Make("Cracker", 1.4f, MakeCracker);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -245,6 +246,23 @@ public static class SoundBank
             }
         }
         Normalise(d, 0.5f);
+    }
+
+    // A firecracker (ali wedi): a sharp, bright crack, a short boom under it, and an echo off the
+    // forest a moment later. Brighter and sharper than Bang, so it cuts through the other sounds.
+    static void MakeCracker(float[] d, System.Random r)
+    {
+        float echoAt = 0.28f;
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float crack = Noise(r) * Mathf.Exp(-t * 45f);
+            float boom = 0.7f * Sin(90f, t) * Mathf.Exp(-t * 14f);
+            float te = t - echoAt;
+            float echo = te > 0f ? 0.3f * Noise(r) * Mathf.Exp(-te * 20f) : 0f;
+            d[i] = crack + boom + echo;
+        }
+        Normalise(d, 0.98f);
     }
 
     // A phone ringing: two quick tones, twice.

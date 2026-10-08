@@ -115,7 +115,8 @@ public class Firecracker : PlayerAction, IIgnitable
         burst = true;
         IsLit = false;
         var at = transform.position;
-        SoundBank.PlayAt(SoundBank.Bang, at, 1f, 6f);
+        // Loud and clear from the hut: full volume up to 12 m away.
+        SoundBank.PlayAt(SoundBank.Cracker, at, 1f, 12f);
         BurstFlash.At(at + Vector3.up * 0.3f, new Color(1f, 0.85f, 0.6f), 8f, 15f, 0.25f);
 
         if (IsHeld)
