@@ -96,8 +96,8 @@ public static class NightLighting
         return mat;
     }
 
-    // The neighbour's window light. NeighbourHouse switches it on when the neighbour is warned
-    // or wakes up.
+    // The neighbour's window glows softly (emission only, no light on the wall). NeighbourHouse
+    // switches the glow on when the neighbour is safe inside.
     static void SetUpWindowLight()
     {
         var old = GameObject.Find(RootName);
@@ -105,17 +105,6 @@ public static class NightLighting
 
         var root = new GameObject(RootName);
         Undo.RegisterCreatedObjectUndo(root, "Night lighting");
-
-        var lightGo = new GameObject("NeighbourWindowLight");
-        lightGo.transform.SetParent(root.transform, false);
-        lightGo.transform.position = new Vector3(BlockoutBuilder.HouseCenter.x + 1.2f, 1.6f,
-            BlockoutBuilder.HouseCenter.z + BlockoutBuilder.HouseSize / 2f + 0.6f);
-        var light = lightGo.AddComponent<Light>();
-        light.type = LightType.Point;
-        light.color = WindowColor;
-        light.intensity = 10f;
-        light.range = 10f;
-        light.shadows = LightShadows.None;
 
         var window = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialFolder}/HouseWindow.mat");
         if (window != null)

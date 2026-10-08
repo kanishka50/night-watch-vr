@@ -5,8 +5,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // Builds the neighbour's side of the story (called by Night Watch > Build Full Game, after the
 // NavMesh is baked):
-//  - the door that opens, the porch light, the neighbour (a simple figure with a lamp), the small
-//    evening fire in the yard and the rice store by the house
+//  - the door that opens, the bottle lamp by the door, the neighbour (a simple figure with a lamp),
+//    the evening fire in the yard and the rice store by the house
 //  - the places they walk between (door, fire, yard, west side) and where the bull goes (the store)
 //  - the phone on the hut's west rail, to call and warn the neighbour
 //  - NeighbourHouse, which runs it all
@@ -25,18 +25,7 @@ public static class NeighbourSetup
         EditorKit.Part("Door", PrimitiveType.Cube, hinge, new Vector3(0.45f, 0.95f, 0f), new Vector3(0.9f, 1.9f, 0.05f),
             EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
 
-        // The porch light over the door (off until they are safe inside).
-        var bulb = EditorKit.Part("PorchBulb", PrimitiveType.Cube, root, new Vector3(doorX, 2.3f, front + 0.12f), new Vector3(0.14f, 0.1f, 0.14f),
-            EditorKit.Mat("PorchBulb", Color.white, true), false);
-        var porchGo = new GameObject("PorchLight");
-        porchGo.transform.SetParent(root, false);
-        porchGo.transform.position = new Vector3(doorX, 2.2f, front + 0.6f);
-        var porch = porchGo.AddComponent<Light>();
-        porch.type = LightType.Point;
-        porch.color = new Color(1f, 0.85f, 0.6f);
-        porch.range = 10f;
-        porch.intensity = 3f;
-        porch.shadows = LightShadows.None;
+        var bottleLamp = BuildBottleLamp(root, new Vector3(doorX + 0.7f, 1.55f, front + 0.08f));
 
         // The yard is on the west side of the house, between the house and the path.
         var doorPoint = EditorKit.Empty("DoorPoint", root, new Vector3(doorX, 0f, front + 0.3f));
@@ -59,13 +48,10 @@ public static class NeighbourSetup
         house.door = hinge;
         var window = GameObject.Find("Blockout/NeighbourHouse/Window");
         if (window != null) house.window = window.GetComponent<Renderer>();
-        var windowLight = GameObject.Find("NeighbourWindowLight");
-        if (windowLight != null) house.windowLight = windowLight.GetComponent<Light>();
         house.figure = figure;
         house.lampPivot = lampPivot;
         house.lamp = lamp;
-        house.porchLight = porch;
-        house.porchBulb = bulb.GetComponent<Renderer>();
+        house.bottleLamp = bottleLamp;
         house.yardFire = fire;
         house.doorPoint = doorPoint;
         house.firePoint = firePoint;
@@ -76,8 +62,32 @@ public static class NeighbourSetup
         BuildPhone();
     }
 
+    // A kuppi lampuwa: a small glass bottle with a wick and a flame, hung on a hook by the door.
+    // A soft, small light, not a big glare on the wall. Hidden until someone is safe inside.
+    static GameObject BuildBottleLamp(Transform root, Vector3 at)
+    {
+        var lamp = EditorKit.Empty("BottleLamp", root, at);
+        EditorKit.Part("Hook", PrimitiveType.Cube, lamp, new Vector3(0f, 0.12f, -0.03f), new Vector3(0.02f, 0.06f, 0.06f),
+            EditorKit.Mat("Switch", new Color(0.08f, 0.08f, 0.08f)), false);
+        EditorKit.Part("Bottle", PrimitiveType.Cylinder, lamp, Vector3.zero, new Vector3(0.07f, 0.07f, 0.07f),
+            EditorKit.Mat("BottleGlass", new Color(0.35f, 0.5f, 0.4f)), false);
+        EditorKit.Part("Flame", PrimitiveType.Sphere, lamp, new Vector3(0f, 0.1f, 0f), new Vector3(0.04f, 0.07f, 0.04f),
+            EditorKit.Mat("FireCore", new Color(1f, 0.85f, 0.4f), true), false);
+        var lightGo = new GameObject("LampLight");
+        lightGo.transform.SetParent(lamp, false);
+        lightGo.transform.localPosition = new Vector3(0f, 0.12f, 0.15f);
+        var light = lightGo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, 0.7f, 0.4f);
+        light.range = 4f;
+        light.intensity = 1.2f;
+        light.shadows = LightShadows.None;
+        lamp.gameObject.SetActive(false);
+        return lamp.gameObject;
+    }
+
     // A small evening fire: a few sticks and a flame, with light and crackle. Off until lit.
-    // For light and life only; it is too small to keep a raiding bull away.
+    // Small at first; after a phone warning the neighbour builds it up into a big fire.
     static GameObject BuildYardFire(Transform root, Vector3 at)
     {
         var sticks = EditorKit.Empty("YardFireSticks", root, at);

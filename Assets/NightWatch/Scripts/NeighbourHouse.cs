@@ -4,13 +4,15 @@ using UnityEngine;
 // The neighbour's house on the village side, and the neighbour.
 // Real practice: elephants raid houses for stored rice, and many people are hurt when they are
 // outside after dark not knowing an elephant is near. Warning neighbours early keeps them safe,
-// and villagers are told to keep outside lights on at night.
+// and villagers keep a fire burning outside the house at night to keep elephants away.
 //
 //   Inside   (afternoon) the house is dark
 //   Outside  from dusk: the neighbour lights a small evening fire in the yard and walks about
 //            with a lamp. The player can see them from the hut.
-//   Phone call: they stop, lift the lamp toward the hut, walk inside, the door closes and the
-//            porch light comes on (Warned). The bull from the village side then goes to the field.
+//   Phone call: they stop, lift the lamp toward the hut, build the yard fire up into a big fire
+//            (it scares elephants near the house, like the player's bonfires), hang a bottle lamp
+//            by the door and go inside; the window glows softly (Warned). The bull from the village
+//            side then goes to the field.
 //   No call: the bull from the village side goes for the rice at the house (Danger):
 //            it sees the neighbour, rears and trumpets, then runs at them. The player can still
 //            drive it away (Safe). If it reaches them, they are thrown down (Hurt), lie still for
@@ -25,10 +27,8 @@ public class NeighbourHouse : MonoBehaviour
     [Tooltip("The door's hinge. It turns to open.")]
     public Transform door;
     public Renderer window;
-    public Light windowLight;
-    [Tooltip("The light over the door that lights the yard once they are safe inside.")]
-    public Light porchLight;
-    public Renderer porchBulb;
+    [Tooltip("The small oil lamp (kuppi lampuwa) hung by the door when they are safe inside.")]
+    public GameObject bottleLamp;
     [Tooltip("The small evening fire in the yard (flame, light and crackle).")]
     public GameObject yardFire;
     [Tooltip("The neighbour, feet at the pivot. Hidden while inside.")]
@@ -63,6 +63,15 @@ public class NeighbourHouse : MonoBehaviour
     public float doorOpenAngle = 100f;
     public Color windowOnColor = new Color(1f, 0.75f, 0.40f);
 
+    [Header("The big fire after a warning")]
+    public float bigFireScale = 1.8f;
+    public float bigFireRange = 10f;
+    public float bigFireIntensity = 4f;
+    [Tooltip("Like the player's bonfires: every few seconds, elephants this close stop and hesitate.")]
+    public float fireScareRange = 8f;
+    public float fireScareStrength = 5f;
+    public float fireScareInterval = 2f;
+
     public Mood State { get; private set; } = Mood.Inside;
 
     ElephantAI bull;
@@ -71,7 +80,9 @@ public class NeighbourHouse : MonoBehaviour
     bool walking;
     float lampIntensity;
     MaterialPropertyBlock windowBlock;
-    MaterialPropertyBlock bulbBlock;
+    Light fireLight;
+    bool bigFire;
+    float fireScareTimer;
 
     void Awake()
     {
@@ -82,10 +93,11 @@ public class NeighbourHouse : MonoBehaviour
             // The crackle starts when the fire is lit (the sound is made in code, so set it here).
             var crackle = yardFire.GetComponent<AudioSource>();
             if (crackle != null) crackle.clip = SoundBank.FireCrackle;
+            fireLight = yardFire.GetComponentInChildren<Light>(true);
             yardFire.SetActive(false);
         }
         if (lamp != null) lampIntensity = lamp.intensity;
-        SetLights(false);
+        SetHomeLights(false);
     }
 
     // ---------------- Called by other scripts ----------------
@@ -97,9 +109,10 @@ public class NeighbourHouse : MonoBehaviour
         switch (State)
         {
             case Mood.Inside:
+                // Warned before they came out: they build the fire up from the doorway at dusk.
                 State = Mood.Warned;
-                SetLights(true);
-                Warned("Neighbour on the phone: \"Thank you! We will stay inside tonight and keep the lights on.\"");
+                SetHomeLights(true);
+                Warned("Neighbour on the phone: \"Thank you! We will keep a big fire going and stay inside tonight.\"");
                 break;
             case Mood.Outside:
                 Switch(AnswerAndGoInside(false));
@@ -135,6 +148,7 @@ public class NeighbourHouse : MonoBehaviour
     void Update()
     {
         var game = GameManager.Instance;
+        UpdateBigFire(game);
         switch (State)
         {
             case Mood.Inside:
@@ -204,14 +218,18 @@ public class NeighbourHouse : MonoBehaviour
             ActionLog.Record("Called your neighbour inside just in time", true,
                 "Even a late warning helps: they went inside before the bull reached them.");
         }
-        else Warned("Neighbour on the phone: \"Thank you! We are going inside, and we will keep the lights on.\"");
+        else Warned("Neighbour on the phone: \"Thank you! We will build up the fire and go inside.\"");
         if (bull != null) bull.ClearDetour();
 
-        // They stop, turn to the hut and lift the lamp: the call got through.
+        // They stop, turn to the hut and lift the lamp: the call got through. Then they throw more
+        // wood on the fire before going in.
         if (!hurry)
         {
             FaceTowards(ElephantAI.HutCenter);
             yield return LiftLamp(1.5f);
+            yield return Walk(firePoint.position, walkSpeed, false);
+            yield return new WaitForSeconds(0.8f);
+            yield return GrowFire();
         }
         yield return Walk(doorPoint.position, hurry ? walkSpeed * 2f : walkSpeed, false);
         yield return GoInAndLightUp();
@@ -331,7 +349,46 @@ public class NeighbourHouse : MonoBehaviour
     {
         figure.gameObject.SetActive(false);
         yield return SwingDoor(false);
-        SetLights(true);
+        SetHomeLights(true);
+    }
+
+    // More wood on the yard fire: it grows into a big fire over a second and a half.
+    IEnumerator GrowFire()
+    {
+        if (yardFire == null || bigFire) yield break;
+        bigFire = true;
+        yardFire.SetActive(true);
+        var scale = yardFire.transform.localScale;
+        float range = fireLight != null ? fireLight.range : 0f;
+        float intensity = fireLight != null ? fireLight.intensity : 0f;
+        SoundBank.PlayAt(SoundBank.FireCrackle, yardFire.transform.position, 1f, 3f);
+        for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / 1.5f);
+            yardFire.transform.localScale = scale * Mathf.Lerp(1f, bigFireScale, k);
+            if (fireLight != null)
+            {
+                fireLight.range = Mathf.Lerp(range, bigFireRange, k);
+                fireLight.intensity = Mathf.Lerp(intensity, bigFireIntensity, k);
+            }
+            yield return null;
+        }
+    }
+
+    // A warned house keeps its big fire going: it flickers, and elephants near it hesitate.
+    void UpdateBigFire(GameManager game)
+    {
+        // Warned before dusk: the fire is built up as soon as evening comes.
+        if (State == Mood.Warned && !bigFire && game != null && game.CurrentPhase >= GameManager.Phase.Dusk)
+            StartCoroutine(GrowFire());
+        if (!bigFire || yardFire == null) return;
+
+        if (fireLight != null)
+            fireLight.intensity = bigFireIntensity * (0.8f + 0.2f * Mathf.PerlinNoise(Time.time * 5f, 7f));
+        fireScareTimer -= Time.deltaTime;
+        if (fireScareTimer > 0f) return;
+        fireScareTimer = fireScareInterval;
+        ElephantAI.ScareAllNear(yardFire.transform.position, fireScareRange, "house fire", fireScareStrength);
     }
 
     IEnumerator LiftLamp(float seconds)
@@ -396,24 +453,15 @@ public class NeighbourHouse : MonoBehaviour
         if (lamp != null) lamp.intensity = lampIntensity * (0.85f + 0.15f * Mathf.PerlinNoise(Time.time * 6f, 3f));
     }
 
-    // The window glow and the porch light over the door.
-    void SetLights(bool on)
+    // Someone is home and safe: the window glows softly and the bottle lamp burns by the door.
+    void SetHomeLights(bool on)
     {
-        if (windowLight != null) windowLight.enabled = on;
-        if (porchLight != null) porchLight.enabled = on;
-        if (window != null)
-        {
-            if (windowBlock == null) windowBlock = new MaterialPropertyBlock();
-            windowBlock.SetColor("_BaseColor", on ? windowOnColor : new Color(0.08f, 0.07f, 0.06f));
-            windowBlock.SetColor("_EmissionColor", on ? windowOnColor * 2f : Color.black);
-            window.SetPropertyBlock(windowBlock);
-        }
-        if (porchBulb != null)
-        {
-            if (bulbBlock == null) bulbBlock = new MaterialPropertyBlock();
-            bulbBlock.SetColor("_BaseColor", on ? new Color(1f, 0.9f, 0.6f) : new Color(0.15f, 0.14f, 0.12f));
-            porchBulb.SetPropertyBlock(bulbBlock);
-        }
+        if (bottleLamp != null) bottleLamp.SetActive(on);
+        if (window == null) return;
+        if (windowBlock == null) windowBlock = new MaterialPropertyBlock();
+        windowBlock.SetColor("_BaseColor", on ? windowOnColor * 0.8f : new Color(0.08f, 0.07f, 0.06f));
+        windowBlock.SetColor("_EmissionColor", on ? windowOnColor * 0.9f : Color.black);
+        window.SetPropertyBlock(windowBlock);
     }
 
     static float Flat(Vector3 v)
