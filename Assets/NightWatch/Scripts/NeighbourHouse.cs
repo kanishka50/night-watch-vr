@@ -48,6 +48,9 @@ public class NeighbourHouse : MonoBehaviour
     public float potsStrength = 6f;
     public float potsInterval = 3f;
     public float walkSpeed = 1f;
+    [Tooltip("After being knocked down: seconds on the ground, then a slow limp back inside.")]
+    public float hurtLieSeconds = 6f;
+    public float limpSpeed = 0.45f;
     [Tooltip("How far the door turns to open (inward, into the house).")]
     public float doorOpenAngle = 100f;
     public Color windowOnColor = new Color(1f, 0.75f, 0.40f);
@@ -241,9 +244,24 @@ public class NeighbourHouse : MonoBehaviour
             lampPivot.rotation = Quaternion.Euler(0f, 0f, 80f);
         }
         if (lamp != null) lamp.intensity = lampIntensity * 0.4f;
+
+        // Hurt, not killed: after a while they get up slowly and limp back inside.
+        yield return new WaitForSeconds(hurtLieSeconds);
+        NoticeBoard.Message("Your neighbour is hurt, but alive. They are limping back inside.");
+        for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+        {
+            figure.rotation = Quaternion.Slerp(down, start, Mathf.SmoothStep(0f, 1f, t / 1.5f));
+            yield return null;
+        }
+        figure.rotation = start;
+        yield return Walk(doorPoint.position, limpSpeed, true);
+        figure.gameObject.SetActive(false);
+        yield return SwingDoor(false);
     }
 
-    IEnumerator Walk(Vector3 target)
+    IEnumerator Walk(Vector3 target) => Walk(target, walkSpeed, false);
+
+    IEnumerator Walk(Vector3 target, float speed, bool limp)
     {
         walking = true;
         target.y = figure.position.y;
@@ -254,8 +272,11 @@ public class NeighbourHouse : MonoBehaviour
         while (Flat(target - figure.position) > 0.05f)
         {
             t += Time.deltaTime;
-            var next = Vector3.MoveTowards(figure.position, target, walkSpeed * Time.deltaTime);
-            next.y = baseY + 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));   // a small bob with each step
+            // A limp: slower, with a deep dip on every other step.
+            float step = limp ? speed * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(t * 3f))) : speed;
+            var next = Vector3.MoveTowards(figure.position, target, step * Time.deltaTime);
+            float bob = limp ? 0.1f * Mathf.Abs(Mathf.Sin(t * 3f)) : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
+            next.y = baseY - (limp ? bob : -bob);   // a small bob with each step
             figure.position = next;
             yield return null;
         }
