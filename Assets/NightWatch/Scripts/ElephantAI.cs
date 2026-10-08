@@ -112,6 +112,7 @@ public class ElephantAI : MonoBehaviour
     Collider hitbox;
     // A place it goes to instead of the field (the neighbour's rice store, or the neighbour).
     Vector3? detour;
+    float detourSpeed;
     // One knock-down at a time, shared by all elephants (the player needs time to get up).
     static float nextContactTime;
     public const float HutKeepOut = 3f;   // radius of the hut's NavMesh obstacle
@@ -272,11 +273,15 @@ public class ElephantAI : MonoBehaviour
         }
     }
 
-    // Sends it to a place instead of the field (used by the neighbour's house).
-    public void GoTo(Vector3 point)
+    // Sends it to a place instead of the field (used by the neighbour's house). A speed above
+    // walking (a run at a person) also shows the angry look: ears wide, trunk up.
+    public void GoTo(Vector3 point, float speed = -1f)
     {
         detour = point;
-        if (CurrentState == State.Approach) SetStateDestination();
+        detourSpeed = speed > 0f ? speed : walkSpeed;
+        if (body != null && detourSpeed > walkSpeed * 1.5f) body.SetAgitated(true);
+        // While a deterrent holds it (a pause), wait; it resumes on its own afterwards.
+        if (CurrentState == State.Approach && flinchTimer <= 0f) SetStateDestination();
     }
 
     // Back to the normal plan: the field.
@@ -284,7 +289,20 @@ public class ElephantAI : MonoBehaviour
     {
         if (!detour.HasValue) return;
         detour = null;
-        if (CurrentState == State.Approach) SetStateDestination();
+        if (body != null && CurrentState != State.Agitated && CurrentState != State.Charge) body.SetAgitated(false);
+        if (CurrentState == State.Approach && flinchTimer <= 0f) SetStateDestination();
+    }
+
+    // A warning display: it rears with its trunk up, flaps its ears and trumpets, standing still.
+    public void Alarm(float seconds)
+    {
+        if (body != null)
+        {
+            body.Rear(seconds);
+            body.FlapEars(seconds);
+        }
+        Play(SoundBank.Trumpet, 1f);
+        Pause(seconds);
     }
 
     void UpdateAtFence(float dt)
@@ -436,7 +454,7 @@ public class ElephantAI : MonoBehaviour
                 }
                 else if (detour.HasValue)
                 {
-                    MoveTo(detour.Value, walkSpeed);
+                    MoveTo(detour.Value, detourSpeed > 0f ? detourSpeed : walkSpeed);
                 }
                 else
                 {

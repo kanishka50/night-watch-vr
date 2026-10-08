@@ -2,18 +2,22 @@ using System.Collections;
 using UnityEngine;
 
 // The neighbour's house on the village side, and the neighbour.
-// Real practice: elephants raid houses for stored rice, and many people are hurt when they step
-// outside at night not knowing an elephant is there. Warning neighbours early is what keeps them safe.
+// Real practice: elephants raid houses for stored rice, and many people are hurt when they are
+// outside after dark not knowing an elephant is near. Warning neighbours early keeps them safe,
+// and villagers are told to keep outside lights on at night.
 //
-//   Asleep  --phone call--> Warned: the light comes on, they stay inside and bang pots when an
-//                           elephant comes near (a scare on every elephant near the house)
-//   Asleep  --the village-side bull comes--> it goes for the rice store at the house.
-//           When it is near, the neighbour steps outside with a lamp to see what the noise is.
-//   Outside --the player drives the bull away--> GoingIn > Safe (they walk back inside)
-//   Outside --the bull reaches them--> Hurt (they fall; the night goes on; the ending says so)
+//   Inside   (afternoon) the house is dark
+//   Outside  from dusk: the neighbour lights a small evening fire in the yard and walks about
+//            with a lamp. The player can see them from the hut.
+//   Phone call: they stop, lift the lamp toward the hut, walk inside, the door closes and the
+//            porch light comes on (Warned). The bull from the village side then goes to the field.
+//   No call: the bull from the village side goes for the rice at the house (Danger):
+//            it sees the neighbour, rears and trumpets, then runs at them. The player can still
+//            drive it away (Safe). If it reaches them, they are thrown down (Hurt), lie still for
+//            a while, then get up and limp inside.
 public class NeighbourHouse : MonoBehaviour
 {
-    public enum Mood { Asleep, Warned, Outside, GoingIn, Safe, Hurt }
+    public enum Mood { Inside, Outside, GoingIn, Warned, Danger, Safe, Hurt }
 
     public static NeighbourHouse Instance { get; private set; }
 
@@ -22,6 +26,11 @@ public class NeighbourHouse : MonoBehaviour
     public Transform door;
     public Renderer window;
     public Light windowLight;
+    [Tooltip("The light over the door that lights the yard once they are safe inside.")]
+    public Light porchLight;
+    public Renderer porchBulb;
+    [Tooltip("The small evening fire in the yard (flame, light and crackle).")]
+    public GameObject yardFire;
     [Tooltip("The neighbour, feet at the pivot. Hidden while inside.")]
     public Transform figure;
     public Transform lampPivot;
@@ -29,24 +38,23 @@ public class NeighbourHouse : MonoBehaviour
 
     [Header("Places")]
     public Transform doorPoint;
+    public Transform firePoint;
+    [Tooltip("The neighbour walks between these two points in the evening.")]
     public Transform yardPoint;
-    [Tooltip("The rice store by the house, where an elephant goes when no one is warned.")]
+    public Transform patrolPoint;
+    [Tooltip("The rice store by the house, where the bull goes when no one is warned.")]
     public Transform storePoint;
 
     [Header("Numbers")]
-    [Tooltip("The bull this close to the house wakes the unwarned neighbour, who comes outside.")]
-    public float comeOutDistance = 18f;
-    [Tooltip("Seconds the bull searches the store before it turns to the neighbour.")]
+    [Tooltip("Seconds the bull searches the rice before it notices the neighbour.")]
     public float noticeSeconds = 6f;
-    [Tooltip("The bull this close to the neighbour knocks them down.")]
-    public float hurtDistance = 3f;
-    [Tooltip("The neighbour goes back inside when the bull is this far away for safeSeconds.")]
-    public float safeDistance = 15f;
-    public float safeSeconds = 4f;
-    [Tooltip("Banging pots (after a warning): range, strength and seconds between bangs.")]
-    public float potsRange = 14f;
-    public float potsStrength = 6f;
-    public float potsInterval = 3f;
+    [Tooltip("The bull notices the neighbour at once when this close.")]
+    public float noticeDistance = 6f;
+    [Tooltip("Seconds the bull rears and trumpets before it runs at the neighbour.")]
+    public float warnDisplaySeconds = 2f;
+    public float chargeSpeed = 3.5f;
+    [Tooltip("The bull's centre this close to the neighbour during its run knocks them down (the trunk is 2.4 m in front of it).")]
+    public float hitDistance = 3.2f;
     public float walkSpeed = 1f;
     [Tooltip("After being knocked down: seconds on the ground, then a slow limp back inside.")]
     public float hurtLieSeconds = 6f;
@@ -55,27 +63,29 @@ public class NeighbourHouse : MonoBehaviour
     public float doorOpenAngle = 100f;
     public Color windowOnColor = new Color(1f, 0.75f, 0.40f);
 
-    public Mood State { get; private set; } = Mood.Asleep;
+    public Mood State { get; private set; } = Mood.Inside;
 
     ElephantAI bull;
+    float bullCameTime = float.PositiveInfinity;
     float atStoreTime = -1f;
-    bool bullTurned;
-    float farTime;
-    float outsideSince;
-    float potsTimer;
-    bool toldPots;
     bool walking;
     float lampIntensity;
     MaterialPropertyBlock windowBlock;
-
-    Vector3 HousePoint => doorPoint != null ? doorPoint.position : transform.position;
+    MaterialPropertyBlock bulbBlock;
 
     void Awake()
     {
         Instance = this;
         if (figure != null) figure.gameObject.SetActive(false);
+        if (yardFire != null)
+        {
+            // The crackle starts when the fire is lit (the sound is made in code, so set it here).
+            var crackle = yardFire.GetComponent<AudioSource>();
+            if (crackle != null) crackle.clip = SoundBank.FireCrackle;
+            yardFire.SetActive(false);
+        }
         if (lamp != null) lampIntensity = lamp.intensity;
-        SetWindow(false);
+        SetLights(false);
     }
 
     // ---------------- Called by other scripts ----------------
@@ -86,21 +96,23 @@ public class NeighbourHouse : MonoBehaviour
         SoundBank.PlayAt(SoundBank.Ring, PlayerState.Head != null ? PlayerState.Head.position : transform.position, 0.5f, 1f);
         switch (State)
         {
-            case Mood.Asleep:
+            case Mood.Inside:
                 State = Mood.Warned;
-                SetWindow(true);
-                NoticeBoard.Message("Neighbour on the phone: \"Thank you! We will stay inside, and bang pots if an elephant comes near the house.\"");
-                ActionLog.Record("Warned your neighbour", true,
-                    "Neighbours who know an elephant is near stay inside, and their noise helps drive it away.");
-                break;
-            case Mood.Warned:
-                NoticeBoard.Message("Your neighbour already knows. They are staying inside.");
+                SetLights(true);
+                Warned("Neighbour on the phone: \"Thank you! We will stay inside tonight and keep the lights on.\"");
                 break;
             case Mood.Outside:
-                NoticeBoard.Message("Your neighbour is already outside! Drive the bull away from the house.");
+                Switch(AnswerAndGoInside(false));
+                break;
+            case Mood.Danger:
+                // A late call: they hurry inside.
+                Switch(AnswerAndGoInside(true));
+                break;
+            case Mood.Hurt:
+                NoticeBoard.Message("Your neighbour is hurt. They are going back inside.");
                 break;
             default:
-                NoticeBoard.Message("Your neighbour is inside now.");
+                NoticeBoard.Message("Your neighbour is already safe inside.");
                 break;
         }
     }
@@ -109,12 +121,12 @@ public class NeighbourHouse : MonoBehaviour
     public void VillageElephantCame(ElephantAI elephant)
     {
         bull = elephant;
+        bullCameTime = Time.time;
         atStoreTime = -1f;
-        bullTurned = false;
-        if (State != Mood.Asleep) return;
+        if (State == Mood.Warned || State == Mood.Safe) return;   // the house is lit and shut
 
         ActionLog.Record("Did not warn your neighbour", false,
-            "Elephants raid houses for stored rice. A neighbour who does not know may step outside in the dark.");
+            "Elephants raid houses for stored rice. A neighbour who does not know is outside in the dark.");
         if (storePoint != null) bull.GoTo(storePoint.position);
     }
 
@@ -122,68 +134,36 @@ public class NeighbourHouse : MonoBehaviour
 
     void Update()
     {
+        var game = GameManager.Instance;
         switch (State)
         {
-            case Mood.Warned: UpdateWarned(); break;
-            case Mood.Asleep: UpdateAsleep(); break;
-            case Mood.Outside: UpdateOutside(); break;
+            case Mood.Inside:
+                if (game != null && game.CurrentPhase >= GameManager.Phase.Dusk && game.CurrentPhase <= GameManager.Phase.Night)
+                    Switch(ComeOutForTheEvening());
+                break;
+            case Mood.Outside:
+                SwingLamp(walking ? 1f : 0.3f);
+                if (BullNoticesNeighbour()) Switch(Danger());
+                break;
+            case Mood.Danger:
+                // Driven away (turned back, or ran from a cracker): the neighbour is safe.
+                if (!BullIsHere() || bull.LastFleeTime > bullCameTime) Switch(Rescued());
+                break;
         }
     }
 
-    void UpdateWarned()
+    bool BullIsHere() => bull != null && bull.gameObject.activeInHierarchy && bull.IsActive;
+
+    bool BullNoticesNeighbour()
     {
-        potsTimer -= Time.deltaTime;
-        if (potsTimer > 0f) return;
-        potsTimer = potsInterval;
-        int reached = ElephantAI.ScareAllNear(HousePoint, potsRange, "pots and pans", potsStrength);
-        if (reached == 0) return;
-        SoundBank.PlayAt(SoundBank.Pots, HousePoint + Vector3.up, 1f, 6f);
-        if (!toldPots)
-        {
-            toldPots = true;
-            NoticeBoard.Message("Hear that clanging? Your neighbour is banging pots to keep an elephant away from their house.");
-        }
-    }
-
-    void UpdateAsleep()
-    {
-        if (!BullIsHere()) return;
-        if (Flat(bull.transform.position - HousePoint) < comeOutDistance) StartCoroutine(ComeOutside());
-    }
-
-    void UpdateOutside()
-    {
-        SwingLamp(walking ? 1f : 0.3f);
-        // Turned back, or made to run by the player: the neighbour is safe and goes back in.
-        if (!BullIsHere() || bull.LastFleeTime > outsideSince)
-        {
-            Switch(GoBackInside());
-            return;
-        }
-
-        float toNeighbour = Flat(bull.transform.position - figure.position);
-        if (toNeighbour < hurtDistance)
-        {
-            Switch(Fall());
-            return;
-        }
-
-        // At the store it searches for rice, then it notices the person with the lamp.
+        if (!BullIsHere()) return false;
+        if (Flat(bull.transform.position - figure.position) < noticeDistance) return true;
         if (storePoint != null && atStoreTime < 0f && Flat(bull.transform.position - storePoint.position) < 3f)
             atStoreTime = Time.time;
-        if (!bullTurned && atStoreTime >= 0f && Time.time - atStoreTime > noticeSeconds)
-        {
-            bullTurned = true;
-            bull.GoTo(figure.position);
-            NoticeBoard.Message("The bull has seen your neighbour! Drive it away now!");
-        }
-
-        // Driven far enough away for a while: the neighbour is safe and goes back in.
-        farTime = toNeighbour > safeDistance ? farTime + Time.deltaTime : 0f;
-        if (farTime > safeSeconds) Switch(GoBackInside());
+        return atStoreTime >= 0f && Time.time - atStoreTime > noticeSeconds;
     }
 
-    // Stops what the neighbour was doing (for example walking out) and starts the next thing.
+    // Stops what the neighbour was doing and starts the next thing.
     void Switch(IEnumerator next)
     {
         StopAllCoroutines();
@@ -191,89 +171,186 @@ public class NeighbourHouse : MonoBehaviour
         StartCoroutine(next);
     }
 
-    bool BullIsHere() => bull != null && bull.gameObject.activeInHierarchy && bull.IsActive;
+    // ---------------- The story, step by step ----------------
 
-    // ---------------- Animations ----------------
-
-    IEnumerator ComeOutside()
+    IEnumerator ComeOutForTheEvening()
     {
         State = Mood.Outside;
-        farTime = 0f;
-        outsideSince = Time.time;
-        SetWindow(true);
         yield return SwingDoor(true);
         figure.position = doorPoint.position;
+        figure.rotation = Quaternion.identity;
         figure.gameObject.SetActive(true);
         if (lamp != null) lamp.enabled = true;
-        NoticeBoard.Message("Your neighbour came outside with a lamp! A bull is near their house. Drive it away!");
-        yield return Walk(yardPoint.position);
+
+        // Light the evening fire, then walk about the yard.
+        yield return Walk(firePoint.position, walkSpeed, false);
+        yield return new WaitForSeconds(1f);
+        if (yardFire != null) yardFire.SetActive(true);
+        while (true)
+        {
+            yield return Walk(yardPoint.position, walkSpeed, false);
+            yield return new WaitForSeconds(Random.Range(2f, 4f));
+            yield return Walk(patrolPoint.position, walkSpeed, false);
+            yield return new WaitForSeconds(Random.Range(2f, 4f));
+        }
     }
 
-    IEnumerator GoBackInside()
+    IEnumerator AnswerAndGoInside(bool hurry)
     {
         State = Mood.GoingIn;
-        if (bull != null)
+        if (hurry)
         {
-            bull.ClearDetour();
-            ActionLog.Record("Saved your neighbour", true,
-                "You drove the bull away from the house from the safety of the hut.");
-            NoticeBoard.Message("The bull has moved away. Your neighbour went back inside, safe.");
+            NoticeBoard.Message("Neighbour on the phone: \"An elephant? We are going in now!\"");
+            ActionLog.Record("Called your neighbour inside just in time", true,
+                "Even a late warning helps: they went inside before the bull reached them.");
         }
-        yield return Walk(doorPoint.position);
-        figure.gameObject.SetActive(false);
-        yield return SwingDoor(false);
+        else Warned("Neighbour on the phone: \"Thank you! We are going inside, and we will keep the lights on.\"");
+        if (bull != null) bull.ClearDetour();
+
+        // They stop, turn to the hut and lift the lamp: the call got through.
+        if (!hurry)
+        {
+            FaceTowards(ElephantAI.HutCenter);
+            yield return LiftLamp(1.5f);
+        }
+        yield return Walk(doorPoint.position, hurry ? walkSpeed * 2f : walkSpeed, false);
+        yield return GoInAndLightUp();
+        State = Mood.Warned;
+    }
+
+    IEnumerator Danger()
+    {
+        State = Mood.Danger;
+        NoticeBoard.Message("The bull has seen your neighbour in the yard! Scare it away now!");
+        FaceTowards(bull.transform.position);
+        if (lampPivot != null && lampPivot.parent == figure) lampPivot.localRotation = Quaternion.Euler(-60f, 0f, 0f);
+
+        // The bull rears, flaps its ears and trumpets: a warning before it runs.
+        bull.Alarm(warnDisplaySeconds);
+        yield return new WaitForSeconds(warnDisplaySeconds);
+        if (!BullIsHere()) yield break;
+
+        NoticeBoard.Message("The bull is charging your neighbour!");
+        float retarget = 0f;
+        while (BullIsHere())
+        {
+            // The neighbour backs away slowly, frozen with fear, facing the bull.
+            var away = figure.position - bull.transform.position;
+            away.y = 0f;
+            FaceTowards(bull.transform.position);
+            figure.position += away.normalized * 0.5f * Time.deltaTime;
+
+            retarget -= Time.deltaTime;
+            if (retarget <= 0f)
+            {
+                retarget = 0.3f;
+                bull.GoTo(figure.position, chargeSpeed);
+            }
+            if (away.magnitude < hitDistance)
+            {
+                yield return Hit(away.normalized);
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
+    IEnumerator Rescued()
+    {
+        State = Mood.GoingIn;
+        if (bull != null) bull.ClearDetour();
+        ActionLog.Record("Saved your neighbour", true,
+            "You drove the bull away from the house from the safety of the hut.");
+        NoticeBoard.Message("The bull has gone. Your neighbour is hurrying back inside, safe.");
+        if (lampPivot != null && lampPivot.parent == figure) lampPivot.localRotation = Quaternion.identity;
+        yield return Walk(doorPoint.position, walkSpeed * 1.8f, false);
+        yield return GoInAndLightUp();
         State = Mood.Safe;
     }
 
-    IEnumerator Fall()
+    // The bull reaches the neighbour: they are thrown back and fall, the lamp flies off.
+    IEnumerator Hit(Vector3 pushDirection)
     {
         State = Mood.Hurt;
-        if (bull != null) bull.ClearDetour();
         GameManager.Instance?.NeighbourHurt();
         ActionLog.Record("Your neighbour was hurt", false,
             "The bull reached your neighbour before you drove it away. Warn people early, and act fast when someone is in danger.");
-        SoundBank.PlayAt(SoundBank.Trumpet, figure.position, 1f, 6f);
-
-        // The neighbour falls backwards and the lamp drops to the ground.
-        var start = figure.rotation;
-        var down = start * Quaternion.Euler(-85f, 0f, 0f);
-        for (float t = 0f; t < 0.6f; t += Time.deltaTime)
+        SoundBank.PlayAt(SoundBank.Bang, figure.position, 0.6f, 6f);
+        if (bull != null)
         {
-            figure.rotation = Quaternion.Slerp(start, down, Mathf.SmoothStep(0f, 1f, t / 0.6f));
-            yield return null;
+            bull.ClearDetour();
+            bull.Alarm(2f);   // it stands over them, trumpeting, then goes on to the field
         }
-        figure.rotation = down;
+
         if (lampPivot != null)
         {
             lampPivot.SetParent(transform, true);
-            var p = lampPivot.position;
-            lampPivot.position = new Vector3(p.x, 0.1f, p.z);
+            var landing = figure.position + pushDirection * 2.5f + Vector3.Cross(Vector3.up, pushDirection) * 0.6f;
+            lampPivot.position = new Vector3(landing.x, 0.1f, landing.z);
             lampPivot.rotation = Quaternion.Euler(0f, 0f, 80f);
         }
         if (lamp != null) lamp.intensity = lampIntensity * 0.4f;
+
+        // Thrown back about 1.8 m with a small arc, falling onto their back.
+        var startPos = figure.position;
+        var upright = figure.rotation;
+        var down = upright * Quaternion.Euler(-85f, 0f, 0f);
+        for (float t = 0f; t < 0.45f; t += Time.deltaTime)
+        {
+            float k = t / 0.45f;
+            figure.position = startPos + pushDirection * 1.8f * k + Vector3.up * 0.4f * Mathf.Sin(k * Mathf.PI);
+            figure.rotation = Quaternion.Slerp(upright, down, Mathf.SmoothStep(0f, 1f, k));
+            yield return null;
+        }
+        figure.position = startPos + pushDirection * 1.8f;
+        figure.rotation = down;
 
         // Hurt, not killed: after a while they get up slowly and limp back inside.
         yield return new WaitForSeconds(hurtLieSeconds);
         NoticeBoard.Message("Your neighbour is hurt, but alive. They are limping back inside.");
         for (float t = 0f; t < 1.5f; t += Time.deltaTime)
         {
-            figure.rotation = Quaternion.Slerp(down, start, Mathf.SmoothStep(0f, 1f, t / 1.5f));
+            figure.rotation = Quaternion.Slerp(down, upright, Mathf.SmoothStep(0f, 1f, t / 1.5f));
             yield return null;
         }
-        figure.rotation = start;
+        figure.rotation = upright;
         yield return Walk(doorPoint.position, limpSpeed, true);
-        figure.gameObject.SetActive(false);
-        yield return SwingDoor(false);
+        yield return GoInAndLightUp();
     }
 
-    IEnumerator Walk(Vector3 target) => Walk(target, walkSpeed, false);
+    // ---------------- Small animations ----------------
+
+    void Warned(string reply)
+    {
+        NoticeBoard.Message(reply);
+        ActionLog.Record("Warned your neighbour", true,
+            "A neighbour who knows an elephant is near stays inside with the lights on.");
+    }
+
+    IEnumerator GoInAndLightUp()
+    {
+        figure.gameObject.SetActive(false);
+        yield return SwingDoor(false);
+        SetLights(true);
+    }
+
+    IEnumerator LiftLamp(float seconds)
+    {
+        if (lampPivot == null || lampPivot.parent != figure) yield break;
+        for (float t = 0f; t < seconds; t += Time.deltaTime)
+        {
+            // Raised high and waved toward the hut.
+            lampPivot.localRotation = Quaternion.Euler(-100f, 0f, Mathf.Sin(t * 8f) * 20f);
+            yield return null;
+        }
+        lampPivot.localRotation = Quaternion.identity;
+    }
 
     IEnumerator Walk(Vector3 target, float speed, bool limp)
     {
         walking = true;
         target.y = figure.position.y;
-        var dir = target - figure.position;
-        if (dir.sqrMagnitude > 0.01f) figure.rotation = Quaternion.LookRotation(dir);
+        FaceTowards(target);
         float baseY = figure.position.y;
         float t = 0f;
         while (Flat(target - figure.position) > 0.05f)
@@ -282,20 +359,14 @@ public class NeighbourHouse : MonoBehaviour
             // A limp: slower, with a deep dip on every other step.
             float step = limp ? speed * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(t * 3f))) : speed;
             var next = Vector3.MoveTowards(figure.position, target, step * Time.deltaTime);
-            float bob = limp ? 0.1f * Mathf.Abs(Mathf.Sin(t * 3f)) : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
-            next.y = baseY - (limp ? bob : -bob);   // a small bob with each step
+            float bob = limp ? -0.1f * Mathf.Abs(Mathf.Sin(t * 3f)) : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
+            next.y = baseY + bob;
             figure.position = next;
+            if (!limp) SwingLamp(1f);
             yield return null;
         }
         figure.position = new Vector3(target.x, baseY, target.z);
         walking = false;
-        // Face the field, where the noise came from.
-        if (State == Mood.Outside && bull != null)
-        {
-            var look = bull.transform.position - figure.position;
-            look.y = 0f;
-            if (look.sqrMagnitude > 0.01f) figure.rotation = Quaternion.LookRotation(look);
-        }
     }
 
     IEnumerator SwingDoor(bool open)
@@ -311,6 +382,13 @@ public class NeighbourHouse : MonoBehaviour
         door.localRotation = to;
     }
 
+    void FaceTowards(Vector3 point)
+    {
+        var look = point - figure.position;
+        look.y = 0f;
+        if (look.sqrMagnitude > 0.01f) figure.rotation = Quaternion.LookRotation(look);
+    }
+
     void SwingLamp(float amount)
     {
         if (lampPivot == null || lampPivot.parent != figure) return;
@@ -318,14 +396,24 @@ public class NeighbourHouse : MonoBehaviour
         if (lamp != null) lamp.intensity = lampIntensity * (0.85f + 0.15f * Mathf.PerlinNoise(Time.time * 6f, 3f));
     }
 
-    void SetWindow(bool on)
+    // The window glow and the porch light over the door.
+    void SetLights(bool on)
     {
         if (windowLight != null) windowLight.enabled = on;
-        if (window == null) return;
-        if (windowBlock == null) windowBlock = new MaterialPropertyBlock();
-        windowBlock.SetColor("_BaseColor", on ? windowOnColor : new Color(0.08f, 0.07f, 0.06f));
-        windowBlock.SetColor("_EmissionColor", on ? windowOnColor * 2f : Color.black);
-        window.SetPropertyBlock(windowBlock);
+        if (porchLight != null) porchLight.enabled = on;
+        if (window != null)
+        {
+            if (windowBlock == null) windowBlock = new MaterialPropertyBlock();
+            windowBlock.SetColor("_BaseColor", on ? windowOnColor : new Color(0.08f, 0.07f, 0.06f));
+            windowBlock.SetColor("_EmissionColor", on ? windowOnColor * 2f : Color.black);
+            window.SetPropertyBlock(windowBlock);
+        }
+        if (porchBulb != null)
+        {
+            if (bulbBlock == null) bulbBlock = new MaterialPropertyBlock();
+            bulbBlock.SetColor("_BaseColor", on ? new Color(1f, 0.9f, 0.6f) : new Color(0.15f, 0.14f, 0.12f));
+            porchBulb.SetPropertyBlock(bulbBlock);
+        }
     }
 
     static float Flat(Vector3 v)
@@ -346,9 +434,9 @@ public class NeighbourHouse : MonoBehaviour
         if (arrivals != null) arrivals.SpawnVillageBull();
     }
 
-    [ContextMenu("Test: the neighbour comes outside now")]
+    [ContextMenu("Test: the neighbour comes out for the evening")]
     void TestComeOut()
     {
-        if (State == Mood.Asleep || State == Mood.Warned) StartCoroutine(ComeOutside());
+        if (State == Mood.Inside) Switch(ComeOutForTheEvening());
     }
 }

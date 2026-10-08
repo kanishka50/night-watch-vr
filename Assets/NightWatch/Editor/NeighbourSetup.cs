@@ -5,8 +5,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // Builds the neighbour's side of the story (called by Night Watch > Build Full Game, after the
 // NavMesh is baked):
-//  - the door that opens, the neighbour (a simple figure with a lamp) and the rice store by the house
-//  - the places they walk between (door, yard) and where the bull goes (the store)
+//  - the door that opens, the porch light, the neighbour (a simple figure with a lamp), the small
+//    evening fire in the yard and the rice store by the house
+//  - the places they walk between (door, fire, yard, west side) and where the bull goes (the store)
 //  - the phone on the hut's west rail, to call and warn the neighbour
 //  - NeighbourHouse, which runs it all
 // The house walls and window are built by BlockoutBuilder, the window light by NightLighting.
@@ -24,8 +25,25 @@ public static class NeighbourSetup
         EditorKit.Part("Door", PrimitiveType.Cube, hinge, new Vector3(0.45f, 0.95f, 0f), new Vector3(0.9f, 1.9f, 0.05f),
             EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
 
+        // The porch light over the door (off until they are safe inside).
+        var bulb = EditorKit.Part("PorchBulb", PrimitiveType.Cube, root, new Vector3(doorX, 2.3f, front + 0.12f), new Vector3(0.14f, 0.1f, 0.14f),
+            EditorKit.Mat("PorchBulb", Color.white, true), false);
+        var porchGo = new GameObject("PorchLight");
+        porchGo.transform.SetParent(root, false);
+        porchGo.transform.position = new Vector3(doorX, 2.2f, front + 0.6f);
+        var porch = porchGo.AddComponent<Light>();
+        porch.type = LightType.Point;
+        porch.color = new Color(1f, 0.85f, 0.6f);
+        porch.range = 10f;
+        porch.intensity = 3f;
+        porch.shadows = LightShadows.None;
+
+        // The yard is on the west side of the house, between the house and the path.
         var doorPoint = EditorKit.Empty("DoorPoint", root, new Vector3(doorX, 0f, front + 0.3f));
-        var yardPoint = EditorKit.Empty("YardPoint", root, new Vector3(doorX - 1.4f, 0f, front + 1.3f));
+        var firePoint = EditorKit.Empty("FirePoint", root, new Vector3(c.x - 3.1f, 0f, front - 0.2f));
+        var yardPoint = EditorKit.Empty("YardPoint", root, new Vector3(c.x - 2.5f, 0f, front + 1.2f));
+        var patrolPoint = EditorKit.Empty("PatrolPoint", root, new Vector3(c.x - 4.4f, 0f, c.z - 1.1f));
+        var fire = BuildYardFire(root, new Vector3(c.x - 3.8f, 0f, front - 0.8f));
         var storePoint = EditorKit.Empty("StorePoint", root, new Vector3(c.x + BlockoutBuilder.HouseSize / 2f + 1.3f, 0f, c.z));
 
         // Rice sacks against the east wall: what the elephant comes for.
@@ -46,11 +64,52 @@ public static class NeighbourSetup
         house.figure = figure;
         house.lampPivot = lampPivot;
         house.lamp = lamp;
+        house.porchLight = porch;
+        house.porchBulb = bulb.GetComponent<Renderer>();
+        house.yardFire = fire;
         house.doorPoint = doorPoint;
+        house.firePoint = firePoint;
         house.yardPoint = yardPoint;
+        house.patrolPoint = patrolPoint;
         house.storePoint = storePoint;
 
         BuildPhone();
+    }
+
+    // A small evening fire: a few sticks and a flame, with light and crackle. Off until lit.
+    // For light and life only; it is too small to keep a raiding bull away.
+    static GameObject BuildYardFire(Transform root, Vector3 at)
+    {
+        var sticks = EditorKit.Empty("YardFireSticks", root, at);
+        var wood = EditorKit.Mat("Firewood", new Color(0.40f, 0.27f, 0.15f));
+        for (int i = 0; i < 3; i++)
+        {
+            var rotation = Quaternion.Euler(0f, i * 120f, 0f) * Quaternion.Euler(-25f, 0f, 0f);
+            var stick = EditorKit.Part("Stick", PrimitiveType.Cylinder, sticks, rotation * Vector3.forward * 0.15f + Vector3.up * 0.25f,
+                new Vector3(0.07f, 0.3f, 0.07f), wood, false);
+            stick.transform.localRotation = rotation;
+        }
+
+        var fire = EditorKit.Empty("YardFire", root, at);
+        EditorKit.Part("Flame", PrimitiveType.Sphere, fire, new Vector3(0f, 0.35f, 0f), new Vector3(0.4f, 0.6f, 0.4f),
+            EditorKit.Mat("Fire", new Color(1f, 0.55f, 0.15f), true), false);
+        var lightGo = new GameObject("FireLight");
+        lightGo.transform.SetParent(fire, false);
+        lightGo.transform.localPosition = new Vector3(0f, 0.8f, 0f);
+        var light = lightGo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, 0.55f, 0.25f);
+        light.range = 6f;
+        light.intensity = 2f;
+        light.shadows = LightShadows.None;
+        var crackle = fire.gameObject.AddComponent<AudioSource>();
+        crackle.spatialBlend = 1f;
+        crackle.minDistance = 1f;
+        crackle.maxDistance = 25f;
+        crackle.volume = 0.5f;
+        crackle.loop = true;
+        crackle.playOnAwake = true;
+        return fire.gameObject;
     }
 
     // A simple standing person, feet at the pivot, facing +Z: sarong, shirt, head, arms, and a

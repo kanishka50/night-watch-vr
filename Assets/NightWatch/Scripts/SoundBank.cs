@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, pots;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -23,7 +23,6 @@ public static class SoundBank
     public static AudioClip Drum => drum != null ? drum : drum = Make("Drum", 0.7f, MakeDrum);
     public static AudioClip Birds => birds != null ? birds : birds = Make("Birds", 4f, MakeBirds);
     public static AudioClip Ring => ring != null ? ring : ring = Make("Ring", 1.2f, MakeRing);
-    public static AudioClip Pots => pots != null ? pots : pots = Make("Pots", 1.2f, MakePots);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -256,24 +255,6 @@ public static class SoundBank
             d[i] = on ? 0.5f * (Sin(440f, t) + Sin(480f, t)) * (Sin(20f, t) > 0f ? 1f : 0.3f) : 0f;
         }
         Normalise(d, 0.5f);
-    }
-
-    // Pots and pans banged together: a few metal clangs.
-    static void MakePots(float[] d, System.Random r)
-    {
-        float[] hits = { 0f, 0.3f, 0.55f, 0.85f };
-        foreach (var h in hits)
-        {
-            int i0 = Mathf.FloorToInt(h * Rate);
-            float f = 600f + (float)r.NextDouble() * 500f;
-            for (int i = 0; i0 + i < d.Length && i < Rate / 3; i++)
-            {
-                float t = i / (float)Rate;
-                float ring = Sin(f, t) + 0.6f * Sin(f * 2.76f, t) + 0.4f * Sin(f * 5.4f, t);
-                d[i0 + i] += (0.6f * ring + 0.4f * Noise(r) * Mathf.Exp(-t * 60f)) * Mathf.Exp(-t * 9f);
-            }
-        }
-        Normalise(d, 0.7f);
     }
 
     // Two low thumps: a heartbeat (one beat per loop).
