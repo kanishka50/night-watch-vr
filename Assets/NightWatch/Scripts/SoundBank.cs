@@ -123,7 +123,10 @@ public static class SoundBank
         {
             float t = i / (float)Rate;
             low += 0.25f * (Noise(r) - low);
-            d[i] = low * Mathf.Exp(-t * 5f) + 0.8f * Sin(55f, t) * Mathf.Exp(-t * 12f);
+            // A deep thump, plus mid tones so it can be heard on laptop speakers too.
+            float deep = low * Mathf.Exp(-t * 5f) + 0.8f * Sin(55f, t) * Mathf.Exp(-t * 12f);
+            float mid = 0.6f * Sin(140f, t) * Mathf.Exp(-t * 8f) + 0.4f * Noise(r) * Mathf.Exp(-t * 20f);
+            d[i] = (float)System.Math.Tanh(1.8f * (deep + mid));
         }
         Normalise(d, 0.95f);
     }
@@ -248,19 +251,26 @@ public static class SoundBank
         Normalise(d, 0.5f);
     }
 
-    // A firecracker (ali wedi): a sharp, bright crack, a short boom under it, and an echo off the
-    // forest a moment later. Brighter and sharper than Bang, so it cuts through the other sounds.
+    // A firecracker (ali wedi): a loud bang with a crackle and an echo off the forest.
+    // Built mostly from mid tones (150 Hz and up): laptop speakers cannot play deep bass, so a
+    // bass-only bang sounds like a small click on them.
     static void MakeCracker(float[] d, System.Random r)
     {
-        float echoAt = 0.28f;
+        var pops = new float[12];
+        for (int p = 0; p < pops.Length; p++) pops[p] = 0.12f + (float)r.NextDouble() * 0.55f;
+        float echoAt = 0.3f;
         for (int i = 0; i < d.Length; i++)
         {
             float t = i / (float)Rate;
-            float crack = Noise(r) * Mathf.Exp(-t * 45f);
-            float boom = 0.7f * Sin(90f, t) * Mathf.Exp(-t * 14f);
+            float blast = Noise(r) * Mathf.Exp(-t * 14f);
+            float body = 0.8f * Sin(180f, t) * Mathf.Exp(-t * 10f) + 0.4f * Sin(320f, t) * Mathf.Exp(-t * 16f);
+            float crackle = 0f;
+            foreach (var p in pops)
+                if (t > p) crackle += 0.5f * Noise(r) * Mathf.Exp(-(t - p) * 120f);
             float te = t - echoAt;
-            float echo = te > 0f ? 0.3f * Noise(r) * Mathf.Exp(-te * 20f) : 0f;
-            d[i] = crack + boom + echo;
+            float echo = te > 0f ? 0.35f * Noise(r) * Mathf.Exp(-te * 10f) : 0f;
+            // Soft clipping makes it sound louder without going over full scale.
+            d[i] = (float)System.Math.Tanh(2.2f * (blast + body + crackle + echo));
         }
         Normalise(d, 0.98f);
     }

@@ -89,7 +89,7 @@ public class ElephantAI : MonoBehaviour
     public ElephantBody body;
     public AudioSource voice;
     [Tooltip("Loudness of every trumpet call (0 to 1).")]
-    public float trumpetVolume = 0.55f;
+    public float trumpetVolume = 0.75f;
     public Animator animator;
 
     public State CurrentState { get; private set; } = State.Approach;
