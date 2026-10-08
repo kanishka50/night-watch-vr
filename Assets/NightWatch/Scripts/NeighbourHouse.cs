@@ -88,7 +88,7 @@ public class NeighbourHouse : MonoBehaviour
             case Mood.Asleep:
                 State = Mood.Warned;
                 SetWindow(true);
-                NoticeBoard.Message("You called your neighbour. They will stay inside and bang pots if an elephant comes near.");
+                NoticeBoard.Message("Neighbour on the phone: \"Thank you! We will stay inside, and bang pots if an elephant comes near the house.\"");
                 ActionLog.Record("Warned your neighbour", true,
                     "Neighbours who know an elephant is near stay inside, and their noise helps drive it away.");
                 break;

@@ -74,7 +74,8 @@ public class NoticeBoard : MonoBehaviour
             case GameManager.Phase.Dusk:
                 body.text =
                     "<b>DUSK</b>\n" +
-                    "Elephants usually come after dark. Listen for branches cracking and low rumbles.\n\n" +
+                    "Elephants usually come after dark. Listen for branches cracking and low rumbles.\n" +
+                    "Elephants are out tonight: use the <b>phone</b> on the rail to warn your neighbour.\n\n" +
                     Practise + Controls;
                 break;
             case GameManager.Phase.Night:
