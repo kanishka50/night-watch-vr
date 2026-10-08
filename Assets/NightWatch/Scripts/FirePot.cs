@@ -15,15 +15,30 @@ public class FirePot : MonoBehaviour
     public Light fireLight;
     public float baseIntensity = 2.5f;
     public AudioSource crackle;
-    [Tooltip("Pressing use on a torch or cracker this close to the pot lights it.")]
-    public float lightingRange = 2f;
+    [Tooltip("Pressing use on a torch or cracker this close to the pot (along the floor) lights it. " +
+             "3.5 m covers the whole hut floor, because reaching the pot is fiddly with keyboard and mouse.")]
+    public float reach = 3.5f;
 
     void Awake() => Instance = this;
 
     // True if a point is close enough to the fire to light something there.
+    // Measured along the floor, and only from up in the hut (the pot is not reachable from the ground).
     public static bool IsNear(Vector3 point)
     {
-        return Instance != null && Vector3.Distance(point, Instance.transform.position) <= Instance.lightingRange;
+        if (Instance == null || PlayerState.OnGround) return false;
+        var a = point;
+        var b = Instance.transform.position;
+        a.y = 0f;
+        b.y = 0f;
+        return Vector3.Distance(a, b) <= Instance.reach;
+    }
+
+    // Said when the player presses use on an unlit torch or cracker that is too far away.
+    public static void TooFarMessage()
+    {
+        NoticeBoard.Message(PlayerState.OnGround
+            ? "The fire pot is up in the hut. Climb up to light it."
+            : "Bring it closer to the fire pot on the table, then press T again.");
     }
 
     void Start()

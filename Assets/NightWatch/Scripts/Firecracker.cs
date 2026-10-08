@@ -51,6 +51,7 @@ public class Firecracker : PlayerAction, IIgnitable
         if (!IsLit)
         {
             if (FirePot.IsNear(transform.position)) Ignite();
+            else FirePot.TooFarMessage();
         }
         else if (IsHeld)
         {
@@ -85,6 +86,7 @@ public class Firecracker : PlayerAction, IIgnitable
         fuseLeft = fuseSeconds;
         if (fuseLight != null) fuseLight.enabled = true;
         if (fuseSound != null) fuseSound.Play();
+        NoticeBoard.Message($"The cracker is lit! Press T now to throw it. It bursts in {fuseSeconds:0} seconds.");
     }
 
     protected override void Update()

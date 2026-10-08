@@ -238,22 +238,39 @@ public static class HutPropsSetup
 
         var top = EditorKit.Part("LadderTop", PrimitiveType.Cube, root, new Vector3(0f, FloorTop + 0.9f, -half + 0.05f),
             new Vector3(0.7f, 0.08f, 0.08f), rope);
+        WidenHandle(top);
         top.AddComponent<XRSimpleInteractable>();
         var down = top.AddComponent<LadderClimb>();
         down.goesDown = true;
+        down.highlightColor = HandleHighlight;
         down.destination = groundSpot;
         EditorKit.Label("Climb down", root, new Vector3(0f, FloorTop + 1.1f, -half + 0.05f));
+        down.label = root.Find("Label_Climb down").GetComponent<TextMeshPro>();
 
         var bottom = EditorKit.Part("LadderBottom", PrimitiveType.Cube, root, new Vector3(0f, 1.2f, -half - 0.35f),
             new Vector3(0.7f, 0.08f, 0.08f), rope);
+        WidenHandle(bottom);
         bottom.AddComponent<XRSimpleInteractable>();
         var up = bottom.AddComponent<LadderClimb>();
         up.goesDown = false;
+        up.highlightColor = HandleHighlight;
         up.destination = hutSpot;
         // Faces south, toward a player standing on the ground.
         EditorKit.Text("Label_Climb up", root, new Vector3(0f, 1.45f, -half - 0.4f), Quaternion.Euler(0f, 180f, 0f),
             new Vector2(0.6f, 0.12f), "Climb up", 0.6f, TextAlignmentOptions.Center);
     }
+
+    // A thin bar is easy to miss: the pointer's cone still picks it, but the thin ray that colours
+    // the line goes past it and hits a rung, so the line stays white. A bigger invisible hit box
+    // (0.8 x 0.35 x 0.3 m) fixes that. A stronger yellow shows the highlight on the rope colour.
+    static void WidenHandle(GameObject handle)
+    {
+        var box = handle.GetComponent<BoxCollider>();
+        var scale = handle.transform.localScale;
+        box.size = new Vector3(0.8f / scale.x, 0.35f / scale.y, 0.3f / scale.z);
+    }
+
+    static readonly Color HandleHighlight = new Color(1f, 1f, 0.2f);
 
     // ---------------- Screens ----------------
 

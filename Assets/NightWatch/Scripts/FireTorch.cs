@@ -43,7 +43,9 @@ public class FireTorch : PlayerAction, IIgnitable
     // Use (trigger) near the fire pot lights it. Touching the pot with the torch also works.
     protected override void OnUsed()
     {
-        if (!IsLit && FirePot.IsNear(transform.position)) Ignite();
+        if (IsLit) return;
+        if (FirePot.IsNear(transform.position)) Ignite();
+        else FirePot.TooFarMessage();
     }
 
     public void Ignite()
@@ -52,6 +54,7 @@ public class FireTorch : PlayerAction, IIgnitable
         IsLit = true;
         burnLeft = burnSeconds;
         if (flame != null) flame.SetActive(true);
+        NoticeBoard.Message("The torch is lit. Hold it toward an elephant to stop it.");
         if (!loggedLight)
         {
             loggedLight = true;

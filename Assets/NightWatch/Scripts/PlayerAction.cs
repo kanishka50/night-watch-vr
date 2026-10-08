@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -11,6 +12,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 [RequireComponent(typeof(XRGrabInteractable))]
 public class PlayerAction : MonoBehaviour
 {
+    public static readonly List<PlayerAction> All = new List<PlayerAction>();
+
     [Tooltip("Colour the object turns while a pointer is on it.")]
     public Color highlightColor = new Color(1f, 0.9f, 0.5f);
     [Tooltip("Put it back where it started if it falls off the hut.")]
@@ -27,6 +30,8 @@ public class PlayerAction : MonoBehaviour
 
     public bool IsHeld => grab != null && grab.isSelected;
 
+    public static bool AnyHeld => All.Exists(t => t.IsHeld);
+
     protected virtual void Awake()
     {
         grab = GetComponent<XRGrabInteractable>();
@@ -38,6 +43,7 @@ public class PlayerAction : MonoBehaviour
 
     protected virtual void OnEnable()
     {
+        All.Add(this);
         grab.selectEntered.AddListener(HandleGrab);
         grab.selectExited.AddListener(HandleRelease);
         grab.activated.AddListener(HandleUse);
@@ -47,6 +53,7 @@ public class PlayerAction : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        All.Remove(this);
         grab.selectEntered.RemoveListener(HandleGrab);
         grab.selectExited.RemoveListener(HandleRelease);
         grab.activated.RemoveListener(HandleUse);
@@ -62,6 +69,17 @@ public class PlayerAction : MonoBehaviour
     protected virtual void OnGrabbed() { }
     protected virtual void OnReleased() { }
     protected virtual void OnUsed() { }
+
+    // Tools stay in the hut: when the player climbs down, a tool lying away from its place goes
+    // back on the table. Not for things meant to leave the hut (a lit cracker, hakka patas).
+    // Returns true if it was moved.
+    public bool PutBack()
+    {
+        if (!returnIfDropped || IsHeld) return false;
+        if (Vector3.Distance(transform.position, startPosition) < 0.3f) return false;
+        ReturnToStart();
+        return true;
+    }
 
     protected void ReturnToStart()
     {
