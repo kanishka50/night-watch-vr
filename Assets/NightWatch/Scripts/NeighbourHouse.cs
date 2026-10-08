@@ -63,6 +63,7 @@ public class NeighbourHouse : MonoBehaviour
     float farTime;
     float outsideSince;
     float potsTimer;
+    bool toldPots;
     bool walking;
     float lampIntensity;
     MaterialPropertyBlock windowBlock;
@@ -135,7 +136,13 @@ public class NeighbourHouse : MonoBehaviour
         if (potsTimer > 0f) return;
         potsTimer = potsInterval;
         int reached = ElephantAI.ScareAllNear(HousePoint, potsRange, "pots and pans", potsStrength);
-        if (reached > 0) SoundBank.PlayAt(SoundBank.Pots, HousePoint + Vector3.up, 1f, 6f);
+        if (reached == 0) return;
+        SoundBank.PlayAt(SoundBank.Pots, HousePoint + Vector3.up, 1f, 6f);
+        if (!toldPots)
+        {
+            toldPots = true;
+            NoticeBoard.Message("Hear that clanging? Your neighbour is banging pots to keep an elephant away from their house.");
+        }
     }
 
     void UpdateAsleep()
