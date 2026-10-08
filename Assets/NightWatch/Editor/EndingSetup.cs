@@ -3,7 +3,8 @@ using UnityEditor;
 using UnityEngine;
 
 // Builds the ending card on the VR camera (called by Night Watch > Build Full Game): a title and
-// one short line, 0.8 m in front of the eyes, shown on the black screen at the end of the night.
+// one short line, 1 m in front of the eyes, shown on the black screen at the end of the night.
+// Kept within the middle of the view (about 35 degrees wide), where text is comfortable to read in VR.
 public static class EndingSetup
 {
     public static void Build()
@@ -27,8 +28,8 @@ public static class EndingSetup
         // The card itself is a child, so hiding it does not stop the sound on the root.
         var card = new GameObject("Card");
         card.transform.SetParent(root.transform, false);
-        var title = Text("Title", card.transform, new Vector3(0f, 0.07f, 0.8f), new Vector2(0.9f, 0.14f), 1.2f);
-        var line = Text("Line", card.transform, new Vector3(0f, -0.06f, 0.8f), new Vector2(0.8f, 0.12f), 0.45f);
+        var title = Text("Title", card.transform, new Vector3(0f, 0.07f, 1f), new Vector2(0.62f, 0.1f), 0.8f);
+        var line = Text("Line", card.transform, new Vector3(0f, -0.06f, 1f), new Vector2(0.56f, 0.12f), 0.35f);
 
         var ending = root.AddComponent<EndingCard>();
         ending.card = card;
