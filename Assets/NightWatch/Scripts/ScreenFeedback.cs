@@ -150,6 +150,10 @@ public class ScreenFeedback : MonoBehaviour
         var game = GameManager.Instance;
         float health = game != null ? game.peopleSafe : 100f;
         float target = health < 100f ? Mathf.Lerp(0.25f, 0.8f, 1f - health / 100f) : 0f;
+        // The red edge is for the danger of the night. It fades at dawn and is gone at the end.
+        var phase = game != null ? game.CurrentPhase : GameManager.Phase.Night;
+        if (phase == GameManager.Phase.Dawn) target = 0f;
+        if (phase == GameManager.Phase.Debrief) woundAlpha = 0f;
         woundAlpha = Mathf.MoveTowards(woundAlpha, target, Time.deltaTime * 0.5f);
         float pulse = 0.85f + 0.15f * Mathf.Sin(Time.time * 3f);
         woundBlock.SetColor("_BaseColor", new Color(0.7f, 0f, 0f, woundAlpha * pulse));

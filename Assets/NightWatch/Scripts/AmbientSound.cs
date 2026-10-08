@@ -41,7 +41,7 @@ public class AmbientSound : MonoBehaviour
             case GameManager.Phase.Dusk: target = nightVolume * (game.PhaseTime / game.duskLength); break;
             case GameManager.Phase.Night: target = nightVolume; break;
             case GameManager.Phase.Dawn: target = nightVolume * 0.4f; break;
-            default: target = nightVolume * 0.2f; break;
+            default: target = 0f; break;   // the results, in the morning
         }
         source.volume = Mathf.MoveTowards(source.volume, target, Time.deltaTime * 0.2f);
 

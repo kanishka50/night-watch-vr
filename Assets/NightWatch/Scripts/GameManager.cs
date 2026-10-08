@@ -297,6 +297,9 @@ public class GameManager : MonoBehaviour
         // After a fall the hut may be gone: stand the player on the ground facing the results.
         if (showDebriefFromGround && debriefSpot != null) MovePlayerTo(debriefSpot);
 
+        // Morning, whatever time the night ended: the sky, sun and fog follow DayProgress.
+        elapsed = TotalLength;
+
         EndingCard.Show(ResultTitle, CardLineFor(ending), IsGood(ending));
         yield return new WaitForSecondsRealtime(endingCardSeconds);
         EndingCard.Hide();
