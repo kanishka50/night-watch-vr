@@ -78,7 +78,8 @@ public static class SoundBank
         }
     }
 
-    // A rising brassy tone with vibrato: a trumpet call.
+    // An elephant trumpet: a loud, rough blare that rises and falls, with breath noise.
+    // The roughness (a fast flutter in loudness) keeps it from sounding like a clean beep.
     static void MakeTrumpet(float[] d, System.Random r)
     {
         float len = d.Length / (float)Rate;
@@ -87,11 +88,13 @@ public static class SoundBank
         {
             float t = i / (float)Rate;
             float k = t / len;
-            float f = Mathf.Lerp(420f, 640f, Mathf.Sin(k * Mathf.PI * 0.8f)) + 12f * Mathf.Sin(2f * Mathf.PI * 6f * t);
+            float f = 320f + 420f * Mathf.Sin(k * Mathf.PI) + 25f * Mathf.Sin(2f * Mathf.PI * 7f * t);
             phase += f / Rate;
             float saw = 2f * (phase - Mathf.Floor(phase + 0.5f));
-            float s = (float)System.Math.Tanh(2.5f * saw) + 0.15f * Noise(r);
-            d[i] = 0.45f * s * Envelope(t, len, 0.05f, 0.35f);
+            float rough = 0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 33f * t + 0.6f * Noise(r));
+            float blare = (float)System.Math.Tanh(3.5f * saw) * rough;
+            float breath = 0.45f * Noise(r) * (0.5f + 0.5f * Mathf.Exp(-t * 6f));
+            d[i] = 0.4f * (blare + breath) * Envelope(t, len, 0.03f, 0.4f);
         }
     }
 

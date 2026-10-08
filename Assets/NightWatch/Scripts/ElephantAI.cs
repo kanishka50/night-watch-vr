@@ -372,7 +372,7 @@ public class ElephantAI : MonoBehaviour
         if (trumpetTimer <= 0f)
         {
             Play(SoundBank.Trumpet, 1f);
-            trumpetTimer = Random.Range(5f, 8f);
+            trumpetTimer = Random.Range(10f, 14f);   // once when it gets angry, then now and then
         }
         if (agitation >= chargeLevel) EnterState(State.Charge);
         else if (agitation < calmDownLevel) EnterState(stateBeforeAgitated);
@@ -795,7 +795,7 @@ public class ElephantAI : MonoBehaviour
         var target = transform.position + away.normalized * 12f;
         if (NavMesh.SamplePosition(target, out var hit, 5f, NavMesh.AllAreas))
             MoveTo(hit.position, fleeSpeed);
-        Play(SoundBank.Trumpet, 0.8f);
+        // No trumpet here: it would cover the bang of the cracker that scared it.
         lastFleeTime = Time.time;
         flinchTimer = 4f;
         needsResume = true;
