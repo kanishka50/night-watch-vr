@@ -66,6 +66,8 @@ public class ElephantAI : MonoBehaviour
     [Tooltip("Set for herd followers. Empty for a leader or a lone elephant.")]
     public ElephantAI leader;
     public float fencePushDamagePerSecond = 8f;
+    [Tooltip("Push damage per second on a fence with no power (energiser off). 100 health = about 4 s.")]
+    public float deadFencePushDamagePerSecond = 25f;
     [Tooltip("Seconds a normal elephant stands at the fence before the shock sends it away.")]
     public float fenceTestTime = 6f;
     public float eatRateMultiplier = 1f;
@@ -238,11 +240,14 @@ public class ElephantAI : MonoBehaviour
         }
         FaceTowards(fence.transform.position);
 
-        if (isFenceBreaker)
+        bool live = FenceEnergiser.IsOn;
+        if (isFenceBreaker || !live)
         {
+            // A dead fence is only wire: any elephant pushes it down, and fast.
             bool pushing = flinchTimer <= 0f;
             if (body != null) body.SetPushing(pushing);
-            if (pushing) fence.Push(fencePushDamagePerSecond * dt, transform.position);
+            float damage = live ? fencePushDamagePerSecond : deadFencePushDamagePerSecond;
+            if (pushing) fence.Push(damage * dt, transform.position);
         }
         else if (stateTimer >= fenceTestTime)
         {

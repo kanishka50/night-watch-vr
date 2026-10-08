@@ -15,9 +15,10 @@ public class GameManager : MonoBehaviour
 
     public static GameManager Instance { get; private set; }
 
-    [Header("Phase lengths in seconds (about 8 minutes in total)")]
-    public float afternoonLength = 75f;
-    public float duskLength = 40f;
+    [Header("Phase lengths in seconds (about 9 minutes in total)")]
+    [Tooltip("Preparing the ground: bonfires, fence energiser, climbing into the hut.")]
+    public float afternoonLength = 120f;
+    public float duskLength = 50f;
     public float nightLength = 360f;
     public float dawnLength = 20f;
 
@@ -279,16 +280,21 @@ public class GameManager : MonoBehaviour
 
     static void MovePlayerTo(Transform spot)
     {
-        var limit = FindFirstObjectByType<PlayAreaLimit>();
-        var head = PlayerState.Head;
-        if (limit == null || head == null) return;
-        limit.enabled = false;
-        var rig = limit.transform;
-        var offset = head.position - rig.position;
-        offset.y = 0f;
-        rig.SetPositionAndRotation(spot.position - offset, spot.rotation);
-        Physics.SyncTransforms();
-        PlayerState.OnGround = true;
+        var limit = PlayAreaLimit.Instance;
+        if (limit == null) return;
+        limit.MoveHeadTo(spot.position, spot.rotation);
+        limit.SetOnGround(true);
+    }
+
+    // Jumps forward to the start of dusk or night (the sky follows). Used when the player is
+    // ready early, and by the test buttons.
+    public void SkipTo(Phase phase)
+    {
+        if (CurrentPhase == Phase.Debrief || endTimer >= 0f || phase <= CurrentPhase) return;
+        if (phase == Phase.Dusk) elapsed = afternoonLength;
+        else if (phase == Phase.Night) elapsed = afternoonLength + duskLength;
+        else return;
+        SetPhase(phase);
     }
 
     static string TitleFor(Ending ending)
@@ -315,6 +321,12 @@ public class GameManager : MonoBehaviour
 
     [ContextMenu("Test: an elephant knocks the player down")]
     void TestTrample() => PlayerTrampled();
+
+    [ContextMenu("Test: skip to dusk")]
+    void TestSkipToDusk() => SkipTo(Phase.Dusk);
+
+    [ContextMenu("Test: skip to night")]
+    void TestSkipToNight() => SkipTo(Phase.Night);
 
     [ContextMenu("Test: bring the herd now")]
     void TestHerd()

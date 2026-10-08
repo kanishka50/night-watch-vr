@@ -64,18 +64,28 @@ public static class BlockoutBuilder
             t.gameObject.isStatic = false;
         hut.gameObject.AddComponent<HutDamage>();
 
-        PlacePlayerInHut();
+        PlacePlayer();
 
         EditorSceneManager.MarkSceneDirty(root.scene);
         Selection.activeGameObject = root;
         Debug.Log("Night Watch: blockout built. Save the scene with Ctrl+S.");
     }
 
+    // The ground is made of 10 m tiles, not one big block: each object can only be lit by
+    // 4 lamps or fires at once, so one big block would lose some of the lights.
     static void BuildGround(Transform root)
     {
         var parent = Group("Ground", root);
-        Box("Ground", parent, new Vector3(0f, -0.1f, 0f), new Vector3(60f, 0.2f, 60f), Mat("Soil", new Color(0.32f, 0.25f, 0.17f)));
+        var soil = Mat("Soil", new Color(0.32f, 0.25f, 0.17f));
+        for (float x = -25f; x <= 25f; x += 10f)
+        for (float z = -25f; z <= 25f; z += 10f)
+            Box("GroundTile", parent, new Vector3(x, -0.1f, z), new Vector3(10f, 0.2f, 10f), soil);
         Box("Path", parent, new Vector3(0f, 0.03f, -18f), new Vector3(1.5f, 0.04f, 12f), Mat("Path", new Color(0.55f, 0.45f, 0.32f)));
+
+        // The whole ground is a teleport target while the player is on it (switched on at run time).
+        var teleportArea = parent.gameObject.AddComponent<TeleportationArea>();
+        teleportArea.interactionLayers = InteractionLayerMask.GetMask("Teleport");
+        teleportArea.enabled = false;
     }
 
     // A pela: a small hut on stilts, open on the south side where the ladder is.
@@ -93,7 +103,7 @@ public static class BlockoutBuilder
             Post("RoofPost", parent, x, z, HutFloorHeight, 2.3f, 0.12f, wood);
         }
 
-        // The hut floor is the only place the player can teleport to.
+        // In the hut, the floor is the only place the player can teleport to.
         var floor = Box("Floor", parent, new Vector3(0f, HutFloorHeight, 0f), new Vector3(HutSize, 0.15f, HutSize), wood);
         // The starter rig's teleport pointer only accepts surfaces on the "Teleport" interaction layer.
         var teleportArea = floor.AddComponent<TeleportationArea>();
@@ -168,7 +178,8 @@ public static class BlockoutBuilder
         Box("Window", parent, new Vector3(5f, 1.6f, -22.98f), new Vector3(1f, 0.8f, 0.05f), window);
     }
 
-    static void PlacePlayerInHut()
+    // The player starts on the ground in the afternoon (GroundPrep moves them there at run time too).
+    static void PlacePlayer()
     {
         var rig = GameObject.Find("XR Origin (XR Rig)");
         if (rig == null)
@@ -176,8 +187,8 @@ public static class BlockoutBuilder
             Debug.LogWarning("Night Watch: no 'XR Origin (XR Rig)' in the scene, player not moved.");
             return;
         }
-        Undo.RecordObject(rig.transform, "Move player into hut");
-        rig.transform.SetPositionAndRotation(new Vector3(0f, HutFloorHeight + 0.075f, 0.3f), Quaternion.identity);
+        Undo.RecordObject(rig.transform, "Move player to the start");
+        rig.transform.SetPositionAndRotation(GroundPrepSetup.StartPosition, Quaternion.identity);
 
         // Keep the player's head over the hut floor, with a small margin from the edge.
         var limit = rig.GetComponent<PlayAreaLimit>();
@@ -187,6 +198,9 @@ public static class BlockoutBuilder
         limit.head = cam != null ? cam.transform : null;
         limit.areaCenter = new Vector3(0f, HutFloorHeight + 1f, 0f);
         limit.areaSize = new Vector2(HutSize - 0.4f, HutSize - 0.4f);
+        var blockout = GameObject.Find(RootName).transform;
+        limit.hutFloor = blockout.Find("WatchHut/Floor").GetComponent<TeleportationArea>();
+        limit.groundArea = blockout.Find("Ground").GetComponent<TeleportationArea>();
         PrefabUtility.RecordPrefabInstancePropertyModifications(limit);
     }
 

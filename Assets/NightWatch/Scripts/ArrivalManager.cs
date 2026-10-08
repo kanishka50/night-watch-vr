@@ -5,7 +5,8 @@ using UnityEngine.AI;
 using Random = UnityEngine.Random;
 
 // Sends the elephants in waves that follow the player:
-//  - A tutorial wave in the afternoon (a bull at the north fence, turned back by the shock).
+//  - A tutorial wave at dusk, watched from the hut: a bull at the north fence.
+//    The shock turns it back, but only if the fence energiser was switched on.
 //  - Night waves, one after another. The next wave comes 20 seconds after the previous one has
 //    left, or after 2 minutes at most if the player cannot deal with it.
 //  - When the last wave has left, the game manager brings dawn early.
@@ -41,8 +42,8 @@ public class ArrivalManager : MonoBehaviour
     public float spawnSpread = 5f;
 
     [Header("Timing")]
-    [Tooltip("Seconds into the afternoon when the tutorial wave comes.")]
-    public float tutorialTime = 20f;
+    [Tooltip("Seconds into dusk when the tutorial wave comes.")]
+    public float tutorialTime = 10f;
     [Tooltip("Seconds into the night when the first night wave comes.")]
     public float firstNightWaveDelay = 10f;
     [Tooltip("Quiet seconds after a wave has left before the next one comes.")]
@@ -85,7 +86,7 @@ public class ArrivalManager : MonoBehaviour
         var game = GameManager.Instance;
         if (game == null || elephantTemplate == null) return;
 
-        if (!tutorialDone && game.CurrentPhase == GameManager.Phase.Afternoon && game.PhaseTime >= tutorialTime)
+        if (!tutorialDone && game.CurrentPhase == GameManager.Phase.Dusk && game.PhaseTime >= tutorialTime)
         {
             tutorialDone = true;
             StartWave(tutorialWave, false);

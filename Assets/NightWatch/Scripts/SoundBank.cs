@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -19,6 +19,7 @@ public static class SoundBank
     public static AudioClip FireCrackle => crackle != null ? crackle : crackle = Make("FireCrackle", 2f, MakeCrackle);
     public static AudioClip Crickets => crickets != null ? crickets : crickets = Make("Crickets", 3f, MakeCrickets);
     public static AudioClip Zap => zap != null ? zap : zap = Make("Zap", 0.6f, MakeZap);
+    public static AudioClip Tick => tick != null ? tick : tick = Make("Tick", 0.12f, MakeTick);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -179,6 +180,19 @@ public static class SoundBank
             d[i] = (0.5f * square + 0.5f * Noise(r)) * Mathf.Exp(-t * 4f) * Envelope(t, len, 0.005f, 0.1f);
         }
         Normalise(d, 0.6f);
+    }
+
+    // A short sharp click with a little buzz: one pulse of a fence energiser.
+    static void MakeTick(float[] d, System.Random r)
+    {
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float click = Mathf.Exp(-t * 300f) * Noise(r);
+            float buzz = 0.3f * Mathf.Exp(-t * 40f) * (Sin(120f, t) > 0f ? 1f : -1f);
+            d[i] = click + buzz;
+        }
+        Normalise(d, 0.5f);
     }
 
     // Two low thumps: a heartbeat (one beat per loop).

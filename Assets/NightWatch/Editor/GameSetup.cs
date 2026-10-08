@@ -8,7 +8,8 @@ using UnityEngine;
 // One menu item that builds the whole game in the open scene:
 //   Night Watch > Build Full Game
 // It rebuilds the blockout, the night lighting, the field (fence and crop plots), the NavMesh,
-// the elephants and their arrivals, the tools in the hut, the screens and the game managers.
+// the elephants and their arrivals, the tools in the hut, the screens, the game managers and
+// the afternoon jobs on the ground (bonfires, fence energiser, task board).
 // Running it again replaces everything it made before.
 public static class GameSetup
 {
@@ -42,6 +43,7 @@ public static class GameSetup
         HutPropsSetup.BuildTools();
         HutPropsSetup.BuildScreens(game);
         HutPropsSetup.BuildManagers(game, sun);
+        GroundPrepSetup.Build(game);
 
         AddSceneToBuild();
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());

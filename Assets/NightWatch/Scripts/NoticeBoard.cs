@@ -17,6 +17,16 @@ public class NoticeBoard : MonoBehaviour
         "<b>Controls</b>  Look: hold right mouse.  Grab/drop: cursor on it (turns yellow) + G.\n" +
         "Use: T.  Teleport: I (not while holding something).";
 
+    const string Practise =
+        "<b>Practise now</b>\n" +
+        "1. Grab a fire torch, hold it near the fire pot and press T to light it.\n" +
+        "2. A cracker: light it the same way, then press T again to throw it.\n" +
+        "3. The fence only covers the NORTH. Elephants can come from east, west and south.\n\n";
+
+    // The alert showing right now, or empty. The task board on the ground shows it too.
+    public static string CurrentAlert =>
+        Instance != null && Instance.alert != null && Instance.alertTimer > 0f ? Instance.alert.text : "";
+
     void Awake()
     {
         Instance = this;
@@ -56,18 +66,16 @@ public class NoticeBoard : MonoBehaviour
                 body.text =
                     "<b>NIGHT WATCH</b>\n" +
                     "Protect your crop, yourself and the elephants until dawn. Use only safe, legal methods.\n\n" +
-                    "<b>Practise now</b>\n" +
-                    "1. Grab a fire torch, hold it near the fire pot and press T to light it.\n" +
-                    "2. A cracker: light it the same way, then press T again to throw it.\n" +
-                    "3. The fence only covers the NORTH. Elephants can come from east, west and south.\n\n" +
-                    Controls;
+                    "<b>Before dark</b> (the list is on the board by the ladder)\n" +
+                    "Light the 3 bonfires at the open sides, switch on the fence energiser (east of the hut),\n" +
+                    "then come up here. When all three are done, the sun sets.\n\n" +
+                    Practise + Controls;
                 break;
             case GameManager.Phase.Dusk:
                 body.text =
                     "<b>DUSK</b>\n" +
-                    "Elephants usually come after dark.\n" +
-                    "Keep a fire torch lit and the flashlight close.\n" +
-                    "Listen for branches cracking and low rumbles.\n\n" + Controls;
+                    "Elephants usually come after dark. Listen for branches cracking and low rumbles.\n\n" +
+                    Practise + Controls;
                 break;
             case GameManager.Phase.Night:
                 body.text =

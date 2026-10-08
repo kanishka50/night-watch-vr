@@ -3,8 +3,9 @@ using UnityEngine;
 using UnityEngine.AI;
 
 // One section of the electric fence on the north side. It blocks the elephants' path
-// (a carving NavMesh Obstacle). Touching it gives a shock. A fence breaker pushing on it
-// slowly breaks it: the post falls, the wires drop, and elephants can walk through the gap.
+// (a carving NavMesh Obstacle). Touching it gives a shock, if the energiser is on. A fence breaker
+// pushing on it slowly breaks it: the post falls, the wires drop, and elephants can walk through
+// the gap. With the energiser off it is only wire, and any elephant pushes it down quickly.
 [RequireComponent(typeof(NavMeshObstacle))]
 public class FenceSection : MonoBehaviour
 {
@@ -46,7 +47,7 @@ public class FenceSection : MonoBehaviour
         if (IsBroken) return;
         health -= damage;
         sparkTimer -= Time.deltaTime;
-        if (sparkTimer <= 0f)
+        if (sparkTimer <= 0f && FenceEnergiser.IsOn)
         {
             sparkTimer = Random.Range(1.2f, 2.5f);
             Zap(transform.position);
@@ -71,7 +72,9 @@ public class FenceSection : MonoBehaviour
             push.y = 0f;
             body.AddForceAtPosition(push.normalized * 200f, post.position + Vector3.up * 1.2f, ForceMode.Impulse);
         }
-        NoticeBoard.Message("The fence is broken! An elephant is coming through.");
+        NoticeBoard.Message(FenceEnergiser.IsOn
+            ? "The fence is broken! An elephant is coming through."
+            : "The fence was not switched on. An elephant pushed straight through it!");
     }
 
     public static FenceSection Nearest(Vector3 point)

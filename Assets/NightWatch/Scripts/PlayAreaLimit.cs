@@ -1,11 +1,16 @@
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 // Keeps the player's head inside a box (the hut floor) by sliding the XR Origin back.
 // The XR Origin's body jumps to the head position every frame instead of moving into it,
 // so walls cannot stop someone walking off the hut in the simulator. This script can.
-// Turn it off when the player is allowed to leave the hut (for example, climbing down).
+// It also moves the player between the hut and the ground (ladder, start, debrief):
+// in the hut the box is on and only the hut floor is a teleport target; on the ground the box
+// is off and the whole ground is a teleport target.
 public class PlayAreaLimit : MonoBehaviour
 {
+    public static PlayAreaLimit Instance { get; private set; }
+
     [Tooltip("The VR camera (the player's head).")]
     public Transform head;
 
@@ -14,6 +19,13 @@ public class PlayAreaLimit : MonoBehaviour
 
     [Tooltip("Width (X) and depth (Z) of the allowed area in metres.")]
     public Vector2 areaSize = new Vector2(2.8f, 2.8f);
+
+    [Header("Teleport targets")]
+    public TeleportationArea hutFloor;
+    public TeleportationArea groundArea;
+
+    // Awake runs even while this component is switched off (player on the ground).
+    void Awake() => Instance = this;
 
     // LateUpdate runs after the head and body have moved this frame.
     void LateUpdate()
@@ -32,6 +44,24 @@ public class PlayAreaLimit : MonoBehaviour
             // The Character Controller on the rig must see the new position before it moves again.
             Physics.SyncTransforms();
         }
+    }
+
+    // Moves the rig so the head (not the rig's centre) ends up over the point, feet at its height.
+    public void MoveHeadTo(Vector3 point, Quaternion? rotation = null)
+    {
+        if (rotation.HasValue) transform.rotation = rotation.Value;
+        var offset = head != null ? head.position - transform.position : Vector3.zero;
+        offset.y = 0f;
+        transform.position = point - offset;
+        Physics.SyncTransforms();
+    }
+
+    public void SetOnGround(bool onGround)
+    {
+        PlayerState.OnGround = onGround;
+        enabled = !onGround;
+        if (hutFloor != null) hutFloor.enabled = !onGround;
+        if (groundArea != null) groundArea.enabled = onGround;
     }
 
     // Draws the allowed area as a yellow box in the Scene view when the rig is selected.
