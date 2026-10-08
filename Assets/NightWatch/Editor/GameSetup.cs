@@ -50,6 +50,7 @@ public static class GameSetup
         EndingSetup.Build();
         EndingSetup.BuildHint();
         StartScreenSetup.Build(game);
+        TextureKit.FitUVs();
 
         AddSceneToBuild();
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
@@ -82,10 +83,14 @@ public static class EditorKit
 
         string path = $"{MaterialFolder}/{name}.mat";
         var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (mat != null) return mat;
-        mat = new Material(Shader.Find(unlit ? "Universal Render Pipeline/Unlit" : "Universal Render Pipeline/Lit"));
-        mat.SetColor("_BaseColor", color);
-        AssetDatabase.CreateAsset(mat, path);
+        if (mat == null)
+        {
+            mat = new Material(Shader.Find(unlit ? "Universal Render Pipeline/Unlit" : "Universal Render Pipeline/Lit"));
+            mat.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        // A real texture, if this material has one (see TextureKit).
+        TextureKit.Apply(mat, name);
         return mat;
     }
 

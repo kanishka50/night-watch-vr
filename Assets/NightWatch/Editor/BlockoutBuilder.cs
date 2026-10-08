@@ -12,7 +12,6 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 public static class BlockoutBuilder
 {
     const string RootName = "Blockout";
-    const string MaterialFolder = "Assets/NightWatch/Materials";
 
     public const float HutFloorHeight = 2.5f;
     public const float HutFloorTop = HutFloorHeight + 0.075f;
@@ -255,20 +254,5 @@ public static class BlockoutBuilder
     }
 
     // Materials are saved as assets so the scene keeps them after it is closed.
-    static Material Mat(string name, Color color)
-    {
-        if (!AssetDatabase.IsValidFolder("Assets/NightWatch"))
-            AssetDatabase.CreateFolder("Assets", "NightWatch");
-        if (!AssetDatabase.IsValidFolder(MaterialFolder))
-            AssetDatabase.CreateFolder("Assets/NightWatch", "Materials");
-
-        string path = $"{MaterialFolder}/{name}.mat";
-        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (mat != null) return mat;
-
-        mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mat.SetColor("_BaseColor", color);
-        AssetDatabase.CreateAsset(mat, path);
-        return mat;
-    }
+    static Material Mat(string name, Color color) => EditorKit.Mat(name, color);
 }

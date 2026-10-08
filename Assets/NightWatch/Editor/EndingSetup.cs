@@ -51,9 +51,26 @@ public static class EndingSetup
         Undo.RegisterCreatedObjectUndo(root, "Tool hint");
         root.transform.SetParent(cam.transform, false);
         var text = Text("Text", root.transform, new Vector3(0f, -0.2f, 0.9f), new Vector2(0.55f, 0.09f), 0.3f);
-        text.outlineWidth = 0.2f;
-        text.outlineColor = new Color32(0, 0, 0, 255);
+        text.fontSharedMaterial = OutlineMaterial(text.fontSharedMaterial);
         root.AddComponent<HintDisplay>().text = text;
+    }
+
+    // A saved copy of the font material with a black outline. Setting outlineWidth on the text
+    // in the editor makes Unity copy the material into the scene (a red error on every build).
+    static Material OutlineMaterial(Material font)
+    {
+        string path = $"{EditorKit.MaterialFolder}/HintOutline.mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(font);
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.2f);
+        mat.SetColor(ShaderUtilities.ID_OutlineColor, Color.black);
+        mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     static TextMeshPro Text(string name, Transform parent, Vector3 localPosition, Vector2 size, float maxSize)
