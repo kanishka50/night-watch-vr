@@ -1,0 +1,42 @@
+# Unity makes these folders itself. Never commit them.
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Visual Studio and Rider files (Unity makes them again on open)
+.vs/
+.idea/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Build output and crash files
+*.apk
+*.aab
+*.app
+*.unitypackage
+*.unitypackage.meta
+sysinfo.txt
+mono_crash.*
+crashlytics-build.properties
+
+# Windows
+Thumbs.db
+Desktop.ini

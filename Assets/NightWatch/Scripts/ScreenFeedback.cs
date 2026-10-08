@@ -1,0 +1,189 @@
+using System.Collections;
+using UnityEngine;
+
+// Effects on the player's view, using a see-through panel just in front of the VR camera:
+//  - Flash: a short red (or other colour) flash when the player is hurt
+//  - FadeOut / FadeIn: to and from black, for endings
+//  - KnockDown: the view tips over and drops, as if the player fell. If fatal, it then fades out.
+//  - Wound edge: a red edge round the view that stays while the player is hurt, stronger and
+//    pulsing as health drops.
+public class ScreenFeedback : MonoBehaviour
+{
+    public static ScreenFeedback Instance { get; private set; }
+
+    [Tooltip("The see-through panel in front of the camera.")]
+    public Renderer overlay;
+    [Tooltip("A second panel, just behind the first, for the red wound edge.")]
+    public Renderer woundOverlay;
+
+    MaterialPropertyBlock block;
+    MaterialPropertyBlock woundBlock;
+    float woundAlpha;
+    Color flashColor = Color.red;
+    float flashAlpha;
+    float fadeAlpha;
+    Coroutine fade;
+
+    void Awake()
+    {
+        Instance = this;
+        block = new MaterialPropertyBlock();
+        Apply();
+
+        if (woundOverlay != null)
+        {
+            woundBlock = new MaterialPropertyBlock();
+            woundBlock.SetTexture("_BaseMap", EdgeTexture());
+            woundOverlay.enabled = false;
+        }
+    }
+
+    void Update()
+    {
+        UpdateWound();
+
+        if (flashAlpha > 0f)
+        {
+            flashAlpha = Mathf.MoveTowards(flashAlpha, 0f, Time.deltaTime * 1.2f);
+            Apply();
+        }
+    }
+
+    public static void Flash(Color color, float strength = 0.5f)
+    {
+        if (Instance == null) return;
+        Instance.flashColor = color;
+        Instance.flashAlpha = Mathf.Max(Instance.flashAlpha, strength);
+        Instance.Apply();
+    }
+
+    public static void FadeOut(float seconds) => Instance?.StartFade(1f, seconds);
+    public static void FadeIn(float seconds) => Instance?.StartFade(0f, seconds);
+
+    public static void KnockDown(bool fatal)
+    {
+        if (Instance != null) Instance.StartCoroutine(Instance.Fall(fatal));
+    }
+
+    void StartFade(float target, float seconds)
+    {
+        if (fade != null) StopCoroutine(fade);
+        fade = StartCoroutine(FadeRoutine(target, seconds));
+    }
+
+    IEnumerator FadeRoutine(float target, float seconds)
+    {
+        float start = fadeAlpha;
+        for (float t = 0f; t < seconds; t += Time.deltaTime)
+        {
+            fadeAlpha = Mathf.Lerp(start, target, t / seconds);
+            Apply();
+            yield return null;
+        }
+        fadeAlpha = target;
+        Apply();
+    }
+
+    // Tips the view sideways and down (the camera's parent, so head tracking still works).
+    IEnumerator Fall(bool fatal)
+    {
+        var cam = PlayerState.Head;
+        var offset = cam != null ? cam.parent : null;
+        if (offset == null) yield break;
+
+        var startRot = offset.localRotation;
+        var startPos = offset.localPosition;
+        var downRot = startRot * Quaternion.Euler(0f, 0f, 65f);
+        var downPos = startPos + new Vector3(0f, -1.1f, 0f);
+
+        Flash(Color.red, 0.7f);
+        for (float t = 0f; t < 0.6f; t += Time.deltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / 0.6f);
+            offset.localRotation = Quaternion.Slerp(startRot, downRot, k);
+            offset.localPosition = Vector3.Lerp(startPos, downPos, k);
+            yield return null;
+        }
+
+        if (fatal)
+        {
+            StartFade(1f, 2f);
+            yield return new WaitForSeconds(2.5f);
+        }
+        else
+        {
+            yield return new WaitForSeconds(1f);
+        }
+
+        // Stand back up (after a fatal fall this happens behind the black screen).
+        for (float t = 0f; t < 1.2f; t += Time.deltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / 1.2f);
+            offset.localRotation = Quaternion.Slerp(downRot, startRot, k);
+            offset.localPosition = Vector3.Lerp(downPos, startPos, k);
+            yield return null;
+        }
+        offset.localRotation = startRot;
+        offset.localPosition = startPos;
+    }
+
+    // The lower the health, the stronger the red edge, with a slow pulse.
+    void UpdateWound()
+    {
+        if (woundOverlay == null) return;
+        if (woundBlock == null)
+        {
+            // Rebuilt if lost (for example after Unity reloads scripts during Play).
+            woundBlock = new MaterialPropertyBlock();
+            woundBlock.SetTexture("_BaseMap", EdgeTexture());
+        }
+
+        // Size the edge panel to exactly fill the camera's view, so the red edge is at the edges.
+        var cam = GetComponentInParent<Camera>();
+        if (cam != null)
+        {
+            float distance = woundOverlay.transform.localPosition.z;
+            float height = 2f * distance * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            woundOverlay.transform.localScale = new Vector3(height * cam.aspect, height, 1f);
+        }
+
+        var game = GameManager.Instance;
+        float health = game != null ? game.peopleSafe : 100f;
+        float target = health < 100f ? Mathf.Lerp(0.25f, 0.8f, 1f - health / 100f) : 0f;
+        woundAlpha = Mathf.MoveTowards(woundAlpha, target, Time.deltaTime * 0.5f);
+        float pulse = 0.85f + 0.15f * Mathf.Sin(Time.time * 3f);
+        woundBlock.SetColor("_BaseColor", new Color(0.7f, 0f, 0f, woundAlpha * pulse));
+        woundOverlay.SetPropertyBlock(woundBlock);
+        woundOverlay.enabled = woundAlpha > 0.01f;
+    }
+
+    // A square picture: see-through in the middle, solid toward the edges.
+    static Texture2D EdgeTexture()
+    {
+        const int size = 128;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float dx = (x + 0.5f) / size * 2f - 1f;
+            float dy = (y + 0.5f) / size * 2f - 1f;
+            float d = Mathf.Sqrt(dx * dx + dy * dy);
+            float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.45f, 1.05f, d));
+            tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+        }
+        tex.Apply();
+        return tex;
+    }
+
+    void Apply()
+    {
+        if (overlay == null) return;
+        if (block == null) block = new MaterialPropertyBlock();
+        // Black fade on top of the coloured flash.
+        var c = Color.Lerp(flashColor, Color.black, fadeAlpha);
+        c.a = Mathf.Clamp01(Mathf.Max(fadeAlpha, flashAlpha));
+        block.SetColor("_BaseColor", c);
+        overlay.SetPropertyBlock(block);
+        overlay.enabled = c.a > 0.001f;
+    }
+}
