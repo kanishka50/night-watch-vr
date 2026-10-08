@@ -48,7 +48,8 @@ public class ElephantAI : MonoBehaviour
     public float agitatedLevel = 60f;
     public float calmDownLevel = 40f;
     public float chargeLevel = 100f;
-    public float agitationDecayPerSecond = 1.5f;
+    [Tooltip("Anger lost per second. 2.5 = an angry elephant calms down in about 8 s.")]
+    public float agitationDecayPerSecond = 2.5f;
     public float resolveRecoveryPerSecond = 0.5f;
     [Tooltip("Resolve only grows back after this many seconds with no deterrent.")]
     public float recoveryDelay = 10f;
@@ -93,6 +94,11 @@ public class ElephantAI : MonoBehaviour
     public Animator animator;
 
     public State CurrentState { get; private set; } = State.Approach;
+
+    [Header("Now (read only): click a live elephant in Play mode to see what it is doing")]
+    [SerializeField] string stateNow;
+    [SerializeField] string whyStandingStill;
+    static bool toldAngry;
     public Vector3 HomePoint { get; set; }
     public bool FromNorth { get; set; }
     public bool IsActive => CurrentState != State.Retreat && CurrentState != State.Killed;
@@ -214,6 +220,7 @@ public class ElephantAI : MonoBehaviour
         }
 
         MakeSounds();
+        ShowStatus();
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -238,6 +245,26 @@ public class ElephantAI : MonoBehaviour
         // It pushes past and moves away from the person.
         if (IsLeader && IsActive && CurrentState != State.Charge) Flee(head.position);
     }
+
+    // For testing: what it is doing now, and why it is standing still (shown in the Inspector).
+    void ShowStatus()
+    {
+        stateNow = CurrentState.ToString();
+        bool still = agent.isOnNavMesh && agent.velocity.sqrMagnitude < 0.04f;
+        if (!still) whyStandingStill = "";
+        else if (CurrentState == State.Agitated)
+            whyStandingStill = $"Angry: stands until anger drops below {calmDownLevel:0} (now {agitation:0})";
+        else if (flinchTimer > 0f) whyStandingStill = $"Stopped by a deterrent ({flinchTimer:0.0} s left)";
+        else if (CurrentState == State.Raiding) whyStandingStill = "Eating the crop";
+        else if (CurrentState == State.AtFence) whyStandingStill = "At the fence";
+        else if (detour.HasValue) whyStandingStill = "At the house";
+        else if (agent.pathPending) whyStandingStill = "Finding a path";
+        else if (!agent.hasPath) whyStandingStill = "No path (stuck?)";
+        else whyStandingStill = "Has a path but is not moving (stuck?)";
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetToldAngry() => toldAngry = false;
 
     // ---------------- States ----------------
 
@@ -430,7 +457,14 @@ public class ElephantAI : MonoBehaviour
             case State.Approach: SetStateDestination(); break;
             case State.AtFence: if (agent.isOnNavMesh) agent.isStopped = true; break;
             case State.Raiding: wanderTimer = 0f; break;
-            case State.Agitated: trumpetTimer = 0f; break;
+            case State.Agitated:
+                trumpetTimer = 0f;
+                if (!toldAngry)
+                {
+                    toldAngry = true;
+                    NoticeBoard.Message("An elephant is angry! It stands and trumpets. Give it space until it calms down.");
+                }
+                break;
             case State.Charge:
                 Play(SoundBank.Trumpet, 1f);
                 followTimer = 0f;
