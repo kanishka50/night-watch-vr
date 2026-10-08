@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -20,6 +20,7 @@ public static class SoundBank
     public static AudioClip Crickets => crickets != null ? crickets : crickets = Make("Crickets", 3f, MakeCrickets);
     public static AudioClip Zap => zap != null ? zap : zap = Make("Zap", 0.6f, MakeZap);
     public static AudioClip Tick => tick != null ? tick : tick = Make("Tick", 0.12f, MakeTick);
+    public static AudioClip Drum => drum != null ? drum : drum = Make("Drum", 0.7f, MakeDrum);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -193,6 +194,22 @@ public static class SoundBank
             d[i] = click + buzz;
         }
         Normalise(d, 0.5f);
+    }
+
+    // One hit on a big low drum: a skin that drops in pitch, with a soft slap at the start.
+    static void MakeDrum(float[] d, System.Random r)
+    {
+        float phase = 0f;
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float freq = 55f + 45f * Mathf.Exp(-t * 18f);
+            phase += 2f * Mathf.PI * freq / Rate;
+            float body = Mathf.Sin(phase) * Mathf.Exp(-t * 6f);
+            float slap = 0.25f * Noise(r) * Mathf.Exp(-t * 80f);
+            d[i] = body + slap;
+        }
+        Normalise(d, 0.9f);
     }
 
     // Two low thumps: a heartbeat (one beat per loop).

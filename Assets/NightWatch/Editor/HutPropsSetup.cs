@@ -491,6 +491,12 @@ public static class HutPropsSetup
         danger.AddComponent<AudioSource>();
         danger.AddComponent<DangerSound>();
 
+        // A low drum that grows with the danger (its own audio source).
+        var drum = new GameObject("TensionDrum");
+        drum.transform.SetParent(game, false);
+        drum.AddComponent<AudioSource>();
+        drum.AddComponent<TensionDrum>();
+
         BuildScreenOverlay();
 
         var cycle = managers.AddComponent<DayNightCycle>();

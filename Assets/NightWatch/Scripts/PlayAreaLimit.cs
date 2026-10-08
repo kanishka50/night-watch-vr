@@ -54,6 +54,7 @@ public class PlayAreaLimit : MonoBehaviour
         offset.y = 0f;
         transform.position = point - offset;
         Physics.SyncTransforms();
+        VignetteBlink.Play();
     }
 
     public void SetOnGround(bool onGround)
