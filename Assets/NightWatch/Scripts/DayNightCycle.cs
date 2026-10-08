@@ -12,7 +12,6 @@ public class DayNightCycle : MonoBehaviour
     public Color afternoonSun = new Color(1f, 0.95f, 0.85f);
     public Color duskSun = new Color(1f, 0.55f, 0.30f);
     public Color dawnSun = new Color(1f, 0.70f, 0.55f);
-    public Color morningSun = new Color(1f, 0.93f, 0.80f);
 
     // One look of the world at one moment of the run.
     struct Look
@@ -66,8 +65,8 @@ public class DayNightCycle : MonoBehaviour
             new Look { t = nightStart, ambient = nightAmbient, fog = nightFog, fogDensity = 0.035f, skyExposure = 0.12f, skyTint = new Color(0.20f, 0.25f, 0.45f), sun = 0f, moon = 0.35f },
             new Look { t = dawnStart, ambient = nightAmbient, fog = nightFog, fogDensity = 0.035f, skyExposure = 0.12f, skyTint = new Color(0.20f, 0.25f, 0.45f), sun = 0f, moon = 0.35f },
             new Look { t = Mathf.Lerp(dawnStart, 1f, 0.5f), ambient = new Color(0.25f, 0.22f, 0.25f), fog = new Color(0.45f, 0.38f, 0.40f), fogDensity = 0.020f, skyExposure = 0.5f, skyTint = new Color(0.55f, 0.40f, 0.40f), sun = 0.35f, moon = 0.05f },
-            // Full morning (also the look of the results): clear, bright and a little warm.
-            new Look { t = 1f, ambient = new Color(0.55f, 0.55f, 0.55f), fog = new Color(0.78f, 0.80f, 0.82f), fogDensity = 0.007f, skyExposure = 1.1f, skyTint = new Color(0.5f, 0.5f, 0.5f), sun = 1.1f, moon = 0f },
+            // Full morning (also the look of the results): the same clear daylight as the afternoon start.
+            new Look { t = 1f, ambient = dayAmbient, fog = new Color(0.62f, 0.68f, 0.75f), fogDensity = 0.006f, skyExposure = 1.1f, skyTint = new Color(0.5f, 0.5f, 0.5f), sun = 1.1f, moon = 0f },
         };
 
         RenderSettings.fog = true;
@@ -114,8 +113,8 @@ public class DayNightCycle : MonoBehaviour
             {
                 // Sunrise in the east.
                 float k = Mathf.InverseLerp(dawnStart, 1f, p);
-                sun.transform.rotation = Quaternion.Euler(Mathf.Lerp(-2f, 30f, k), 100f, 0f);
-                sun.color = Color.Lerp(dawnSun, morningSun, k);
+                sun.transform.rotation = Quaternion.Euler(Mathf.Lerp(-2f, 40f, k), 100f, 0f);
+                sun.color = Color.Lerp(dawnSun, afternoonSun, k);
             }
         }
 
