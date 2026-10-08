@@ -72,10 +72,8 @@ public static class GroundPrepSetup
         var flame = new GameObject("Flame");
         flame.transform.SetParent(go.transform, false);
         flame.transform.localPosition = new Vector3(0f, 0.8f, 0f);
-        EditorKit.Part("Outer", PrimitiveType.Sphere, flame.transform, Vector3.zero, new Vector3(0.9f, 1.4f, 0.9f),
-            EditorKit.Mat("Fire", new Color(1f, 0.55f, 0.15f), true), false);
-        EditorKit.Part("Core", PrimitiveType.Sphere, flame.transform, new Vector3(0f, -0.15f, 0f), new Vector3(0.5f, 0.8f, 0.5f),
-            EditorKit.Mat("FireCore", new Color(1f, 0.85f, 0.4f), true), false);
+        // The flames start at the top of the logs and rise.
+        FireEffect.Build(flame.transform, new Vector3(0f, -0.45f, 0f), 1f);
 
         var lightGo = new GameObject("FireLight");
         lightGo.transform.SetParent(flame.transform, false);

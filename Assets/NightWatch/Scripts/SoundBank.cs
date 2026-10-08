@@ -64,19 +64,27 @@ public static class SoundBank
         return 1f;
     }
 
-    // Low, wobbling hum with breath noise: an elephant rumble.
+    // An elephant rumble: a low, rough, wobbling growl with breath noise. Real rumbles are very deep,
+    // but laptop speakers cannot play deep bass, so the growl is carried by its higher tones
+    // (140 to 400 Hz) to be heard on any speaker.
     static void MakeRumble(float[] d, System.Random r)
     {
         float len = d.Length / (float)Rate;
         float low = 0f;
+        float phase = 0f;
         for (int i = 0; i < d.Length; i++)
         {
             float t = i / (float)Rate;
-            float f = 70f + 6f * Mathf.Sin(2f * Mathf.PI * 0.8f * t);
-            low += 0.02f * (Noise(r) - low);
-            float s = 0.55f * Sin(f, t) + 0.30f * Sin(2f * f, t) + 0.15f * Sin(3f * f, t) + 0.6f * low;
-            d[i] = 0.7f * s * Envelope(t, len, 0.4f, 0.8f);
+            float f = 72f + 8f * Mathf.Sin(2f * Mathf.PI * 0.7f * t);
+            phase += f / Rate;
+            float p = 2f * Mathf.PI * phase;
+            low += 0.03f * (Noise(r) - low);
+            float growl = 0.35f * Mathf.Sin(p) + 0.45f * Mathf.Sin(2f * p) + 0.4f * Mathf.Sin(3f * p)
+                        + 0.3f * Mathf.Sin(4f * p) + 0.2f * Mathf.Sin(5f * p);
+            float rough = 0.7f + 0.3f * Mathf.Sin(2f * Mathf.PI * 23f * t);
+            d[i] = (float)System.Math.Tanh(1.5f * (growl * rough + 0.8f * low)) * Envelope(t, len, 0.35f, 0.8f);
         }
+        Normalise(d, 0.85f);
     }
 
     // An elephant trumpet: a loud, rough blare that rises and falls, with breath noise.

@@ -101,8 +101,7 @@ public static class NeighbourSetup
         }
 
         var fire = EditorKit.Empty("YardFire", root, at);
-        EditorKit.Part("Flame", PrimitiveType.Sphere, fire, new Vector3(0f, 0.35f, 0f), new Vector3(0.4f, 0.6f, 0.4f),
-            EditorKit.Mat("Fire", new Color(1f, 0.55f, 0.15f), true), false);
+        FireEffect.Build(fire, new Vector3(0f, 0.1f, 0f), 0.5f);
         var lightGo = new GameObject("FireLight");
         lightGo.transform.SetParent(fire, false);
         lightGo.transform.localPosition = new Vector3(0f, 0.8f, 0f);

@@ -98,8 +98,7 @@ public static class HutPropsSetup
         pot.transform.position = position;
         EditorKit.Part("Pot", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.08f, 0f),
             new Vector3(0.3f, 0.08f, 0.3f), EditorKit.Mat("Clay", new Color(0.55f, 0.30f, 0.18f)));
-        EditorKit.Part("Flames", PrimitiveType.Sphere, pot.transform, new Vector3(0f, 0.25f, 0f),
-            new Vector3(0.2f, 0.28f, 0.2f), EditorKit.Mat("Fire", new Color(1f, 0.55f, 0.15f), true), false);
+        FireEffect.Build(pot.transform, new Vector3(0f, 0.14f, 0f), 0.3f, false);
 
         var lightGo = new GameObject("FireLight");
         lightGo.transform.SetParent(pot.transform, false);
@@ -138,8 +137,7 @@ public static class HutPropsSetup
         var flame = new GameObject("Flame");
         flame.transform.SetParent(torch.transform, false);
         flame.transform.localPosition = new Vector3(0f, 0.45f, 0f);
-        EditorKit.Part("FlameShape", PrimitiveType.Sphere, flame.transform, Vector3.zero, new Vector3(0.12f, 0.2f, 0.12f),
-            EditorKit.Mat("Fire", new Color(1f, 0.55f, 0.15f), true), false);
+        FireEffect.Build(flame.transform, new Vector3(0f, -0.1f, 0f), 0.22f, false);
         var light = flame.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = new Color(1f, 0.65f, 0.3f);
@@ -485,17 +483,8 @@ public static class HutPropsSetup
             damage.dustTemplate = BuildDustTemplate(game);
         }
 
-        // Heartbeat when elephants are close (its own audio source).
-        var danger = new GameObject("DangerSound");
-        danger.transform.SetParent(game, false);
-        danger.AddComponent<AudioSource>();
-        danger.AddComponent<DangerSound>();
-
-        // A low drum that grows with the danger (its own audio source).
-        var drum = new GameObject("TensionDrum");
-        drum.transform.SetParent(game, false);
-        drum.AddComponent<AudioSource>();
-        drum.AddComponent<TensionDrum>();
+        // No background drum or heartbeat: near elephants, the player hears the elephants themselves.
+        // (DangerSound and TensionDrum are kept in Scripts but not added to the scene.)
 
         BuildScreenOverlay();
 
