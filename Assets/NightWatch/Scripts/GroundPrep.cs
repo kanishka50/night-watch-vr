@@ -46,7 +46,7 @@ public class GroundPrep : MonoBehaviour
         if (game == null) return;
 
         // Ready early: no need to wait for the clock.
-        if (game.CurrentPhase == GameManager.Phase.Afternoon)
+        if (game.Started && game.CurrentPhase == GameManager.Phase.Afternoon)
         {
             if (AllDone)
             {

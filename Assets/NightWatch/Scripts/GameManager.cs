@@ -50,6 +50,8 @@ public class GameManager : MonoBehaviour
     public UnityEvent<Ending> onEnded;
 
     public Phase CurrentPhase { get; private set; } = Phase.Afternoon;
+    // False while the start screen is showing: the clock does not run yet.
+    public bool Started { get; private set; }
     public float PhaseTime { get; private set; }
     public Ending Result { get; private set; } = Ending.None;
     public string ResultTitle { get; private set; }
@@ -105,11 +107,16 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         SetPhase(Phase.Afternoon);
+        // With no start screen in the scene, start at once.
+        Started = StartScreen.Instance == null || !StartScreen.Instance.IsShowing;
     }
+
+    // Called by the START button.
+    public void BeginGame() => Started = true;
 
     void Update()
     {
-        if (CurrentPhase == Phase.Debrief) return;
+        if (CurrentPhase == Phase.Debrief || !Started) return;
 
         if (endTimer >= 0f)
         {
@@ -326,6 +333,9 @@ public class GameManager : MonoBehaviour
     public void SkipTo(Phase phase)
     {
         if (CurrentPhase == Phase.Debrief || endTimer >= 0f || phase <= CurrentPhase) return;
+        // A skip (test button) also gets past the start screen.
+        if (!Started && StartScreen.Instance != null) StartScreen.Instance.Begin();
+        Started = true;
         if (phase == Phase.Dusk) elapsed = afternoonLength;
         else if (phase == Phase.Night) elapsed = afternoonLength + duskLength;
         else return;

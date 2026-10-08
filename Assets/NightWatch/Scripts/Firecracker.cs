@@ -44,6 +44,8 @@ public class Firecracker : PlayerAction, IIgnitable
         Unused.Remove(this);
     }
 
+    protected override string Hint => "Firecracker: T to light it at the fire pot, T again to throw. Throw it NEAR elephants, never at them.";
+
     // Use (trigger): near the fire pot it lights the cracker; on a lit cracker it throws it
     // where the player is looking. Throwing by hand (letting go while moving) also works.
     protected override void OnUsed()

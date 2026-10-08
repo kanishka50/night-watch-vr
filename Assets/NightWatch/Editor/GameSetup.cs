@@ -48,6 +48,8 @@ public static class GameSetup
         ComfortSetup.Build();
         NeighbourSetup.Build(game);
         EndingSetup.Build();
+        EndingSetup.BuildHint();
+        StartScreenSetup.Build(game);
 
         AddSceneToBuild();
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());

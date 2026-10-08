@@ -1,8 +1,10 @@
 using TMPro;
 using UnityEngine;
 
-// The notice board on the hut wall. Shows the goal and a tip for each phase, plus short alerts
+// The notice board in the hut. Kept short, because nobody reads a wall of text while elephants
+// are coming: one goal line for the part of the night, plus the alert for this moment
 // ("The fence is broken!") that other scripts send with NoticeBoard.Message(...).
+// The controls are on the start screen, and each tool explains itself the first time it is grabbed.
 public class NoticeBoard : MonoBehaviour
 {
     public static NoticeBoard Instance { get; private set; }
@@ -12,16 +14,6 @@ public class NoticeBoard : MonoBehaviour
     public float alertSeconds = 7f;
 
     float alertTimer;
-
-    const string Controls =
-        "<b>Controls</b>  Look: hold right mouse.  Grab/drop: cursor on it (turns yellow) + G.\n" +
-        "Use: T.  Teleport: I (not while holding something).";
-
-    const string Practise =
-        "<b>Practise now</b>\n" +
-        "1. Grab a fire torch, hold it near the fire pot and press T to light it.\n" +
-        "2. A cracker: light it the same way, then press T again to throw it.\n" +
-        "3. The fence only covers the NORTH. Elephants can come from east, west and south.\n\n";
 
     // The alert showing right now, or empty. The task board on the ground shows it too.
     public static string CurrentAlert =>
@@ -63,35 +55,19 @@ public class NoticeBoard : MonoBehaviour
         switch (phase)
         {
             case GameManager.Phase.Afternoon:
-                body.text =
-                    "<b>NIGHT WATCH</b>\n" +
-                    "Protect your crop, yourself and the elephants until dawn. Use only safe, legal methods.\n\n" +
-                    "<b>Before dark</b> (the list is on the board by the ladder)\n" +
-                    "Light the 3 bonfires at the open sides, switch on the fence energiser (east of the hut),\n" +
-                    "then come up here. When all three are done, the sun sets.\n\n" +
-                    Practise + Controls;
+                body.text = "<b>AFTERNOON</b>\nBefore dark, do the 3 jobs on the board by the ladder.";
                 break;
             case GameManager.Phase.Dusk:
-                body.text =
-                    "<b>DUSK</b>\n" +
-                    "Elephants usually come after dark. Listen for branches cracking and low rumbles.\n" +
-                    "Elephants are out tonight: use the <b>phone</b> on the rail to warn your neighbour.\n\n" +
-                    Practise + Controls;
+                body.text = "<b>DUSK</b>\nNight is coming. Warn your neighbour with the phone.";
                 break;
             case GameManager.Phase.Night:
-                body.text =
-                    "<b>NIGHT</b>  Stay in the hut. Find elephants by sound, then with the flashlight.\n" +
-                    "Firecracker: strongest, makes them run. Throw it NEAR them, never at them.\n" +
-                    "Fire torch: hold it toward them. They stop and slowly give up.\n" +
-                    "Tin cans: best before they reach the field.\n" +
-                    "Mix your tools: elephants get used to the same one.\n" +
-                    "An elephant left alone in the field will charge the hut. The hut takes 3 hits.\n\n" + Controls;
+                body.text = "<b>NIGHT</b>\nStay in the hut. Find elephants with the flashlight. Scare them away.";
                 break;
             case GameManager.Phase.Dawn:
-                body.text = "<b>DAWN</b>\nThe elephants are going back to the forest.";
+                body.text = "<b>DAWN</b>\nThe elephants are leaving.";
                 break;
             case GameManager.Phase.Debrief:
-                body.text = "<b>THE NIGHT IS OVER</b>\nLook north (forward) for your results.";
+                body.text = "<b>THE NIGHT IS OVER</b>\nLook north for your results.";
                 break;
         }
     }

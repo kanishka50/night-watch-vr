@@ -38,6 +38,24 @@ public static class EndingSetup
         ending.sound = sound;
     }
 
+    // The tool hint: one line, low in the view, 0.9 m away, with a dark outline so it reads on
+    // any background.
+    public static void BuildHint()
+    {
+        var cam = Camera.main;
+        if (cam == null) return;
+        var old = cam.transform.Find("ToolHint");
+        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+
+        var root = new GameObject("ToolHint");
+        Undo.RegisterCreatedObjectUndo(root, "Tool hint");
+        root.transform.SetParent(cam.transform, false);
+        var text = Text("Text", root.transform, new Vector3(0f, -0.2f, 0.9f), new Vector2(0.55f, 0.09f), 0.3f);
+        text.outlineWidth = 0.2f;
+        text.outlineColor = new Color32(0, 0, 0, 255);
+        root.AddComponent<HintDisplay>().text = text;
+    }
+
     static TextMeshPro Text(string name, Transform parent, Vector3 localPosition, Vector2 size, float maxSize)
     {
         var text = EditorKit.Text(name, parent, Vector3.zero, Quaternion.identity, size, "", maxSize, TextAlignmentOptions.Center);

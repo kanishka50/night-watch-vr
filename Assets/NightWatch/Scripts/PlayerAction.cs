@@ -67,6 +67,13 @@ public class PlayerAction : MonoBehaviour
     }
 
     protected virtual void OnGrabbed() { }
+
+    // A one-line hint shown low in the view the first time this kind of tool is grabbed.
+    protected virtual string Hint => null;
+    static readonly HashSet<System.Type> hinted = new HashSet<System.Type>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetHints() => hinted.Clear();
     protected virtual void OnReleased() { }
     protected virtual void OnUsed() { }
 
@@ -91,7 +98,11 @@ public class PlayerAction : MonoBehaviour
         transform.SetPositionAndRotation(startPosition, startRotation);
     }
 
-    void HandleGrab(SelectEnterEventArgs args) => OnGrabbed();
+    void HandleGrab(SelectEnterEventArgs args)
+    {
+        if (Hint != null && hinted.Add(GetType())) HintDisplay.Show(Hint);
+        OnGrabbed();
+    }
     void HandleRelease(SelectExitEventArgs args) => OnReleased();
     void HandleUse(ActivateEventArgs args) => OnUsed();
     void HandleHoverStart(HoverEnterEventArgs args) => SetHighlight(true);
