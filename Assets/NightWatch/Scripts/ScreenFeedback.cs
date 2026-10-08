@@ -60,6 +60,14 @@ public class ScreenFeedback : MonoBehaviour
     public static void FadeOut(float seconds) => Instance?.StartFade(1f, seconds);
     public static void FadeIn(float seconds) => Instance?.StartFade(0f, seconds);
 
+    // Clears any flash that is still fading (used when the night ends).
+    public static void ClearFlash()
+    {
+        if (Instance == null) return;
+        Instance.flashAlpha = 0f;
+        Instance.Apply();
+    }
+
     public static void KnockDown(bool fatal)
     {
         if (Instance != null) Instance.StartCoroutine(Instance.Fall(fatal));
@@ -183,9 +191,11 @@ public class ScreenFeedback : MonoBehaviour
     {
         if (overlay == null) return;
         if (block == null) block = new MaterialPropertyBlock();
-        // Black fade on top of the coloured flash.
-        var c = Color.Lerp(flashColor, Color.black, fadeAlpha);
-        c.a = Mathf.Clamp01(Mathf.Max(fadeAlpha, flashAlpha));
+        // The coloured flash with the black fade on top of it. The flash only adds colour while it is
+        // showing, so a fade to or from black is always pure black (never a red wash).
+        float a = 1f - (1f - fadeAlpha) * (1f - flashAlpha);
+        var c = a > 0.001f ? flashColor * (flashAlpha * (1f - fadeAlpha) / a) : Color.black;
+        c.a = Mathf.Clamp01(a);
         block.SetColor("_BaseColor", c);
         overlay.SetPropertyBlock(block);
         overlay.enabled = c.a > 0.001f;

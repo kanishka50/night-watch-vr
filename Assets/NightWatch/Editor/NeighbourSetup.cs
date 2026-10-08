@@ -159,8 +159,12 @@ public static class NeighbourSetup
     {
         var hutProps = GameObject.Find("HutProps");
         if (hutProps == null) return;
-        float railTop = BlockoutBuilder.HutFloorHeight + 0.5f + 0.45f;
-        var position = new Vector3(-BlockoutBuilder.HutSize / 2f + 0.1f, railTop + 0.01f, -0.6f);
+        float floorTop = BlockoutBuilder.HutFloorTop;
+        const float standHeight = 0.75f;
+        var standAt = new Vector3(-1.15f, floorTop + standHeight / 2f, -0.65f);
+        EditorKit.Part("PhoneStand", PrimitiveType.Cube, hutProps.transform, standAt, new Vector3(0.3f, standHeight, 0.3f),
+            EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
+        var position = new Vector3(standAt.x, floorTop + standHeight + 0.005f, standAt.z);
 
         var phone = new GameObject("Phone");
         phone.transform.SetParent(hutProps.transform, false);
@@ -180,6 +184,6 @@ public static class NeighbourSetup
         call.screen = screen.GetComponent<Renderer>();
         call.highlightRenderers = new[] { body.GetComponent<Renderer>() };
         call.highlightColor = new Color(1f, 1f, 0.2f);
-        EditorKit.Label("Phone: call your neighbour", hutProps.transform, position + new Vector3(0.15f, 0.28f, 0f));
+        EditorKit.Label("Phone: call your neighbour", hutProps.transform, position + new Vector3(0.1f, 0.3f, 0f));
     }
 }

@@ -301,6 +301,7 @@ public class GameManager : MonoBehaviour
     IEnumerator EndingSequence(Ending ending)
     {
         // Real seconds: a slow-motion moment may still be running.
+        ScreenFeedback.ClearFlash();
         ScreenFeedback.FadeOut(1.5f);
         yield return new WaitForSecondsRealtime(1.6f);
 
