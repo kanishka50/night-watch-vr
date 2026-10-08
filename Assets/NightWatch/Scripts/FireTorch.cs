@@ -58,7 +58,7 @@ public class FireTorch : PlayerAction, IIgnitable
         if (!loggedLight)
         {
             loggedLight = true;
-            ActionLog.Record("Lit a fire torch", true, "Fire held by a person is one of the most common ways farmers keep elephants back.");
+            ActionLog.Record("Lit a fire torch", true, "Fire keeps elephants back.");
         }
     }
 
@@ -101,7 +101,7 @@ public class FireTorch : PlayerAction, IIgnitable
             if (!loggedScare)
             {
                 loggedScare = true;
-                ActionLog.Record("Held a fire torch toward an elephant", true, "The elephant stopped. Fire from a safe place makes elephants hesitate and turn back.");
+                ActionLog.Record("Stopped an elephant with a fire torch", true, "Fire from the hut makes elephants stop.");
             }
         }
     }

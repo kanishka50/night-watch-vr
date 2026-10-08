@@ -54,6 +54,8 @@ public class GameManager : MonoBehaviour
     public Ending Result { get; private set; } = Ending.None;
     public string ResultTitle { get; private set; }
     public string ResultReason { get; private set; }
+    // The one short line under the title (the same as on the ending card).
+    public string ResultLine { get; private set; }
     public float CropSaved => CropPlot.AverageHealth;
     public int HutHits { get; private set; }
     public int GroupsArrived { get; private set; }
@@ -279,6 +281,7 @@ public class GameManager : MonoBehaviour
         Result = ending;
         ResultReason = reason;
         ResultTitle = TitleFor(ending);
+        ResultLine = CardLineFor(ending);
         CurrentPhase = Phase.Debrief;
         PhaseTime = 0f;
         ElephantAI.SendAllHome();

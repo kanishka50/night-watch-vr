@@ -77,7 +77,7 @@ public class LadderClimb : PressTarget
         if (!loggedClimb)
         {
             loggedClimb = true;
-            ActionLog.Record("Climbed down from the hut", false, "On the ground you cannot escape a charge, and your presence agitates elephants. Stay in the hut.");
+            ActionLog.Record("Climbed down from the hut at night", false, "Stay in the hut at night.");
         }
     }
 }

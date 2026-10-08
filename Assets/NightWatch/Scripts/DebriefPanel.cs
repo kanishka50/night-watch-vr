@@ -3,8 +3,9 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 
-// The big results panel shown at the end of the night: the ending, the reason, the three scores,
-// every choice the player made (right or wrong, and why), the credits, and a Restart button.
+// The results board at the end of the night, kept short and simple:
+//   the ending and one line on why, the three scores, the good choices (short labels), and
+//   "Next time" (one short tip for each mistake). Then the credits and a Restart button.
 public class DebriefPanel : MonoBehaviour
 {
     public GameObject panel;
@@ -37,35 +38,44 @@ public class DebriefPanel : MonoBehaviour
         var sb = new StringBuilder();
         string colour = ending == GameManager.Ending.EveryoneSafe ? "#9CFF8A" : "#FFB36B";
         sb.AppendLine($"<size=150%><color={colour}><b>{game.ResultTitle}</b></color></size>");
-        sb.AppendLine(game.ResultReason);
+        sb.AppendLine(game.ResultLine);
         sb.AppendLine();
-        sb.AppendLine($"Your health <b>{game.peopleSafe:0}%</b>     Elephants safe <b>{game.elephantsSafe:0}%</b>     Crop saved <b>{game.CropSaved:0}%</b>");
-        sb.AppendLine($"Elephant groups you turned back: <b>{game.GroupsTurnedBack} of {game.GroupsArrived}</b>     Hut hit: <b>{game.HutHits} of {game.hutStrength}</b>");
+        sb.AppendLine($"You <b>{game.peopleSafe:0}%</b>        Elephants <b>{game.elephantsSafe:0}%</b>        Crop <b>{game.CropSaved:0}%</b>");
         sb.AppendLine();
-        sb.AppendLine("<b>Your choices</b>");
 
-        // Group repeated choices, keeping the order they first happened.
-        var order = new List<string>();
+        // Each choice once, in the order it first happened, with how many times.
+        var good = new List<string>();
+        var tips = new List<string>();
         var counts = new Dictionary<string, int>();
-        var first = new Dictionary<string, ActionLog.Entry>();
+        foreach (var e in ActionLog.Entries)
+            counts[e.action] = counts.TryGetValue(e.action, out var n) ? n + 1 : 1;
+        var seen = new HashSet<string>();
         foreach (var e in ActionLog.Entries)
         {
-            if (!counts.ContainsKey(e.action))
-            {
-                order.Add(e.action);
-                counts[e.action] = 0;
-                first[e.action] = e;
-            }
-            counts[e.action]++;
+            if (!seen.Add(e.action)) continue;
+            if (e.safe) good.Add(counts[e.action] > 1 ? $"{e.action} (x{counts[e.action]})" : e.action);
+            else if (!tips.Contains(e.reason)) tips.Add(e.reason);
         }
-        if (order.Count == 0) sb.AppendLine("You did not use anything tonight.");
-        foreach (var action in order)
+        if (game.GroupsTurnedBack > 0)
+            good.Insert(0, $"Turned back {game.GroupsTurnedBack} of {game.GroupsArrived} elephant groups");
+        // Tips that come from what happened, not from one choice.
+        if (game.HutHits > 0 && game.Result != GameManager.Ending.PlayerDied)
+            tips.Add("Scare elephants away before they reach the hut.");
+        if (game.CropSaved < game.cropGoal)
+            tips.Add("Act early, on every side, to save the crop.");
+
+        const int MaxGood = 5;
+        if (good.Count > 0)
         {
-            var e = first[action];
-            string mark = e.safe ? "<color=#9CFF8A>RIGHT</color>" : "<color=#FF7070>WRONG</color>";
-            string times = counts[action] > 1 ? $" (x{counts[action]})" : "";
-            sb.AppendLine($"{mark}  {action}{times}: {e.reason}");
+            sb.AppendLine("<color=#9CFF8A><b>Good choices</b></color>");
+            for (int i = 0; i < good.Count && i < MaxGood; i++) sb.AppendLine("-  " + good[i]);
+            if (good.Count > MaxGood) sb.AppendLine($"-  and {good.Count - MaxGood} more");
+            sb.AppendLine();
         }
+
+        sb.AppendLine("<color=#FFB36B><b>Next time</b></color>");
+        if (tips.Count == 0) sb.AppendLine("-  Nothing to change. Well done!");
+        foreach (var tip in tips) sb.AppendLine("-  " + tip);
         sb.AppendLine();
         sb.AppendLine("Point at RESTART and press G to play again.");
 

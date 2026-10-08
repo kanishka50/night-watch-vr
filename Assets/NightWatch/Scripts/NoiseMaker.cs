@@ -20,7 +20,7 @@ public class NoiseMaker : PlayerAction
         if (!logged && reached > 0)
         {
             logged = true;
-            ActionLog.Record("Banged tin cans", true, "Noise warns elephants off, but they soon get used to the same sound. Mix it with fire and crackers.");
+            ActionLog.Record("Banged tin cans to warn elephants", true, "Noise warns elephants off.");
         }
     }
 }

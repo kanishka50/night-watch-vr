@@ -115,7 +115,7 @@ public class GroundPrep : MonoBehaviour
 
         if (AllFiresLit)
             ActionLog.Record("Lit a bonfire at every open side", true,
-                "Fires at the field edge make elephants stop and hesitate before they reach the crop.");
+                "Fires make elephants stop before the field.");
         else
         {
             var unlit = new System.Collections.Generic.List<string>();
@@ -123,23 +123,23 @@ public class GroundPrep : MonoBehaviour
                 if (!b.IsLit && !b.BurntOut) unlit.Add(b.side);
             string sides = unlit.Count >= 3 ? "every open side" : $"the {string.Join(" and ", unlit)} side";
             ActionLog.Record($"Left {sides} without a bonfire", false,
-                "Elephants walk in freely where there is no fire. Light a fire at every open side before dark.");
+                "Light a bonfire at every open side before dark.");
         }
 
         if (FenceOn)
             ActionLog.Record("Switched on the fence before dark", true,
-                "A live fence gives a harmless shock that turns elephants back.");
+                "A live fence turns elephants back safely.");
         else
             ActionLog.Record("Forgot to switch on the fence", false,
-                "Without power the fence is only wire. Elephants push straight through it.");
+                "Switch the fence on before dark.");
 
         if (InHut)
-            ActionLog.Record("Was up in the hut before dark", true,
-                "The watch hut keeps you out of reach and lets you see the whole field.");
+            ActionLog.Record("Got into the hut before dark", true,
+                "The hut keeps you safe and you can see the field.");
         else
         {
             ActionLog.Record("Still on the ground after dark", false,
-                "Elephants come after dark. On the ground you cannot escape a charge, and your presence agitates them.");
+                "Climb into the hut before dark.");
             NoticeBoard.Message("It is dark and you are still on the ground! Climb into the hut now.");
         }
     }

@@ -106,7 +106,7 @@ public class Firecracker : PlayerAction, IIgnitable
 
         elephant.Harm(55f);
         GameManager.Instance?.HurtElephant(35f);
-        ActionLog.Record("Hit an elephant with a firecracker", false, "Throw crackers near elephants, never at them. A hurt elephant becomes aggressive and may charge.");
+        ActionLog.Record("Hit an elephant with a firecracker", false, "Throw crackers near elephants, never at them.");
         Burst();
     }
 
@@ -122,7 +122,7 @@ public class Firecracker : PlayerAction, IIgnitable
         if (IsHeld)
         {
             GameManager.Instance?.HurtPlayer(30f, "A firecracker burst in your hand. Throw it as soon as it is lit.");
-            ActionLog.Record("Held a lit firecracker too long", false, "Crackers can injure the person using them. Throw it straight after lighting it.");
+            ActionLog.Record("Held a lit firecracker too long", false, "Throw a cracker as soon as it is lit.");
         }
         else
         {
@@ -130,9 +130,9 @@ public class Firecracker : PlayerAction, IIgnitable
             int reached = ElephantAI.ScareAllNear(at, range, "firecracker", strength, ElephantAI.Reaction.Flee, 0.5f);
             if (reached > 0) NoticeBoard.Message("The bang made the elephants run!");
             if (reached > 0)
-                ActionLog.Record("Threw a firecracker near the elephants", true, "A sudden bang from a distance scares elephants away without hurting them. They get used to it if it is overused.");
+                ActionLog.Record("Scared elephants with a firecracker", true, "A bang from far away scares them without hurting them.");
             else
-                ActionLog.Record("Set off a firecracker with no elephant near", true, "No harm done, but crackers are limited. Save them for when elephants are close.");
+                ActionLog.Record("Set off a firecracker with no elephant near", false, "Save crackers for when elephants are close.");
         }
 
         // Let go of it and remove it from the scene.

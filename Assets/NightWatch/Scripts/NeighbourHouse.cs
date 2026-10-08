@@ -139,7 +139,7 @@ public class NeighbourHouse : MonoBehaviour
         if (State == Mood.Warned || State == Mood.Safe) return;   // the house is lit and shut
 
         ActionLog.Record("Did not warn your neighbour", false,
-            "Elephants raid houses for stored rice. A neighbour who does not know is outside in the dark.");
+            "Call your neighbour when elephants are out.");
         if (storePoint != null) bull.GoTo(storePoint.position);
     }
 
@@ -216,7 +216,7 @@ public class NeighbourHouse : MonoBehaviour
         {
             NoticeBoard.Message("Neighbour on the phone: \"An elephant? We are going in now!\"");
             ActionLog.Record("Called your neighbour inside just in time", true,
-                "Even a late warning helps: they went inside before the bull reached them.");
+                "A late warning still helps.");
         }
         else Warned("Neighbour on the phone: \"Thank you! We will build up the fire and go inside.\"");
         if (bull != null) bull.ClearDetour();
@@ -278,7 +278,7 @@ public class NeighbourHouse : MonoBehaviour
         State = Mood.GoingIn;
         if (bull != null) bull.ClearDetour();
         ActionLog.Record("Saved your neighbour", true,
-            "You drove the bull away from the house from the safety of the hut.");
+            "You drove the bull away from the house.");
         NoticeBoard.Message("The bull has gone. Your neighbour is hurrying back inside, safe.");
         if (lampPivot != null && lampPivot.parent == figure) lampPivot.localRotation = Quaternion.identity;
         yield return Walk(doorPoint.position, walkSpeed * 1.8f, false);
@@ -292,7 +292,7 @@ public class NeighbourHouse : MonoBehaviour
         State = Mood.Hurt;
         GameManager.Instance?.NeighbourHurt();
         ActionLog.Record("Your neighbour was hurt", false,
-            "The bull reached your neighbour before you drove it away. Warn people early, and act fast when someone is in danger.");
+            "Scare the bull away from the house sooner.");
         SoundBank.PlayAt(SoundBank.Bang, figure.position, 0.6f, 6f);
         if (bull != null)
         {
@@ -342,7 +342,7 @@ public class NeighbourHouse : MonoBehaviour
     {
         NoticeBoard.Message(reply);
         ActionLog.Record("Warned your neighbour", true,
-            "A neighbour who knows an elephant is near stays inside with the lights on.");
+            "They stayed inside, safe.");
     }
 
     IEnumerator GoInAndLightUp()

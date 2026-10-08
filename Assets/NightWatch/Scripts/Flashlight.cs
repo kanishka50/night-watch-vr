@@ -31,7 +31,7 @@ public class Flashlight : PlayerAction
             if (!logged)
             {
                 logged = true;
-                ActionLog.Record("Found an elephant with the flashlight", true, "Seeing where elephants are lets you act early. A bright light also makes them hesitate.");
+                ActionLog.Record("Found an elephant with the flashlight", true, "Seeing them early gives you time to act.");
             }
         }
     }

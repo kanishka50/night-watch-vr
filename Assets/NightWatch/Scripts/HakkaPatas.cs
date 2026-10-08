@@ -34,7 +34,7 @@ public class HakkaPatas : PlayerAction
         if (!warned)
         {
             warned = true;
-            ActionLog.Record("Picked up hakka patas", false, "Hakka patas is illegal explosive bait. It kills and maims elephants and is never a safe choice.");
+            ActionLog.Record("Picked up hakka patas", false, "Hakka patas is illegal. Never use it.");
         }
     }
 
@@ -77,7 +77,7 @@ public class HakkaPatas : PlayerAction
         if (!placed && transform.position.y < fieldHeight)
         {
             placed = true;
-            ActionLog.Record("Threw hakka patas into the field", false, "Using hakka patas is a crime. It kills elephants and does not solve the conflict.");
+            ActionLog.Record("Threw hakka patas into the field", false, "Never use hakka patas. It kills elephants and it is a crime.");
         }
         if (!placed) return;
 
