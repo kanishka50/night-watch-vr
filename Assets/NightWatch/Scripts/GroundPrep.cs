@@ -87,19 +87,20 @@ public class GroundPrep : MonoBehaviour
             int fires = Bonfire.LitCount;
             tasks.text =
                 header + "\n\n" +
-                Line(AllFiresLit, $"Light the 3 bonfires at the open sides: east, west and south ({fires} of {Bonfire.All.Count})") + "\n" +
-                Line(FenceOn, "Switch on the fence energiser (the box on a post, east of the hut)") + "\n" +
-                Line(InHut, "Climb into the hut (ladder: Climb up)") + "\n\n" +
-                "<size=80%>Teleport: I.  Light a bonfire or press a switch: cursor on it + G.</size>";
+                Line(1, AllFiresLit, $"Light the 3 bonfires: east, west, south ({fires} of {Bonfire.All.Count})") + "\n" +
+                Line(2, FenceOn, "Switch on the fence energiser (box east of the hut)") + "\n" +
+                Line(3, InHut, "Climb into the hut (the ladder)") + "\n\n" +
+                "<size=80%>Teleport: I.   Light or switch: point at it + G.</size>";
         }
         if (alert != null) alert.text = NoticeBoard.CurrentAlert;
     }
 
-    static string Line(bool done, string text)
+    // A numbered job. When it is done it turns green and says DONE.
+    static string Line(int number, bool done, string text)
     {
         return done
-            ? $"<color=#9CFF8A>[x]  {text}</color>"
-            : $"[  ]  {text}";
+            ? $"<color=#9CFF8A>{number}.  {text}   <b>DONE</b></color>"
+            : $"{number}.  {text}";
     }
 
     void OnPhase(GameManager.Phase phase)
