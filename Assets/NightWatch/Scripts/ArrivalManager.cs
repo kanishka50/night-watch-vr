@@ -24,6 +24,8 @@ public class ArrivalManager : MonoBehaviour
         [Min(1)] public int adults = 1;
         public bool withCalf;
         public bool fenceBreaker;
+        [Tooltip("Comes past the neighbour's house (see NeighbourHouse).")]
+        public bool villageSide;
     }
 
     [Serializable]
@@ -71,7 +73,7 @@ public class ArrivalManager : MonoBehaviour
             groups =
             {
                 new Group { name = "The fence breaker", side = Side.North, fenceBreaker = true },
-                new Group { name = "The bull from the village side", side = Side.South },
+                new Group { name = "The bull from the village side", side = Side.South, villageSide = true },
             }
         },
     };
@@ -124,6 +126,14 @@ public class ArrivalManager : MonoBehaviour
         StartWave(nightWaves[nightWaveIndex], false);
     }
 
+    // For testing: only the bull from the village side (the neighbour's rescue moment).
+    public void SpawnVillageBull()
+    {
+        var members = new List<ElephantAI>();
+        SpawnGroup(new Group { name = "The bull from the village side", side = Side.South, villageSide = true }, members);
+        NoticeBoard.Message("A bull is coming from the village side.");
+    }
+
     void Next()
     {
         current++;
@@ -168,6 +178,7 @@ public class ArrivalManager : MonoBehaviour
         if (g.fenceBreaker) leader.resolve = 140f;
         else if (g.adults > 1 || g.withCalf) leader.resolve = 130f;
         members.Add(leader);
+        if (g.villageSide && NeighbourHouse.Instance != null) NeighbourHouse.Instance.VillageElephantCame(leader);
 
         for (int i = 1; i < g.adults; i++)
         {

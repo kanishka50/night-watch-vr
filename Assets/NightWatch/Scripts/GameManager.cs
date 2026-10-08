@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -11,7 +12,7 @@ using UnityEngine.SceneManagement;
 public class GameManager : MonoBehaviour
 {
     public enum Phase { Afternoon, Dusk, Night, Dawn, Debrief }
-    public enum Ending { None, EveryoneSafe, ElephantHurt, CropLost, FarmerHurt, ElephantKilled }
+    public enum Ending { None, EveryoneSafe, ElephantHurt, CropLost, FarmerHurt, ElephantKilled, PlayerDied, NeighbourHurt }
 
     public static GameManager Instance { get; private set; }
 
@@ -35,6 +36,8 @@ public class GameManager : MonoBehaviour
     public float groundHitDamage = 60f;
     [Tooltip("Seconds after the last wave has left before dawn comes.")]
     public float dawnDelayAfterLastWave = 20f;
+    [Tooltip("Seconds the ending card (title and one line) stays before the results board.")]
+    public float endingCardSeconds = 4.5f;
 
     [Header("Scene")]
     [Tooltip("The watch hut. Charging elephants run at it.")]
@@ -63,6 +66,7 @@ public class GameManager : MonoBehaviour
     string pendingReason;
     string lastHurtReason;
     bool elephantKilled;
+    bool neighbourHurt;
     bool showDebriefFromGround;
     float dawnTimer = -1f;
 
@@ -172,7 +176,7 @@ public class GameManager : MonoBehaviour
         NoticeBoard.Message(reason);
         ScreenFeedback.KnockDown(true);
         showDebriefFromGround = true;
-        EndEarly(Ending.FarmerHurt, reason, 3.5f);
+        EndEarly(Ending.PlayerDied, reason, 3.5f);
     }
 
     // An elephant reached the player on the ground: knocked down, badly hurt. A second time kills.
@@ -228,6 +232,13 @@ public class GameManager : MonoBehaviour
         elephantsSafe = Mathf.Max(0f, elephantsSafe - amount);
     }
 
+    // The neighbour was knocked down outside their house. The night goes on; it shows at dawn.
+    public void NeighbourHurt()
+    {
+        neighbourHurt = true;
+        NoticeBoard.Message("The bull knocked your neighbour down! Keep it away from the house.");
+    }
+
     public void ElephantKilled(string reason)
     {
         elephantKilled = true;
@@ -251,6 +262,8 @@ public class GameManager : MonoBehaviour
     {
         if (elephantKilled)
             Finish(Ending.ElephantKilled, "An elephant died tonight. Hakka patas is illegal and cruel, and it does not solve the conflict.");
+        else if (neighbourHurt)
+            Finish(Ending.NeighbourHurt, "Your neighbour went outside not knowing an elephant was there, and was knocked down. Warn the people around you early.");
         else if (peopleSafe < 100f)
             Finish(Ending.FarmerHurt, lastHurtReason);
         else if (elephantsSafe < 100f)
@@ -269,14 +282,30 @@ public class GameManager : MonoBehaviour
         CurrentPhase = Phase.Debrief;
         PhaseTime = 0f;
         ElephantAI.SendAllHome();
+        onPhaseChanged?.Invoke(Phase.Debrief);
+        StartCoroutine(EndingSequence(ending));
+    }
+
+    // Every ending gets a clear moment before the results board:
+    //   fade to black > the title and one line in front of the eyes, with a sound > fade in on the board.
+    IEnumerator EndingSequence(Ending ending)
+    {
+        // Real seconds: a slow-motion moment may still be running.
+        ScreenFeedback.FadeOut(1.5f);
+        yield return new WaitForSecondsRealtime(1.6f);
 
         // After a fall the hut may be gone: stand the player on the ground facing the results.
         if (showDebriefFromGround && debriefSpot != null) MovePlayerTo(debriefSpot);
-        ScreenFeedback.FadeIn(1.5f);
 
-        onPhaseChanged?.Invoke(Phase.Debrief);
+        EndingCard.Show(ResultTitle, CardLineFor(ending), IsGood(ending));
+        yield return new WaitForSecondsRealtime(endingCardSeconds);
+        EndingCard.Hide();
+
         onEnded?.Invoke(ending);
+        ScreenFeedback.FadeIn(1.5f);
     }
+
+    static bool IsGood(Ending ending) => ending == Ending.EveryoneSafe || ending == Ending.CropLost;
 
     static void MovePlayerTo(Transform spot)
     {
@@ -304,8 +333,26 @@ public class GameManager : MonoBehaviour
             case Ending.EveryoneSafe: return "Everyone is safe";
             case Ending.ElephantHurt: return "An elephant was hurt";
             case Ending.CropLost: return "Safe, but the crop is lost";
-            case Ending.FarmerHurt: return "The farmer was hurt";
+            case Ending.FarmerHurt: return "You survived, but you were hurt";
+            case Ending.PlayerDied: return "You did not survive the night";
+            case Ending.NeighbourHurt: return "Your neighbour was hurt";
             case Ending.ElephantKilled: return "An elephant was killed";
+            default: return "";
+        }
+    }
+
+    // The one short line on the ending card (the full reason is on the results board).
+    static string CardLineFor(Ending ending)
+    {
+        switch (ending)
+        {
+            case Ending.EveryoneSafe: return "The herd went back to the forest. You, your neighbour and the elephants are all alive.";
+            case Ending.ElephantHurt: return "Everyone lived, but an elephant was injured tonight.";
+            case Ending.CropLost: return "No one was hurt, but most of the paddy is gone.";
+            case Ending.FarmerHurt: return "You made it to dawn, but you were injured.";
+            case Ending.PlayerDied: return "An elephant reached you. No one can outrun an elephant in the dark.";
+            case Ending.NeighbourHurt: return "Your neighbour went outside in the dark, and the bull was there.";
+            case Ending.ElephantKilled: return "The others stood by its body, calling, until they had to leave.";
             default: return "";
         }
     }
@@ -327,6 +374,12 @@ public class GameManager : MonoBehaviour
 
     [ContextMenu("Test: skip to night")]
     void TestSkipToNight() => SkipTo(Phase.Night);
+
+    [ContextMenu("Test: end the night now (the dawn ending)")]
+    void TestEndNow()
+    {
+        if (CurrentPhase != Phase.Debrief && endTimer < 0f) FinishAtDawn();
+    }
 
     [ContextMenu("Test: bring the herd now")]
     void TestHerd()

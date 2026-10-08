@@ -95,6 +95,8 @@ public class ElephantAI : MonoBehaviour
     public bool FromNorth { get; set; }
     public bool IsActive => CurrentState != State.Retreat && CurrentState != State.Killed;
     public bool IsLeader => leader == null || leader == this;
+    // When it last ran away from a scare (a firecracker).
+    public float LastFleeTime => lastFleeTime;
 
     NavMeshAgent agent;
     float stateTimer, flinchTimer, soundTimer, wanderTimer, trumpetTimer, followTimer;
@@ -107,6 +109,12 @@ public class ElephantAI : MonoBehaviour
     CropPlot plot;
     Transform bait;
     bool dying;
+    Collider hitbox;
+    // A place it goes to instead of the field (the neighbour's rice store, or the neighbour).
+    Vector3? detour;
+    // One knock-down at a time, shared by all elephants (the player needs time to get up).
+    static float nextContactTime;
+    public const float HutKeepOut = 3f;   // radius of the hut's NavMesh obstacle
     ElephantAI mournTarget;
     float mournUntil;
     bool mournArrived;
@@ -120,6 +128,7 @@ public class ElephantAI : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         if (body == null) body = GetComponent<ElephantBody>();
         if (voice == null) voice = GetComponent<AudioSource>();
+        hitbox = GetComponent<Collider>();
     }
 
     void OnEnable() => All.Add(this);
@@ -144,6 +153,7 @@ public class ElephantAI : MonoBehaviour
         RecoverHabituation(dt);
 
         if (CurrentState == State.Killed) return;
+        CheckContactWithPlayer();
         if (mournTarget != null)
         {
             UpdateMourn();
@@ -203,6 +213,29 @@ public class ElephantAI : MonoBehaviour
         MakeSounds();
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetOnPlay() => nextContactTime = 0f;
+
+    // A person on the ground who touches an elephant's body is knocked down, whatever the
+    // elephant is doing. Elephants do not walk through people.
+    void CheckContactWithPlayer()
+    {
+        if (!PlayerState.OnGround || dying || hitbox == null || Time.time < nextContactTime) return;
+        var game = GameManager.Instance;
+        if (game == null || game.CurrentPhase == GameManager.Phase.Debrief) return;
+        var head = PlayerState.Head;
+        if (head == null) return;
+
+        var probe = head.position;
+        probe.y = hitbox.bounds.center.y;
+        if (FlatDistance(hitbox.ClosestPoint(probe), probe) > 0.5f) return;
+
+        nextContactTime = Time.time + 6f;
+        game.PlayerTrampled();
+        // It pushes past and moves away from the person.
+        if (IsLeader && IsActive && CurrentState != State.Charge) Flee(head.position);
+    }
+
     // ---------------- States ----------------
 
     void UpdateApproach()
@@ -219,6 +252,15 @@ public class ElephantAI : MonoBehaviour
             }
             if (stateTimer > 1f && Arrived(1.5f)) EnterState(State.AtFence);
         }
+        else if (detour.HasValue)
+        {
+            // At the house it stands and searches for the stored rice.
+            if (stateTimer > 1f && Arrived(1.5f))
+            {
+                if (agent.isOnNavMesh) agent.isStopped = true;
+                FaceTowards(detour.Value);
+            }
+        }
         else
         {
             if (plot == null || plot.health <= 0f)
@@ -228,6 +270,21 @@ public class ElephantAI : MonoBehaviour
             }
             if (plot != null && plot.Contains(transform.position)) EnterState(State.Raiding);
         }
+    }
+
+    // Sends it to a place instead of the field (used by the neighbour's house).
+    public void GoTo(Vector3 point)
+    {
+        detour = point;
+        if (CurrentState == State.Approach) SetStateDestination();
+    }
+
+    // Back to the normal plan: the field.
+    public void ClearDetour()
+    {
+        if (!detour.HasValue) return;
+        detour = null;
+        if (CurrentState == State.Approach) SetStateDestination();
     }
 
     void UpdateAtFence(float dt)
@@ -312,9 +369,13 @@ public class ElephantAI : MonoBehaviour
             followTimer = 0.3f;
             MoveTo(target, chargeSpeed);
         }
-        if (FlatDistance(transform.position, target) < 3f)
+        // The hut's obstacle keeps the body out, so "at the hut" means as close as it can get:
+        // the trunk then touches the stilts.
+        bool reachedPlayer = PlayerState.OnGround && PlayerState.FlatDistanceTo(transform.position) < 4f;
+        bool reachedHut = !PlayerState.OnGround && FlatDistance(transform.position, HutCenter) < HutKeepOut + agent.radius + 0.5f;
+        if (reachedPlayer || reachedHut)
         {
-            if (PlayerState.OnGround && PlayerState.FlatDistanceTo(transform.position) < 4f)
+            if (reachedPlayer)
                 GameManager.Instance?.PlayerTrampled();
             else
                 GameManager.Instance?.HutCharged(transform.position);
@@ -372,6 +433,10 @@ public class ElephantAI : MonoBehaviour
                 {
                     if (fence == null) fence = FenceSection.Nearest(transform.position);
                     if (fence != null) MoveTo(fence.ApproachPoint, walkSpeed);
+                }
+                else if (detour.HasValue)
+                {
+                    MoveTo(detour.Value, walkSpeed);
                 }
                 else
                 {
@@ -746,7 +811,7 @@ public class ElephantAI : MonoBehaviour
         // A point just outside the hut, on the side the elephant is coming from.
         var dir = transform.position - HutCenter;
         dir.y = 0f;
-        return HutCenter + dir.normalized * 2.8f;
+        return HutCenter + dir.normalized * (HutKeepOut + agent.radius);
     }
 
     void MoveTo(Vector3 point, float speed)

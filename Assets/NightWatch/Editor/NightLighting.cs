@@ -96,8 +96,8 @@ public static class NightLighting
         return mat;
     }
 
-    // The neighbour's window glows and lights the ground in front of the house.
-    // This is the target for "warn your neighbour".
+    // The neighbour's window light. NeighbourHouse switches it on when the neighbour is warned
+    // or wakes up.
     static void SetUpWindowLight()
     {
         var old = GameObject.Find(RootName);
@@ -108,7 +108,8 @@ public static class NightLighting
 
         var lightGo = new GameObject("NeighbourWindowLight");
         lightGo.transform.SetParent(root.transform, false);
-        lightGo.transform.position = new Vector3(5f, 1.6f, -22.4f);
+        lightGo.transform.position = new Vector3(BlockoutBuilder.HouseCenter.x + 1.2f, 1.6f,
+            BlockoutBuilder.HouseCenter.z + BlockoutBuilder.HouseSize / 2f + 0.6f);
         var light = lightGo.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = WindowColor;

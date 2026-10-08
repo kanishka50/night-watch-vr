@@ -9,7 +9,8 @@ using UnityEngine;
 //   Night Watch > Build Full Game
 // It rebuilds the blockout, the night lighting, the field (fence and crop plots), the NavMesh,
 // the elephants and their arrivals, the tools in the hut, the screens, the game managers and
-// the afternoon jobs on the ground (bonfires, fence energiser, task board) and the comfort vignette.
+// the afternoon jobs on the ground (bonfires, fence energiser, task board), the comfort vignette,
+// the neighbour (house door, figure, rice store, phone) and the ending card.
 // Running it again replaces everything it made before.
 public static class GameSetup
 {
@@ -45,6 +46,8 @@ public static class GameSetup
         HutPropsSetup.BuildManagers(game, sun);
         GroundPrepSetup.Build(game);
         ComfortSetup.Build();
+        NeighbourSetup.Build(game);
+        EndingSetup.Build();
 
         AddSceneToBuild();
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());

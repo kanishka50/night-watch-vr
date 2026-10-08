@@ -77,9 +77,14 @@ public static class BlockoutBuilder
     {
         var parent = Group("Ground", root);
         var soil = Mat("Soil", new Color(0.32f, 0.25f, 0.17f));
+        var grass = Mat("Grass", new Color(0.20f, 0.30f, 0.13f));
         for (float x = -25f; x <= 25f; x += 10f)
         for (float z = -25f; z <= 25f; z += 10f)
-            Box("GroundTile", parent, new Vector3(x, -0.1f, z), new Vector3(10f, 0.2f, 10f), soil);
+        {
+            // Bare earth under the paddy field (x -20 to 20, z -12 to 10), grass round it.
+            bool field = Mathf.Abs(x) < 20f && z > -12f && z < 10f;
+            Box("GroundTile", parent, new Vector3(x, -0.1f, z), new Vector3(10f, 0.2f, 10f), field ? soil : grass);
+        }
         Box("Path", parent, new Vector3(0f, 0.03f, -18f), new Vector3(1.5f, 0.04f, 12f), Mat("Path", new Color(0.55f, 0.45f, 0.32f)));
 
         // The whole ground is a teleport target while the player is on it (switched on at run time).
@@ -165,17 +170,27 @@ public static class BlockoutBuilder
         Random.state = oldState;
     }
 
+    // The neighbour's house, 16 m south-east of the hut, just past the canal, so the player can
+    // help from the hut (a cracker's bang reaches 15 m). Its door and window face the hut.
+    // The door, the neighbour and the rice store are built by NeighbourSetup.
+    public static readonly Vector3 HouseCenter = new Vector3(7f, 0f, -17.5f);
+    public const float HouseSize = 4f;
+
     static void BuildVillage(Transform root)
     {
         var parent = Group("NeighbourHouse", root);
         var wall = Mat("HouseWall", new Color(0.75f, 0.70f, 0.60f));
         var roof = Mat("HouseRoof", new Color(0.55f, 0.25f, 0.18f));
         var window = Mat("HouseWindow", new Color(1f, 0.85f, 0.45f));
+        var c = HouseCenter;
+        float front = c.z + HouseSize / 2f;
 
-        Box("Walls", parent, new Vector3(5f, 1.5f, -25f), new Vector3(4f, 3f, 4f), wall);
-        Box("Roof", parent, new Vector3(5f, 3.2f, -25f), new Vector3(4.6f, 0.4f, 4.6f), roof);
-        // The window faces the hut. It becomes the "warn your neighbour" light later.
-        Box("Window", parent, new Vector3(5f, 1.6f, -22.98f), new Vector3(1f, 0.8f, 0.05f), window);
+        Box("Walls", parent, c + new Vector3(0f, 1.5f, 0f), new Vector3(HouseSize, 3f, HouseSize), wall);
+        Box("Roof", parent, c + new Vector3(0f, 3.2f, 0f), new Vector3(HouseSize + 0.6f, 0.4f, HouseSize + 0.6f), roof);
+        Box("Window", parent, new Vector3(c.x + 1.2f, 1.6f, front + 0.02f), new Vector3(1f, 0.8f, 0.05f), window);
+        // A dark doorway; the door that opens is in front of it.
+        Box("Doorway", parent, new Vector3(c.x - 1f, 0.95f, front + 0.02f), new Vector3(0.9f, 1.9f, 0.04f),
+            Mat("Doorway", new Color(0.05f, 0.04f, 0.03f)));
     }
 
     // The player starts on the ground in the afternoon (GroundPrep moves them there at run time too).

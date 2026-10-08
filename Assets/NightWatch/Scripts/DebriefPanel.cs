@@ -17,8 +17,7 @@ public class DebriefPanel : MonoBehaviour
         "<b>Credits</b>\n" +
         "Night Watch: INTE 42312 Virtual and Augmented Reality group project.\n" +
         "Stand-in shapes and all sounds were made by the team in Unity.\n" +
-        "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation.\n" +
-        "Full list of assets and licences: CREDITS.md";
+        "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation.";
 
     void Awake()
     {

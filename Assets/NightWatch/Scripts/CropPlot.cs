@@ -13,6 +13,8 @@ public class CropPlot : MonoBehaviour
     public float eatPerSecond = 0.35f;
     [Tooltip("The green crop shape that shrinks as it is eaten.")]
     public Transform crop;
+    [Tooltip("On for a crop that grows up from its pivot (the plant mesh), off for a box centred on it.")]
+    public bool pivotAtBase;
     public Color fullColor = new Color(0.36f, 0.55f, 0.20f);
     public Color eatenColor = new Color(0.35f, 0.27f, 0.16f);
 
@@ -103,7 +105,7 @@ public class CropPlot : MonoBehaviour
         s.y = Mathf.Max(0.02f, fullScale.y * k);
         crop.localScale = s;
         // Keep the bottom on the ground while the crop gets shorter.
-        crop.localPosition = fullPosition - new Vector3(0f, (fullScale.y - s.y) / 2f, 0f);
+        if (!pivotAtBase) crop.localPosition = fullPosition - new Vector3(0f, (fullScale.y - s.y) / 2f, 0f);
         if (cropRenderer != null)
         {
             block.SetColor("_BaseColor", Color.Lerp(eatenColor, fullColor, k));
