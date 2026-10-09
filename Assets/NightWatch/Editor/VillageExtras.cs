@@ -37,8 +37,10 @@ public static class VillageExtras
         ("wicker_basket_01", 2.2f, -1.7f, 30f), ("wicker_basket_02", 2.6f, -0.9f, 100f),
         ("ceramic_pot", -2.3f, -0.5f, 0f), ("wooden_stool_01", 1.2f, 3.4f, 60f),
     };
-    // The cattle: where each stands (kamatha frame) and which way it faces (compass degrees).
-    static readonly (float x, float z, float yaw)[] Cattle = { (3.2f, 2.5f, 270f), (-0.7f, -3.7f, 90f) };
+    // The cattle's tethering posts (kamatha frame), just off the floor's edge. Each animal grazes
+    // in a circle round its post (CattleLife), kept off the floor and the haystacks.
+    static readonly (float x, float z)[] TiePosts = { (4.0f, 1.2f), (0.2f, -4.1f) };
+    const float TiePostHeight = 1.1f;
 
     static readonly (string model, Vector3 at, float yaw)[] Copies =
     {
@@ -71,7 +73,7 @@ public static class VillageExtras
         yield return (Flat(ShadeTree), 2.2f);
         yield return (Flat(AgroWell), 2.2f);
         foreach (var p in KamathaProps) yield return (Flat(KamathaPoint(p.x, p.z)), 1.6f);
-        foreach (var c in Cattle) yield return (Flat(KamathaPoint(c.x, c.z)), 1.6f);
+        foreach (var c in TiePosts) yield return (Flat(KamathaPoint(c.x, c.z)), 2.6f);
         foreach (var s in Scarecrows) yield return (Flat(s), 0.6f);
         foreach (var c in CanalBuilder.Clearings()) yield return c;
         foreach (var c in Copies) if (c.model.StartsWith("banana") || c.model.StartsWith("palm")) yield return (Flat(c.at), 1.5f);
@@ -139,16 +141,22 @@ public static class VillageExtras
         var post = EditorKit.Mat("HutPole", new Color(0.40f, 0.31f, 0.22f));
         EditorKit.Part("CentrePost", PrimitiveType.Cylinder, kamatha, new Vector3(0f, 0.8f, 0f), new Vector3(0.14f, 0.8f, 0.14f), post);
 
-        // Tethering posts and the two cattle.
-        var cattle = CattleSetup.Model();
-        foreach (var c in Cattle)
+        // Tethering posts and the two cattle (a cow and a bull), each starting a little way out from
+        // its post, side on to the floor.
+        var keepOut = new List<Vector3> { new Vector3(Kamatha.x, Kamatha.z, KamathaRadius + 0.5f) };
+        foreach (var p in KamathaProps)
+            keepOut.Add(new Vector3(Kamatha.x + p.x, Kamatha.z + p.z, p.model.StartsWith("haystack") ? 1.7f : 0.7f));
+        foreach (var c in TiePosts) keepOut.Add(new Vector3(Kamatha.x + c.x, Kamatha.z + c.z, 0.6f));
+        CattleSetup.Begin();
+        foreach (var c in TiePosts)
         {
-            var spot = FarmLayout.OnGround(KamathaPoint(c.x, c.z));
-            var facing = Quaternion.Euler(0f, c.yaw, 0f);
-            var postAt = spot + facing * Vector3.forward * 1.35f;
-            EditorKit.Part("TiePost", PrimitiveType.Cylinder, kamatha, kamatha.InverseTransformPoint(postAt) + Vector3.up * 0.55f,
-                new Vector3(0.1f, 0.55f, 0.1f), post);
-            CattleSetup.Place(cattle, kamatha, spot, facing);
+            var postAt = FarmLayout.OnGround(KamathaPoint(c.x, c.z));
+            EditorKit.Part("TiePost", PrimitiveType.Cylinder, kamatha, kamatha.InverseTransformPoint(postAt) + Vector3.up * (TiePostHeight / 2f),
+                new Vector3(0.1f, TiePostHeight / 2f, 0.1f), post);
+            var outward = new Vector3(c.x, 0f, c.z).normalized;
+            var spot = FarmLayout.OnGround(postAt + outward * 1.4f);
+            var facing = Quaternion.LookRotation(Vector3.Cross(Vector3.up, outward));
+            CattleSetup.Place(kamatha, spot, facing, postAt, TiePostHeight, keepOut.ToArray());
         }
     }
 

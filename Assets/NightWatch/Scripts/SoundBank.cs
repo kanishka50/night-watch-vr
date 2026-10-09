@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker, trickle;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker, trickle, moo;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -25,6 +25,7 @@ public static class SoundBank
     public static AudioClip Ring => ring != null ? ring : ring = Make("Ring", 1.2f, MakeRing);
     public static AudioClip Cracker => cracker != null ? cracker : cracker = Make("Cracker", 1.4f, MakeCracker);
     public static AudioClip Trickle => trickle != null ? trickle : trickle = Make("Trickle", 3f, MakeTrickle);
+    public static AudioClip Moo => moo != null ? moo : moo = Make("Moo", 1.7f, MakeMoo);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -316,6 +317,34 @@ public static class SoundBank
             }
         }
         Normalise(d, 0.6f);
+    }
+
+    // A cow's moo: a low hum ("mmm") that opens into "ooo", rises a little and falls away.
+    // The voice is near 130 Hz, but most of the sound is in its overtones (300 to 900 Hz, where the
+    // mouth shapes it), so laptop speakers play it.
+    static void MakeMoo(float[] d, System.Random r)
+    {
+        float len = d.Length / (float)Rate;
+        float phase = 0f, breath = 0f;
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float k = t / len;
+            float f = 118f + 32f * Mathf.Sin(Mathf.PI * Mathf.Min(k * 1.5f, 1f)) - 18f * k + 2f * Mathf.Sin(2f * Mathf.PI * 5f * t);
+            phase += f / Rate;
+            float open = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.05f, 0.3f, k)) * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.7f, 1f, k)));
+            float centre = 280f + 380f * open;
+            float s = 0f;
+            for (int h = 1; h <= 12; h++)
+            {
+                float fh = f * h;
+                float w = Mathf.Exp(-Mathf.Pow((fh - centre) / 230f, 2f)) + 0.3f * Mathf.Exp(-Mathf.Pow((fh - centre * 2.6f) / 420f, 2f)) + 0.12f / h;
+                s += w * Mathf.Sin(2f * Mathf.PI * h * phase);
+            }
+            breath += 0.2f * (Noise(r) - breath);
+            d[i] = (s + 0.15f * breath * open) * Envelope(t, len, 0.15f, 0.45f);
+        }
+        Normalise(d, 0.8f);
     }
 
     // A phone ringing: two quick tones, twice.
