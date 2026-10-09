@@ -357,8 +357,12 @@ public class FilmDirector : MonoBehaviour
         raw.raycastTarget = false;
     }
 
-    // The game's floating labels and board texts, and everything on the VR rig (hands, rays,
-    // the camera's own screens), so the film shows only the world.
+    // Game props that look out of place in the story (a modern task board, the yellow climb
+    // handles, the fence energiser and its wire). They stay in the game.
+    static readonly string[] FilmHides = { "TaskBoard", "FenceEnergiser", "LadderTop", "LadderBottom" };
+
+    // The game's floating labels and board texts, the props above, and everything on the VR rig
+    // (hands, rays, the camera's own screens), so the film shows only the world.
     void HideGameParts()
     {
         hiddenTexts.Clear();
@@ -369,8 +373,17 @@ public class FilmDirector : MonoBehaviour
             text.enabled = false;
             hiddenTexts.Add(text);
         }
-        if (gameCamera == null) return;
-        foreach (var r in gameCamera.transform.root.GetComponentsInChildren<Renderer>())
+        foreach (var name in FilmHides)
+        {
+            var prop = GameObject.Find(name);
+            if (prop != null) HideRenderers(prop.transform);
+        }
+        if (gameCamera != null) HideRenderers(gameCamera.transform.root);
+    }
+
+    void HideRenderers(Transform root)
+    {
+        foreach (var r in root.GetComponentsInChildren<Renderer>())
         {
             if (!r.enabled) continue;
             r.enabled = false;

@@ -29,7 +29,7 @@ public static class FilmDirectorSetup
     static readonly Color CaptionGrey = new Color(0.80f, 0.80f, 0.80f);
 
     // The light for each kind of shot (DayNightCycle: 0.22 dusk starts, 0.31 night starts).
-    const float LateAfternoon = 0.19f, Dusk = 0.25f, LateDusk = 0.28f, Night = 0.5f;
+    const float LateAfternoon = 0.19f, Dusk = 0.25f, LateDusk = 0.26f, Night = 0.5f;
     // Fog per kind of shot: clear for the wide drone views, the game's own fog at night.
     const float ClearFog = 0.45f, DuskFog = 0.7f, NightFog = 0.8f;
 
@@ -42,8 +42,9 @@ public static class FilmDirectorSetup
         new FilmDirector.Shot
         {
             name = "1 The tank at sunset", seconds = 8f,
-            from = new Vector3(-25f, 30f, 115f), to = new Vector3(-5f, 12f, 32f),
-            lookFrom = new Vector3(-8f, 0f, 30f), lookTo = new Vector3(0f, 1f, -5f),
+            // Starts out over the water (the tank spans about z 42 to 95), not above its far bank.
+            from = new Vector3(-20f, 28f, 88f), to = new Vector3(-5f, 12f, 32f),
+            lookFrom = new Vector3(-8f, 0f, 20f), lookTo = new Vector3(0f, 1f, -5f),
             timeOfDay = LateAfternoon, fog = ClearFog, caption = "An old village beside its tank (wewa)",
         },
         // Circling the stupa from the south-west (the fewest tall trees there), high enough to see
@@ -118,12 +119,14 @@ public static class FilmDirectorSetup
     // and x = -6 (a rock at (-10.2, -64.5)); cows and the calf have no tusks, the bull has.
     static FilmDirector.Actor[] Actors() => new[]
     {
+        // The lead cow is already at the tree line when the shot starts and walks at once;
+        // the calf and the second cow follow soon after.
         new FilmDirector.Actor { name = "Cow", shot = "6 The herd leaves the jungle",
-            from = new Vector3(-9.6f, 0f, -62f), to = new Vector3(-11.2f, 0f, -50f), moveStart = 0.8f, moveEnd = 9f },
+            from = new Vector3(-9.8f, 0f, -59.5f), to = new Vector3(-11.2f, 0f, -49f), moveStart = 0f, moveEnd = 9f },
         new FilmDirector.Actor { name = "Calf", shot = "6 The herd leaves the jungle", size = 0.55f,
-            from = new Vector3(-8.8f, 0f, -66.5f), to = new Vector3(-9.6f, 0f, -55.5f), moveStart = 2.5f, moveEnd = 10f },
+            from = new Vector3(-8.0f, 0f, -64.5f), to = new Vector3(-9.6f, 0f, -54.5f), moveStart = 1.2f, moveEnd = 10f },
         new FilmDirector.Actor { name = "Cow2", shot = "6 The herd leaves the jungle",
-            from = new Vector3(-8.4f, 0f, -71f), to = new Vector3(-8.3f, 0f, -61f), moveStart = 3f, moveEnd = 10f },
+            from = new Vector3(-8.4f, 0f, -69f), to = new Vector3(-8.3f, 0f, -60f), moveStart = 1.8f, moveEnd = 10f },
 
         // Grazing slowly through the south-west crop plot (x -9.25..0, z -8.75..0), clear of the
         // pela at its north-east corner (the hut reaches x and z = -1.6), all facing the camera side
