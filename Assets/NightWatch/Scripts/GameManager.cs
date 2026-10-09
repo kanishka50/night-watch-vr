@@ -325,8 +325,7 @@ public class GameManager : MonoBehaviour
     {
         var limit = PlayAreaLimit.Instance;
         if (limit == null) return;
-        limit.MoveHeadTo(spot.position, spot.rotation);
-        limit.SetOnGround(true);
+        limit.MoveHeadTo(spot.position, spot.rotation, onGround: true);
     }
 
     // Jumps forward to the start of dusk or night (the sky follows). Used when the player is

@@ -18,7 +18,7 @@ public class StartScreen : MonoBehaviour
     public void Begin()
     {
         if (panel != null) panel.SetActive(false);
-        VignetteBlink.Play();
+        ScreenFeedback.BlinkNow();
         GameManager.Instance?.BeginGame();
     }
 

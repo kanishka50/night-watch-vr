@@ -46,15 +46,43 @@ public class PlayAreaLimit : MonoBehaviour
         }
     }
 
-    // Moves the rig so the head (not the rig's centre) ends up over the point, feet at its height.
-    public void MoveHeadTo(Vector3 point, Quaternion? rotation = null)
+    // True while a move is fading out; a second move then is ignored (a double press on the ladder).
+    public bool IsMoving { get; private set; }
+
+    // Moves the rig so the head (not the rig's centre) ends up over the point, feet at its height,
+    // hidden by a short fade to black and back (ScreenFeedback.Blink). onGround, if given, switches
+    // between the hut and the ground at the moment of the jump. fadeFirst = false jumps at once
+    // under an instant black (the very first placement).
+    public void MoveHeadTo(Vector3 point, Quaternion? rotation = null, bool? onGround = null, bool fadeFirst = true)
+    {
+        if (IsMoving) return;
+        if (!fadeFirst || ScreenFeedback.Instance == null)
+        {
+            Jump(point, rotation, onGround);
+            ScreenFeedback.BlinkNow();
+            return;
+        }
+        StartCoroutine(FadeAndJump(point, rotation, onGround));
+    }
+
+    System.Collections.IEnumerator FadeAndJump(Vector3 point, Quaternion? rotation, bool? onGround)
+    {
+        IsMoving = true;
+        ScreenFeedback.BlinkOut();
+        yield return new WaitForSecondsRealtime(ScreenFeedback.BlinkOutSeconds);
+        Jump(point, rotation, onGround);
+        IsMoving = false;
+        ScreenFeedback.BlinkIn();
+    }
+
+    void Jump(Vector3 point, Quaternion? rotation, bool? onGround)
     {
         if (rotation.HasValue) transform.rotation = rotation.Value;
         var offset = head != null ? head.position - transform.position : Vector3.zero;
         offset.y = 0f;
         transform.position = point - offset;
         Physics.SyncTransforms();
-        VignetteBlink.Play();
+        if (onGround.HasValue) SetOnGround(onGround.Value);
     }
 
     public void SetOnGround(bool onGround)

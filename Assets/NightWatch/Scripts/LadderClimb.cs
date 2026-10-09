@@ -56,9 +56,8 @@ public class LadderClimb : PressTarget
         if (goesDown == PlayerState.OnGround) return;   // already there
 
         var limit = PlayAreaLimit.Instance;
-        if (limit == null) return;
-        limit.MoveHeadTo(destination.position);
-        limit.SetOnGround(goesDown);
+        if (limit == null || limit.IsMoving) return;
+        limit.MoveHeadTo(destination.position, onGround: goesDown);
 
         if (!goesDown) return;
         int putBack = 0;

@@ -10,16 +10,26 @@ using UnityEngine;
 // It rebuilds the Elephant Village (ground, water, buildings, plants), our hut, the night lighting, the field (fence and crop plots), the NavMesh,
 // the elephants and their arrivals, the tools in the hut, the screens, the game managers and
 // the afternoon jobs on the ground (bonfires, fence energiser, task board), the comfort vignette,
-// the neighbour (house door, figure, rice store, phone) and the ending card.
+// the neighbour (house door, figure, rice store, phone), the ending card, the start screen and the
+// story at the beginning (StoryIntro, told on an ola leaf).
 // Running it again replaces everything it made before.
 public static class GameSetup
 {
+    const string GameScene = "Assets/Scenes/NightWatch.unity";
+
     [MenuItem("Night Watch/Build Full Game")]
     public static void BuildFullGame()
     {
         if (EditorApplication.isPlaying)
         {
             EditorUtility.DisplayDialog("Night Watch", "Stop Play mode first, then build the game.", "OK");
+            return;
+        }
+        // Only in our scene: Unity sometimes opens the template's SampleScene instead.
+        if (EditorSceneManager.GetActiveScene().path != GameScene)
+        {
+            EditorUtility.DisplayDialog("Night Watch",
+                $"The open scene is not Night Watch.\nOpen {GameScene} first (File > Open Scene), then build.", "OK");
             return;
         }
         if (!EditorUtility.DisplayDialog("Night Watch",
@@ -52,6 +62,7 @@ public static class GameSetup
         EndingSetup.Build();
         EndingSetup.BuildHint();
         StartScreenSetup.Build(game);
+        StoryIntroSetup.Build(game);
         TextureKit.FitUVs();
 
         AddSceneToBuild();

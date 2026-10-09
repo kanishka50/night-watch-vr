@@ -33,8 +33,8 @@ public class GroundPrep : MonoBehaviour
     {
         if (startOnGround && startSpot != null && PlayAreaLimit.Instance != null)
         {
-            PlayAreaLimit.Instance.MoveHeadTo(startSpot.position, startSpot.rotation);
-            PlayAreaLimit.Instance.SetOnGround(true);
+            // The first placement: no fade-out first (nothing to hide yet).
+            PlayAreaLimit.Instance.MoveHeadTo(startSpot.position, startSpot.rotation, onGround: true, fadeFirst: false);
         }
         var game = GameManager.Instance;
         if (game != null) game.onPhaseChanged.AddListener(OnPhase);
@@ -152,7 +152,6 @@ public class GroundPrep : MonoBehaviour
         if (FenceEnergiser.Instance != null && !FenceEnergiser.Instance.on) FenceEnergiser.Instance.Switch(true);
         var hutSpot = GameObject.Find("HutSpot");
         if (InHut || hutSpot == null || PlayAreaLimit.Instance == null) return;
-        PlayAreaLimit.Instance.MoveHeadTo(hutSpot.transform.position);
-        PlayAreaLimit.Instance.SetOnGround(false);
+        PlayAreaLimit.Instance.MoveHeadTo(hutSpot.transform.position, onGround: false);
     }
 }

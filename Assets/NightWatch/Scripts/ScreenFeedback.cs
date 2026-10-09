@@ -4,6 +4,9 @@ using UnityEngine;
 // Effects on the player's view, using a see-through panel just in front of the VR camera:
 //  - Flash: a short red (or other colour) flash when the player is hurt
 //  - FadeOut / FadeIn: to and from black, for endings
+//  - Blink: a short fade to black and back when the view jumps (teleport, ladder, story scenes).
+//    Hiding the jump keeps players from feeling sick (course week 5: comfort). It replaced the
+//    round tunnel vignette, which closed to a small circle and looked odd.
 //  - KnockDown: the view tips over and drops, as if the player fell. If fatal, it then fades out.
 //  - Wound edge: a red edge round the view that stays while the player is hurt, stronger and
 //    pulsing as health drops.
@@ -22,7 +25,12 @@ public class ScreenFeedback : MonoBehaviour
     Color flashColor = Color.red;
     float flashAlpha;
     float fadeAlpha;
+    float blinkAlpha;
     Coroutine fade;
+    Coroutine blink;
+
+    // Blink timing in seconds: to black, and back from black.
+    public const float BlinkOutSeconds = 0.15f, BlinkInSeconds = 0.35f;
 
     void Awake()
     {
@@ -55,6 +63,41 @@ public class ScreenFeedback : MonoBehaviour
         Instance.flashColor = color;
         Instance.flashAlpha = Mathf.Max(Instance.flashAlpha, strength);
         Instance.Apply();
+    }
+
+    // The blink: to black (before a jump) and back (after it). Works on its own value, so it never
+    // spoils an ending's fade.
+    public static void BlinkOut(float seconds = BlinkOutSeconds) => Instance?.StartBlink(1f, seconds);
+    public static void BlinkIn(float seconds = BlinkInSeconds) => Instance?.StartBlink(0f, seconds);
+    // Part way to black (a snap turn only dims the view).
+    public static void BlinkTo(float darkness, float seconds) => Instance?.StartBlink(Mathf.Clamp01(darkness), seconds);
+
+    // Black at once, then back: for a jump that cannot wait (the very first placement).
+    public static void BlinkNow()
+    {
+        if (Instance == null) return;
+        Instance.blinkAlpha = 1f;
+        Instance.Apply();
+        BlinkIn();
+    }
+
+    void StartBlink(float target, float seconds)
+    {
+        if (blink != null) StopCoroutine(blink);
+        blink = StartCoroutine(BlinkRoutine(target, seconds));
+    }
+
+    IEnumerator BlinkRoutine(float target, float seconds)
+    {
+        float start = blinkAlpha;
+        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        {
+            blinkAlpha = Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / seconds));
+            Apply();
+            yield return null;
+        }
+        blinkAlpha = target;
+        Apply();
     }
 
     public static void FadeOut(float seconds) => Instance?.StartFade(1f, seconds);
@@ -193,8 +236,9 @@ public class ScreenFeedback : MonoBehaviour
         if (block == null) block = new MaterialPropertyBlock();
         // The coloured flash with the black fade on top of it. The flash only adds colour while it is
         // showing, so a fade to or from black is always pure black (never a red wash).
-        float a = 1f - (1f - fadeAlpha) * (1f - flashAlpha);
-        var c = a > 0.001f ? flashColor * (flashAlpha * (1f - fadeAlpha) / a) : Color.black;
+        float black = Mathf.Max(fadeAlpha, blinkAlpha);
+        float a = 1f - (1f - black) * (1f - flashAlpha);
+        var c = a > 0.001f ? flashColor * (flashAlpha * (1f - black) / a) : Color.black;
         c.a = Mathf.Clamp01(a);
         block.SetColor("_BaseColor", c);
         overlay.SetPropertyBlock(block);
