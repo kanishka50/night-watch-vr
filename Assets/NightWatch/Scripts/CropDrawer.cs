@@ -2,9 +2,10 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 // Draws the rice clumps of one crop plot (the village's rice_gold model, on the village's own
-// clump spots) with GPU instancing: one draw for the standing clumps and one for the trampled
-// ones. Elephants eat and trample a patch, not the whole plot evenly, so CropPlot flattens the
-// clumps nearest to the elephant: they lie over and turn brown. Made by ElephantSetup.
+// clump spots) with GPU instancing: one draw for the standing clumps and one for the flattened
+// ones. Each clump is standing, flat (stepped on: lies over, brown) or eaten (gone). CropPlot
+// decides which: the trunk eats the clump nearest the mouth, the feet flatten what is under
+// them. Made by ElephantSetup.
 [ExecuteAlways]
 public class CropDrawer : MonoBehaviour
 {
@@ -16,9 +17,10 @@ public class CropDrawer : MonoBehaviour
     public float[] poses;
 
     public int Count => poses == null ? 0 : poses.Length / PropSet.PoseSize;
-    public int TrampledCount { get; private set; }
+    public int StandingCount => standingCount;
 
-    bool[] trampled;
+    enum Clump : byte { Standing, Flat, Eaten }
+    Clump[] state;
     Matrix4x4[] standingPose, flatPose;       // [clump]
     Matrix4x4[][] standingList, flatList;     // [part][n], what is drawn
     int standingCount, flatCount;
@@ -39,8 +41,7 @@ public class CropDrawer : MonoBehaviour
     {
         dirty = false;
         int n = Count;
-        trampled = new bool[n];
-        TrampledCount = 0;
+        state = new Clump[n];
         standingPose = new Matrix4x4[n];
         flatPose = new Matrix4x4[n];
         var oldState = Random.state;
@@ -71,33 +72,40 @@ public class CropDrawer : MonoBehaviour
         Refill();
     }
 
-    // The draw lists: standing clumps and trampled clumps.
+    // The draw lists: standing clumps and flat clumps (eaten ones are not drawn).
     void Refill()
     {
         standingCount = flatCount = 0;
         for (int k = 0; k < Count; k++)
         {
+            if (state[k] == Clump.Eaten) continue;
+            bool flat = state[k] == Clump.Flat;
             for (int i = 0; i < standingList.Length; i++)
             {
-                if (trampled[k]) flatList[i][flatCount] = flatPose[k] * parts[i].local;
+                if (flat) flatList[i][flatCount] = flatPose[k] * parts[i].local;
                 else standingList[i][standingCount] = standingPose[k] * parts[i].local;
             }
-            if (trampled[k]) flatCount++;
+            if (flat) flatCount++;
             else standingCount++;
         }
     }
 
-    // Flattens the standing clump nearest to the point (an elephant's mouth). False if none is left.
-    public bool TrampleNearest(Vector3 at)
+    static float FlatDistance(Matrix4x4 pose, Vector3 at)
+    {
+        float dx = pose.m03 - at.x, dz = pose.m23 - at.z;
+        return dx * dx + dz * dz;
+    }
+
+    // The trunk takes the standing clump nearest the mouth: it is gone. False if none is left.
+    public bool EatNearest(Vector3 mouth)
     {
         if (dirty) Build();
         int best = -1;
         float bestDistance = float.MaxValue;
         for (int k = 0; k < Count; k++)
         {
-            if (trampled[k]) continue;
-            var c = standingPose[k].GetColumn(3);
-            float d = (c.x - at.x) * (c.x - at.x) + (c.z - at.z) * (c.z - at.z);
+            if (state[k] != Clump.Standing) continue;
+            float d = FlatDistance(standingPose[k], mouth);
             if (d < bestDistance)
             {
                 bestDistance = d;
@@ -105,10 +113,24 @@ public class CropDrawer : MonoBehaviour
             }
         }
         if (best < 0) return false;
-        trampled[best] = true;
-        TrampledCount++;
+        state[best] = Clump.Eaten;
         Refill();
         return true;
+    }
+
+    // A foot flattens the standing clumps within this radius of it. Returns how many.
+    public int FlattenAround(Vector3 foot, float radius)
+    {
+        if (dirty) Build();
+        int flattened = 0;
+        for (int k = 0; k < Count; k++)
+        {
+            if (state[k] != Clump.Standing || FlatDistance(standingPose[k], foot) > radius * radius) continue;
+            state[k] = Clump.Flat;
+            flattened++;
+        }
+        if (flattened > 0) Refill();
+        return flattened;
     }
 
     void Draw(ScriptableRenderContext context, Camera cam)

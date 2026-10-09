@@ -47,6 +47,9 @@ public static class VillageBuilder
     // The village's rice clump spots inside each crop plot (FarmLayout.CropPlots), filled by Build.
     // The crop plots are planted on them with this model (ElephantSetup); the village does not draw them.
     public const string CropModel = "rice_gold";
+    // Ripe paddy stands about 1 m; the village's clumps are 0.75 to 1 m. Taller makes the eaten
+    // gaps and flat patches easier to see from the hut. All rice, so the crop plots still match.
+    const float RiceTaller = 1.2f;
     public static readonly Dictionary<string, List<float>> CropRice = new Dictionary<string, List<float>>();
 
     // Drawing rules, from the browser version (js/props.js) and tuned for the laptop.
@@ -433,7 +436,11 @@ public static class VillageBuilder
                 continue;
             }
 
-            if (g.name.StartsWith("rice_")) KeepCropRice(poses);
+            if (g.name.StartsWith("rice_"))
+            {
+                for (int o = 0; o < poses.Length; o += PropSet.PoseSize) poses[o + 5] *= RiceTaller;
+                KeepCropRice(poses);
+            }
             var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
             // Heavy trees (the ones with a cheap far stand-in) are drawn in full near the player.
             poses = ClearFarm(poses, rule.proxy != null ? FarmLayout.NoHeavyTrees : 0f, ref cleared);

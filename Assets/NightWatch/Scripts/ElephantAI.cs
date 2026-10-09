@@ -197,6 +197,10 @@ public class ElephantAI : MonoBehaviour
             SetStateDestination();
         }
 
+        // In any state, the feet flatten the rice under the body.
+        var underfoot = CropPlot.At(transform.position);
+        if (underfoot != null) underfoot.TrampleUnder(transform);
+
         switch (CurrentState)
         {
             case State.Approach: UpdateApproach(); break;

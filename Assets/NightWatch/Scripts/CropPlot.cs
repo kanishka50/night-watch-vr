@@ -1,22 +1,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// One crop plot of the paddy field. Elephants standing in it eat it. Like real elephants they
-// eat and trample a patch: the rice clumps nearest to the elephant lie flat and turn brown
-// (CropDrawer), so from the hut you can see where they fed. The average of all plots is the
-// "crop saved" score.
+// One crop plot of the paddy field. Like real elephants, they lose the farmer rice two ways:
+//  - the trunk eats: while feeding, the clump nearest the mouth is gone (at eatPerSecond);
+//  - the feet flatten: any elephant walking or standing in the plot flattens the clumps under
+//    its four feet (they lie over and turn brown).
+// Health is the share of clumps still standing, so both count. From the hut you see the gaps
+// and the flat patches where they went (CropDrawer). The average of all plots is the "crop
+// saved" score.
 [RequireComponent(typeof(BoxCollider))]
 public class CropPlot : MonoBehaviour
 {
     public static readonly List<CropPlot> All = new List<CropPlot>();
 
+    [Tooltip("Percent of the rice still standing (read only in play).")]
     [Range(0f, 100f)] public float health = 100f;
-    [Tooltip("Crop lost per second by one adult elephant eating here.")]
+    [Tooltip("Crop eaten per second (percent of the plot) by one adult elephant feeding here.")]
     public float eatPerSecond = 0.35f;
+    [Tooltip("Rice within this distance (m) of a foot is flattened. 0.25 = walking straight across a plot flattens about 1 clump in 10.")]
+    public float footRadius = 0.25f;
     [Tooltip("Draws the rice clumps; eaten clumps lie flat and brown.")]
     public CropDrawer drawer;
 
     BoxCollider area;
+    float eatenSoFar;   // clumps' worth eaten, not yet taken
 
     public static float AverageHealth
     {
@@ -38,18 +45,49 @@ public class CropPlot : MonoBehaviour
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
 
-    // An elephant eating for this many seconds, its mouth at this point.
+    // An elephant feeding for this many seconds, its mouth at this point.
     public void Eat(float seconds, Vector3 mouth)
     {
         if (health <= 0f) return;
-        health = Mathf.Max(0f, health - eatPerSecond * seconds);
-        if (drawer == null) return;
-        int target = Mathf.RoundToInt((1f - health / 100f) * drawer.Count);
-        while (drawer.TrampledCount < target && drawer.TrampleNearest(mouth)) { }
+        if (drawer == null || drawer.Count == 0)
+        {
+            health = Mathf.Max(0f, health - eatPerSecond * seconds);
+            return;
+        }
+        eatenSoFar += eatPerSecond / 100f * drawer.Count * seconds;
+        while (eatenSoFar >= 1f && drawer.EatNearest(mouth)) eatenSoFar -= 1f;
+        UpdateHealth();
     }
+
+    // An elephant's body in the plot: its four feet flatten the rice under them.
+    // The feet are at the stand-in's legs (0.6 m to each side, 1 m forward and back), scaled with it.
+    public void TrampleUnder(Transform elephant)
+    {
+        if (drawer == null || health <= 0f) return;
+        int flattened = 0;
+        for (int side = -1; side <= 1; side += 2)
+            for (int end = -1; end <= 1; end += 2)
+                flattened += drawer.FlattenAround(elephant.TransformPoint(0.6f * side, 0f, 1f * end), footRadius * elephant.localScale.x);
+        if (flattened > 0) UpdateHealth();
+    }
+
+    void UpdateHealth() => health = 100f * drawer.StandingCount / drawer.Count;
 
     [ContextMenu("Test: an elephant eats 25% at a random spot")]
     void TestEat() => Eat(25f / eatPerSecond, RandomPoint());
+
+    [ContextMenu("Test: an elephant walks across the middle (south to north)")]
+    void TestWalk()
+    {
+        var b = area.bounds;
+        var walker = new GameObject("TestWalker").transform;
+        for (float z = b.min.z; z <= b.max.z; z += 0.2f)
+        {
+            walker.position = new Vector3(b.center.x, 0f, z);
+            TrampleUnder(walker);
+        }
+        Destroy(walker.gameObject);
+    }
 
     // True if the point is inside this plot (height ignored).
     public bool Contains(Vector3 point)
