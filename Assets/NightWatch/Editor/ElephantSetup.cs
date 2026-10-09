@@ -202,6 +202,7 @@ public static class ElephantSetup
     // to the hut) and 4.2 (real size, "ok, could be a little bigger").
     const string ElephantModel = "elephant";
     const float ModelScale = 4.6f;
+    const float SkinRoughness = 0.85f;
     const string ControllerPath = "Assets/NightWatch/Village/Generated/ElephantAnimator.controller";
 
     static GameObject CreateTemplate(Transform game)
@@ -224,8 +225,17 @@ public static class ElephantSetup
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
             skin = go.GetComponentInChildren<SkinnedMeshRenderer>();
-            // Cheaper: do not re-skin elephants that are out of view.
-            if (skin != null) skin.updateWhenOffscreen = false;
+            if (skin != null)
+            {
+                // Cheaper: do not re-skin elephants that are out of view.
+                skin.updateWhenOffscreen = false;
+                // The file's skin is glossy (roughness 0.34): white "wet plastic" highlights at
+                // night. Elephant skin is dry and wrinkled, so make it rough (tusks a little less).
+                var mats = skin.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                    if (mats[i] != null) mats[i] = VillageBuilder.RoughCopy(mats[i], $"elephant_rough_{i}", i == 0 ? SkinRoughness : 0.6f);
+                skin.sharedMaterials = mats;
+            }
         }
 
         // One collider for the whole animal, so thrown crackers can hit it.

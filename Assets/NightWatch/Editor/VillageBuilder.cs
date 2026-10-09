@@ -101,10 +101,10 @@ public static class VillageBuilder
     };
 
     // The four ground textures: file name, tile size (m) and tint, as in the browser's terrain shader
-    // (it pushes the dry-season grass scans towards monsoon green).
+    // (it pushes the dry-season grass scans towards monsoon green; ours a little greener still).
     static readonly (string name, float tile, Color tint)[] GroundLayers =
     {
-        ("grass", 3.5f, new Color(0.75f, 1f, 0.55f)),
+        ("grass", 3.5f, new Color(0.68f, 1.05f, 0.50f)),
         ("dirt", 2.6f, Color.white),
         ("mud", 3.0f, Color.white),
         ("forest", 3.2f, new Color(0.7f, 0.95f, 0.55f)),
@@ -292,7 +292,17 @@ public static class VillageBuilder
             var w = new Vector4(Mathf.Pow(c.r, 1.6f), Mathf.Pow(c.g, 1.6f), Mathf.Pow(c.b, 1.6f), Mathf.Pow(c.a, 1.6f));
             float sum = w.x + w.y + w.z + w.w;
             if (sum < 1e-4f) { w = new Vector4(1f, 0f, 0f, 0f); sum = 1f; }
-            for (int l = 0; l < 4; l++) mix[b, a, l] = w[l] / sum;
+            w /= sum;
+            // Open grass is not one flat colour: big soft patches of drier grass (the forest floor
+            // layer) and smaller worn ones (bare dirt). Only the grass share moves, so the paddy plots,
+            // bunds and paths keep their own mix. Same 4 layers, so it costs nothing to draw.
+            float dry = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f, 0.8f, Mathf.PerlinNoise(x * 0.045f + 11f, z * 0.045f + 7f))) * 0.45f;
+            float bare = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.85f, Mathf.PerlinNoise(x * 0.13f + 3f, z * 0.13f + 19f))) * 0.2f;
+            float toDry = w.x * dry, toBare = w.x * bare;
+            w.x -= toDry + toBare;
+            w.w += toDry;
+            w.y += toBare;
+            for (int l = 0; l < 4; l++) mix[b, a, l] = w[l];
         }
         UnityEngine.Object.DestroyImmediate(splat);
         data.SetAlphamaps(0, 0, mix);
@@ -436,6 +446,7 @@ public static class VillageBuilder
                     go.transform.localPosition = model.transform.localPosition;
                     go.transform.localRotation = model.transform.localRotation;
                     go.transform.localScale = model.transform.localScale;
+                    if (g.name.StartsWith("haystack")) LightenThatch(go, g.name);
                     foreach (var t in placed.GetComponentsInChildren<Transform>(true)) t.gameObject.isStatic = true;
                     sceneCount++;
                 }
@@ -702,6 +713,32 @@ public static class VillageBuilder
             }
         }
         return parts.ToArray();
+    }
+
+    // The haystacks' straw, lighter and more golden: from the drone shots the thatch texture
+    // blurs into one colour, which was a dull brown ("plain brown eggs").
+    static readonly Color ThatchTint = new Color(1.3f, 1.25f, 1.1f);
+
+    static void LightenThatch(GameObject haystack, string model)
+    {
+        foreach (var r in haystack.GetComponentsInChildren<Renderer>(true))
+        {
+            var mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+                if (mats[i] != null && mats[i].name.StartsWith("thatch"))
+                    mats[i] = TintedCopy(mats[i], $"{model}_thatch", ThatchTint);
+            r.sharedMaterials = mats;
+        }
+    }
+
+    // A rough copy of a model's material (glTF materials use roughnessFactor, ours _Smoothness).
+    public static Material RoughCopy(Material source, string name, float roughness)
+    {
+        var mat = InstancedCopy(source, name);
+        if (mat.HasProperty("roughnessFactor")) mat.SetFloat("roughnessFactor", roughness);
+        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f - roughness);
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     // A tinted copy of a village material (glTF materials use baseColorFactor, ours _BaseColor).
