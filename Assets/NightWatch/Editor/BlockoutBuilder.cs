@@ -118,12 +118,16 @@ public static class BlockoutBuilder
         float ladderZ = LadderZ;
         Pole("Rail_L", ladder, new Vector3(-0.27f, 0f, ladderZ), new Vector3(-0.25f, HutFloorTop + LadderAboveFloor, ladderZ), 0.08f, pole);
         Pole("Rail_R", ladder, new Vector3(0.27f, 0f, ladderZ), new Vector3(0.25f, HutFloorTop + LadderAboveFloor, ladderZ), 0.08f, pole);
-        Pole("TopRung", ladder, new Vector3(-0.29f, HutFloorTop + LadderAboveFloor - 0.08f, ladderZ),
-            new Vector3(0.29f, HutFloorTop + LadderAboveFloor - 0.08f, ladderZ), 0.05f, pole);
-        for (float y = 0.3f; y < HutFloorHeight; y += 0.3f)
+        // Rungs evenly spaced (about 0.3 m) from knee height to just under the pole tops, so there
+        // is no gap where the ladder passes the floor. Those above the floor are "TopRung" (they
+        // light up with the poles when the player points at the ladder to climb down).
+        float lowest = 0.3f, highest = HutFloorTop + LadderAboveFloor - 0.08f;
+        int gaps = Mathf.Max(1, Mathf.RoundToInt((highest - lowest) / 0.3f));
+        for (int i = 0; i <= gaps; i++)
         {
+            float y = Mathf.Lerp(lowest, highest, i / (float)gaps);
             float tilt = Jitter(0.02f);
-            Pole("Rung", ladder, new Vector3(-0.3f, y + tilt, ladderZ), new Vector3(0.3f, y - tilt, ladderZ), 0.045f, pole);
+            Pole(y > HutFloorTop ? "TopRung" : "Rung", ladder, new Vector3(-0.3f, y + tilt, ladderZ), new Vector3(0.3f, y - tilt, ladderZ), 0.045f, pole);
         }
     }
 
