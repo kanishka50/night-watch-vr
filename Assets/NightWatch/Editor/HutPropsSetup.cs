@@ -181,7 +181,7 @@ public static class HutPropsSetup
     static XRBaseInteractable BuildTorch(Transform root, Vector3 position)
     {
         var torch = Tool("FireTorch", root, position, 0.6f);
-        var bamboo = ToolMat("Bamboo", new Color(0.72f, 0.62f, 0.36f), 0.3f);
+        var bamboo = ToolMat("TorchPole", new Color(0.72f, 0.62f, 0.36f), 0.3f);
         var node = ToolMat("BambooNode", new Color(0.50f, 0.42f, 0.24f), 0.2f);
         EditorKit.Part("Stick", PrimitiveType.Cylinder, torch.transform, Vector3.zero, new Vector3(0.045f, 0.36f, 0.045f), bamboo);
         foreach (float y in new[] { -0.25f, -0.05f, 0.15f })
@@ -297,7 +297,7 @@ public static class HutPropsSetup
             ToolMat("Lens", new Color(0.90f, 0.92f, 0.85f), 0.95f), along);
         Trim("Tail", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, -0.104f), new Vector3(0.044f, 0.006f, 0.044f), chrome, along);
         Trim("Switch", PrimitiveType.Cube, torch.transform, new Vector3(0f, 0.022f, 0f), new Vector3(0.012f, 0.008f, 0.02f),
-            ToolMat("Switch", new Color(0.80f, 0.30f, 0.10f), 0.3f));
+            ToolMat("FlashlightSwitch", new Color(0.80f, 0.30f, 0.10f), 0.3f));
 
         var beamGo = new GameObject("Beam");
         beamGo.transform.SetParent(torch.transform, false);
