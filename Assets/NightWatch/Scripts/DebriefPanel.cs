@@ -13,12 +13,26 @@ public class DebriefPanel : MonoBehaviour
     public TextMeshPro credits;
     public GameObject restartButton;
 
-    [TextArea(3, 10)]
+    // Every third-party asset in the build (brief section 12). The full list with links and
+    // licences is CREDITS.md in the project folder; keep the two the same.
+    [TextArea(3, 20)]
     public string creditsText =
         "<b>Credits</b>\n" +
-        "Night Watch: INTE 42312 Virtual and Augmented Reality group project.\n" +
-        "Stand-in shapes and all sounds were made by the team in Unity.\n" +
-        "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation.";
+        "Night Watch, INTE 42312 Virtual and Augmented Reality group project.\n\n" +
+        "<b>3D models, CC BY 4.0</b>\n" +
+        "Elephant: \"Low poly Realistic Elephant 3d model free\" by iRahulRajput (Sketchfab). Rigged and animated for this project.\n" +
+        "Electric fence: \"Wire Fence\" by Pixel-bit (Sketchfab).\n" +
+        "Shed: \"Worn Shed PBR Game-Ready\" by donnichols (Sketchfab).\n\n" +
+        "<b>Free assets, CC0</b>\n" +
+        "Village models and textures: Poly Haven (Amal Kumar, Rob Tuytel, Rico Cilliers, Greg Zaal, " +
+        "Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Aron Łyczek, Jenelle van Heerden, Kless Gyzen, " +
+        "Sebastian Platen, Kuutti Siitonen, James Ray Cock, Miroslav Turura, eye-candy.xyz).\n" +
+        "Neighbour, cow and bull: Quaternius.\n" +
+        "Sky: Cloudy Skyboxes by Screaming Brain Studios.\n\n" +
+        "<b>Font</b>\n" +
+        "Cinzel by The Cinzel Project Authors, SIL Open Font License 1.1.\n\n" +
+        "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation. Sounds made in code by the team.\n" +
+        "Full list with links: CREDITS.md";
 
     void Awake()
     {

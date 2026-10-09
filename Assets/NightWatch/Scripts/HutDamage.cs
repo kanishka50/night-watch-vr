@@ -109,6 +109,24 @@ public class HutDamage : MonoBehaviour
         Dust(home + Vector3.up * 1f);
         Dust(home + Vector3.up * 2.5f);
 
+        // The roof falls in one piece: one body for the frame and the thatch. The thatch had no
+        // collider, so it stayed in the air while the poles fell.
+        var roof = transform.Find("Roof");
+        if (roof != null && roof.GetComponent<Rigidbody>() == null)
+        {
+            var thatch = roof.Find("Thatch");
+            var mesh = thatch != null ? thatch.GetComponent<MeshFilter>() : null;
+            if (mesh != null && mesh.sharedMesh != null && thatch.GetComponent<Collider>() == null)
+            {
+                var box = thatch.gameObject.AddComponent<BoxCollider>();
+                box.center = mesh.sharedMesh.bounds.center;
+                box.size = mesh.sharedMesh.bounds.size;
+            }
+            var roofBody = roof.gameObject.AddComponent<Rigidbody>();
+            roofBody.mass = 60f;
+            roofBody.AddExplosionForce(collapseForce * 2f, from + Vector3.up * 1.5f, 10f, 0.5f, ForceMode.Impulse);
+        }
+
         foreach (var part in GetComponentsInChildren<Collider>())
         {
             if (part.isTrigger || part.attachedRigidbody != null) continue;

@@ -97,7 +97,9 @@ public static class HutPropsSetup
         return hover;
     }
 
-    static GameObject Tool(string name, Transform root, Vector3 position, float mass)
+    // thrown = small and thrown fast (crackers, hakka patas): checked between frames as well, so a
+    // throw cannot pass through a thin rail.
+    static GameObject Tool(string name, Transform root, Vector3 position, float mass, bool thrown = false)
     {
         var go = new GameObject(name);
         go.transform.SetParent(root, false);
@@ -105,9 +107,13 @@ public static class HutPropsSetup
         var grab = go.AddComponent<XRGrabInteractable>();   // also adds a Rigidbody
         grab.useDynamicAttach = false;
         grab.farAttachMode = InteractableFarAttachMode.Near;   // pulled into the hand
+        // Physics moves the held tool to the hand, so it stops at posts, rails, the table and
+        // elephants instead of passing through them (Instantaneous ignored every wall).
+        grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
         var body = go.GetComponent<Rigidbody>();
         body.mass = mass;
         body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = thrown ? CollisionDetectionMode.ContinuousDynamic : CollisionDetectionMode.Continuous;
         return go;
     }
 
@@ -222,7 +228,7 @@ public static class HutPropsSetup
     // a short green fuse.
     static XRBaseInteractable BuildCracker(Transform root, Vector3 position)
     {
-        var cracker = Tool("Firecracker", root, position, 0.2f);
+        var cracker = Tool("Firecracker", root, position, 0.2f, true);
         EditorKit.Part("Body", PrimitiveType.Cylinder, cracker.transform, Vector3.zero, new Vector3(0.045f, 0.065f, 0.045f),
             ToolMat("CrackerPaper", new Color(0.80f, 0.10f, 0.08f), 0.15f));
         Trim("Band", PrimitiveType.Cylinder, cracker.transform, Vector3.zero, new Vector3(0.047f, 0.012f, 0.047f),
@@ -320,7 +326,7 @@ public static class HutPropsSetup
     // with twine, a knot on top.
     static XRBaseInteractable BuildHakka(Transform root, Vector3 position)
     {
-        var hakka = Tool("HakkaPatas", root, position, 0.2f);
+        var hakka = Tool("HakkaPatas", root, position, 0.2f, true);
         EditorKit.Part("Ball", PrimitiveType.Sphere, hakka.transform, Vector3.zero, new Vector3(0.12f, 0.12f, 0.12f),
             ToolMat("HakkaCloth", new Color(0.70f, 0.58f, 0.42f), 0.05f));
         var twine = ToolMat("Twine", new Color(0.80f, 0.72f, 0.55f), 0.1f);
@@ -449,10 +455,15 @@ public static class HutPropsSetup
         debriefPanel.transform.SetParent(debriefRoot.transform, false);
         var center = new Vector3(0f, 4.4f, 7f);
         EditorKit.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f), dark);
-        var results = EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(-0.85f, 0f, 0f), Quaternion.identity,
-            new Vector2(4.2f, 3.3f), "", 1.4f);
-        var credits = EditorKit.Text("Credits", debriefPanel.transform, center + new Vector3(2.15f, 0f, 0f), Quaternion.identity,
-            new Vector2(1.7f, 3.3f), "", 1f);
+        var results = EditorKit.Text("Results", debriefPanel.transform, center, Quaternion.identity,
+            new Vector2(5.8f, 3.3f), "", 1.4f);
+        // The credits on their own board to the right, turned toward the hut: every third-party
+        // asset with its author and licence did not fit beside the results.
+        var creditsAt = center + new Vector3(5f, 0f, -1.2f);
+        var creditsTurn = Quaternion.Euler(0f, 35f, 0f);
+        EditorKit.Board("CreditsBackground", debriefPanel.transform, creditsAt, creditsTurn, new Vector2(3.6f, 3.6f), dark);
+        var credits = EditorKit.Text("Credits", debriefPanel.transform, creditsAt, creditsTurn,
+            new Vector2(3.3f, 3.3f), "", 1f);
 
         // Restart: a green block under the results panel. Reachable with the pointer from the
         // hut or from the ground (the hut may have collapsed).

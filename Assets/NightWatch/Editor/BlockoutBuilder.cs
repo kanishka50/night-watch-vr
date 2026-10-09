@@ -545,6 +545,13 @@ public static class BlockoutBuilder
         limit.groundArea = terrain != null ? terrain.GetComponent<TeleportationArea>() : null;
         if (limit.groundArea == null) Debug.LogWarning("Night Watch: no Village/Terrain teleport area. Build the village first.");
         PrefabUtility.RecordPrefabInstancePropertyModifications(limit);
+
+        // The body cannot walk through walls, posts, the table, bonfires or elephants.
+        var blocker = rig.GetComponent<BodyBlocker>();
+        if (blocker == null) blocker = Undo.AddComponent<BodyBlocker>(rig);
+        Undo.RecordObject(blocker, "Set body blocker");
+        blocker.head = limit.head;
+        PrefabUtility.RecordPrefabInstancePropertyModifications(blocker);
     }
 
     static Transform Group(string name, Transform parent)

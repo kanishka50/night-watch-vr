@@ -8,6 +8,8 @@ using UnityEngine;
 //    Hiding the jump keeps players from feeling sick (course week 5: comfort). It replaced the
 //    round tunnel vignette, which closed to a small circle and looked odd.
 //  - KnockDown: the view tips over and drops, as if the player fell. If fatal, it then fades out.
+//  - Inside: black while the head is inside a solid thing (BodyBlocker), so nobody sees through
+//    the inside of a wall or an elephant.
 //  - Wound edge: a red edge round the view when the player is hit, fading back to normal in
 //    about 4 s. Only when badly hurt (one more hit could kill) a thin, faint edge stays, pulsing.
 public class ScreenFeedback : MonoBehaviour
@@ -31,15 +33,21 @@ public class ScreenFeedback : MonoBehaviour
     float flashAlpha;
     float fadeAlpha;
     float blinkAlpha;
+    float insideAlpha;
+    bool inside;
     Coroutine fade;
     Coroutine blink;
 
     // Blink timing in seconds: to black, and back from black.
     public const float BlinkOutSeconds = 0.15f, BlinkInSeconds = 0.35f;
 
+    // True while the knock-down moves the view (BodyBlocker leaves the head alone then).
+    public static bool IsFalling { get; private set; }
+
     void Awake()
     {
         Instance = this;
+        IsFalling = false;
         block = new MaterialPropertyBlock();
         Apply();
 
@@ -54,6 +62,14 @@ public class ScreenFeedback : MonoBehaviour
     void Update()
     {
         UpdateWound();
+
+        // To black fast (0.15 s) when the head goes inside something, back slower (0.3 s).
+        float insideTarget = inside ? 1f : 0f;
+        if (insideAlpha != insideTarget)
+        {
+            insideAlpha = Mathf.MoveTowards(insideAlpha, insideTarget, Time.unscaledDeltaTime / (inside ? 0.15f : 0.3f));
+            Apply();
+        }
 
         if (flashAlpha > 0f)
         {
@@ -105,6 +121,12 @@ public class ScreenFeedback : MonoBehaviour
         Apply();
     }
 
+    // The head is (or is no longer) inside a solid thing.
+    public static void SetInside(bool value)
+    {
+        if (Instance != null) Instance.inside = value;
+    }
+
     public static void FadeOut(float seconds) => Instance?.StartFade(1f, seconds);
     public static void FadeIn(float seconds) => Instance?.StartFade(0f, seconds);
 
@@ -147,6 +169,7 @@ public class ScreenFeedback : MonoBehaviour
         var offset = cam != null ? cam.parent : null;
         if (offset == null) yield break;
 
+        IsFalling = true;
         var startRot = offset.localRotation;
         var startPos = offset.localPosition;
         var downRot = startRot * Quaternion.Euler(0f, 0f, 65f);
@@ -181,6 +204,7 @@ public class ScreenFeedback : MonoBehaviour
         }
         offset.localRotation = startRot;
         offset.localPosition = startPos;
+        IsFalling = false;
     }
 
     // A hit: a strong red edge that fades in about 4 s. Badly hurt: a faint pulsing edge stays.
@@ -246,7 +270,7 @@ public class ScreenFeedback : MonoBehaviour
         if (block == null) block = new MaterialPropertyBlock();
         // The coloured flash with the black fade on top of it. The flash only adds colour while it is
         // showing, so a fade to or from black is always pure black (never a red wash).
-        float black = Mathf.Max(fadeAlpha, blinkAlpha);
+        float black = Mathf.Max(fadeAlpha, Mathf.Max(blinkAlpha, insideAlpha));
         float a = 1f - (1f - black) * (1f - flashAlpha);
         var c = a > 0.001f ? flashColor * (flashAlpha * (1f - black) / a) : Color.black;
         c.a = Mathf.Clamp01(a);

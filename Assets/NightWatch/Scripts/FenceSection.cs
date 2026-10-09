@@ -33,8 +33,10 @@ public class FenceSection : MonoBehaviour
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
 
-    // Where an elephant stands to face this section, 2 m out on the outside.
-    public Vector3 ApproachPoint => transform.position + outside.normalized * 2f;
+    // Where an elephant stands to face this section, 3 m out on the outside: the head is 2.4 m in
+    // front of the elephant's centre, so the trunk reaches the wires but the head stays out (at 2 m
+    // it went 0.4 m through them).
+    public Vector3 ApproachPoint => transform.position + outside.normalized * 3f;
 
     // A shock when an elephant touches the fence. Sound and a blue spark.
     public void Zap(Vector3 at)

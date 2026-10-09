@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
@@ -380,6 +381,8 @@ public static class VillageBuilder
     {
         var tank = new List<Vector3>();
         var tankTris = new List<int>();
+        Shape tankShape = null;
+        float tankY = 0f;
         var plots = new List<Vector3>();
         var plotTris = new List<int>();
         foreach (var w in level.water)
@@ -389,6 +392,8 @@ public static class VillageBuilder
             if (w.kind == "tank")
             {
                 float y = w.y + ground.Shift(w.x, w.z);
+                tankShape = w;
+                tankY = y;
                 int centre = points.Count;
                 points.Add(ToUnity(w.x, y, w.z));
                 const int steps = 64;
@@ -419,6 +424,66 @@ public static class VillageBuilder
         AssetDatabase.DeleteAsset(Generated + "/Water.asset");   // the old single mesh
         WaterPart(root, "Tank", tank, tankTris, WaterSetup.Tank());
         WaterPart(root, "PlotWater", plots, plotTris, WaterSetup.Plots());
+        if (tankShape != null) TankBlockers(root, tankShape, tankY);
+    }
+
+    // The tank (wewa) is deep water: nobody walks or teleports into it.
+    //  - The water surface gets a collider: the teleport ray stops on it (not a teleport target),
+    //    and crackers land on it instead of sinking to the bed. It is "Not Walkable" on the walk
+    //    map, so elephants go round the tank.
+    //  - An invisible wall just inside the shore stops the player's body (BodyBlocker). It is on
+    //    the Ignore Raycast layer, so the pointers still reach the water (point to learn: wewa),
+    //    and left out of the walk map.
+    static void TankBlockers(Transform root, Shape w, float y)
+    {
+        var water = root.Find("Tank");
+        if (water != null)
+        {
+            water.gameObject.AddComponent<MeshCollider>().sharedMesh = water.GetComponent<MeshFilter>().sharedMesh;
+            var area = water.gameObject.AddComponent<NavMeshModifier>();
+            area.overrideArea = true;
+            area.area = 1;   // Not Walkable
+        }
+
+        const int steps = 32;
+        const float shore = 0.4f;   // the wall stands this far out into the water
+        float c = Mathf.Cos(w.rot), s = Mathf.Sin(w.rot);
+        var points = new List<Vector3>();
+        foreach (float h in new[] { y - 6f, y + 3f })
+            for (int k = 0; k < steps; k++)
+            {
+                float t = k * Mathf.PI * 2f / steps;
+                float u = Mathf.Cos(t) * (w.a - shore), v = Mathf.Sin(t) * (w.b - shore);
+                points.Add(ToUnity(w.x + u * c - v * s, h, w.z + u * s + v * c));
+            }
+        var tris = new List<int>();
+        for (int k = 0; k < steps; k++)
+        {
+            int n = (k + 1) % steps;
+            tris.AddRange(new[] { k, n, steps + k, n, steps + n, steps + k });
+            if (k > 0 && k < steps - 1)
+            {
+                tris.AddRange(new[] { 0, k + 1, k });
+                tris.AddRange(new[] { steps, steps + k, steps + k + 1 });
+            }
+        }
+        string meshPath = $"{Generated}/TankWall.asset";
+        AssetDatabase.DeleteAsset(meshPath);
+        var mesh = new Mesh { name = "TankWall" };
+        mesh.SetVertices(points);
+        mesh.SetTriangles(tris, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh, meshPath);
+
+        var wall = new GameObject("TankWall");
+        wall.transform.SetParent(root, false);
+        wall.layer = 2;   // Ignore Raycast
+        wall.isStatic = true;
+        var shape = wall.AddComponent<MeshCollider>();
+        shape.sharedMesh = mesh;
+        shape.convex = true;   // solid all through, so the body is blocked from any side
+        wall.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
     }
 
     static void WaterPart(Transform root, string name, List<Vector3> points, List<int> tris, Material mat)

@@ -190,16 +190,22 @@ public class ArrivalManager : MonoBehaviour
         members.Add(leader);
         if (g.villageSide && NeighbourHouse.Instance != null) NeighbourHouse.Instance.VillageElephantCame(leader);
 
+        // Members start in their walking places round the leader, so no two bodies start inside each other.
+        var facing = Quaternion.LookRotation(Flat(ElephantAI.HutCenter - start));
         for (int i = 1; i < g.adults; i++)
         {
-            var follower = Create(start + Flat(Random.insideUnitSphere) * 3f, spawn.position, fromNorth, 1f);
+            var slot = ElephantAI.HerdSlot(i);
+            var follower = Create(start + facing * slot, spawn.position, fromNorth, 1f);
+            follower.followOffset = slot;
             follower.leader = leader;
             follower.name = g.name + " (member)";
             members.Add(follower);
         }
         if (g.withCalf)
         {
-            var calf = Create(start + Flat(Random.insideUnitSphere) * 2f, spawn.position, fromNorth, 0.55f);
+            var slot = ElephantAI.CalfSlot();
+            var calf = Create(start + facing * slot, spawn.position, fromNorth, 0.55f);
+            calf.followOffset = slot;
             calf.leader = leader;
             calf.isCalf = true;
             calf.eatRateMultiplier = 0.4f;

@@ -117,8 +117,37 @@ public static class ElephantSetup
         }
     }
 
+    // The walk map is made for an adult elephant: about 2.2 m wide with the ears and 3.3 m tall.
+    // Was the default 0.5 m person, so bodies went 0.5 m into house boxes and tree trunks.
+    public const float AgentRadius = 1.2f, AgentHeight = 3.3f;
+
+    // Only elephants use the walk map, so the one agent type ("Humanoid", id 0) is set to elephant
+    // size in Project Settings > AI Navigation (Agents) instead of adding a second type.
+    static void SetAgentSize()
+    {
+        var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/NavMeshAreas.asset");
+        if (assets == null || assets.Length == 0)
+        {
+            Debug.LogWarning("Night Watch: could not open the NavMesh agent settings; the walk map keeps its old size.");
+            return;
+        }
+        var settings = new SerializedObject(assets[0]);
+        var list = settings.FindProperty("m_Settings");
+        for (int i = 0; i < list.arraySize; i++)
+        {
+            var agent = list.GetArrayElementAtIndex(i);
+            if (agent.FindPropertyRelative("agentTypeID").intValue != 0) continue;
+            agent.FindPropertyRelative("agentRadius").floatValue = AgentRadius;
+            agent.FindPropertyRelative("agentHeight").floatValue = AgentHeight;
+        }
+        settings.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(assets[0]);
+        AssetDatabase.SaveAssets();
+    }
+
     public static void BakeNavMesh()
     {
+        SetAgentSize();
         var navigation = EditorKit.Group("Navigation", null);
         var surface = navigation.gameObject.AddComponent<NavMeshSurface>();
         // Colliders, not visible meshes: tree crowns have no collider, so only trunks block the way.
@@ -128,6 +157,8 @@ public static class ElephantSetup
         surface.center = NavMeshCenter;
         surface.size = NavMeshSize;
         surface.BuildNavMesh();
+        var size = NavMesh.GetSettingsByID(surface.agentTypeID);
+        Debug.Log($"Night Watch: walk map baked for an agent of radius {size.agentRadius} m, height {size.agentHeight} m.");
 
         // Save the result as an asset so the scene keeps it after closing.
         AssetDatabase.DeleteAsset(NavMeshPath);
@@ -159,7 +190,7 @@ public static class ElephantSetup
     {
         // Elephants walk round the hut, never under it. A round keep-out zone, wide enough for the
         // long body (the head is 2.4 m in front of the elephant's centre): at the closest point
-        // the trunk just touches the stilts.
+        // the trunk just touches the stilts (ElephantAI.HutKeepOut).
         var hutBlock = EditorKit.Empty("HutObstacle", game, Vector3.zero);
         var obstacle = hutBlock.gameObject.AddComponent<NavMeshObstacle>();
         obstacle.shape = NavMeshObstacleShape.Capsule;
@@ -246,8 +277,8 @@ public static class ElephantSetup
         hitbox.height = 4.4f;
 
         var agent = elephant.gameObject.AddComponent<NavMeshAgent>();
-        agent.radius = 0.9f;
-        agent.height = 3f;
+        agent.radius = AgentRadius;
+        agent.height = AgentHeight;
         agent.speed = 1.3f;
         agent.angularSpeed = 120f;
         agent.acceleration = 6f;

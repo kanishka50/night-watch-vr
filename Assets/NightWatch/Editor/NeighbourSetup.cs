@@ -50,15 +50,18 @@ public static class NeighbourSetup
         var firePoint = EditorKit.Empty("FirePoint", root, At(-2.2f, -5.3f));
         var yardPoint = EditorKit.Empty("YardPoint", root, At(-0.5f, -4.6f));
         var patrolPoint = EditorKit.Empty("PatrolPoint", root, At(-3f, -7f));
-        var storePoint = EditorKit.Empty("StorePoint", root, At(2.6f, back - 1.5f));
+        // Where the elephant stands: its head is 2.4 m in front of its centre, so 3.2 m from the
+        // wall the trunk reaches the sacks and the head stays out of the house (1.5 m put it inside).
+        var storePoint = EditorKit.Empty("StorePoint", root, At(2.6f, back - 3.2f));
 
         // Rice sacks against the back wall: what the elephant comes for.
         var jute = EditorKit.Mat("RiceSack", new Color(0.62f, 0.52f, 0.34f));
         var sacks = EditorKit.Empty("RiceStore", root, At(2.6f, back - 0.3f));
         sacks.rotation = outward;
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(-0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute, false);
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute, false);
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0f, 0.7f, 0f), new Vector3(0.6f, 0.4f, 0.45f), jute, false);
+        // Solid, so the player cannot walk through them.
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(-0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute);
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute);
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0f, 0.7f, 0f), new Vector3(0.6f, 0.4f, 0.45f), jute);
 
         var figure = BuildFigure(root, doorPoint.position, out var lampPivot, out var lamp, out var animator);
 

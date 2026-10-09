@@ -123,7 +123,10 @@ public class ElephantAI : MonoBehaviour
     float detourSpeed;
     // One knock-down at a time, shared by all elephants (the player needs time to get up).
     static float nextContactTime;
-    public const float HutKeepOut = 3f;   // radius of the hut's NavMesh obstacle
+    // Radius of the hut's NavMesh obstacle. The walk map adds the elephant's own radius (1.2 m),
+    // so its centre stays 5 m from the hut centre and the head (2.4 m in front) about 2.6 m: the
+    // trunk reaches the stilts and the ladder but never goes in. Was 3 (the trunk went inside).
+    public const float HutKeepOut = 3.8f;
 
     // Where the trunk reaches the crop: the head is about 2.4 m in front of the centre (less for a calf).
     Vector3 Mouth => transform.position + transform.forward * (2.4f * transform.localScale.z);
@@ -131,7 +134,9 @@ public class ElephantAI : MonoBehaviour
     float mournUntil;
     bool mournArrived;
     bool leaving;
-    Vector3 followOffset;
+    // Where a herd member walks, in the leader's space (x right, z forward). Set by ArrivalManager
+    // (HerdSlot, CalfSlot) so the long bodies never overlap.
+    [HideInInspector] public Vector3 followOffset;
     readonly Dictionary<string, float> habituation = new Dictionary<string, float>();
     readonly List<string> habituationKeys = new List<string>();
 
@@ -150,10 +155,23 @@ public class ElephantAI : MonoBehaviour
     {
         startResolve = resolve;
         lastDeterredTime = Time.time;
-        followOffset = new Vector3(Random.Range(-3f, 3f), 0f, Random.Range(-4f, -2f));
+        if (followOffset == Vector3.zero) followOffset = HerdSlot(1);
         soundTimer = Random.Range(1f, 3f);
         if (IsLeader) EnterState(State.Approach);
     }
+
+    // An adult body is 4.4 m long and 2 m wide. Members walk in pairs behind the leader, one each
+    // side: 3 m out and 6 m back per pair (the leader's rear is 1.9 m behind its centre, a
+    // member's head 2.5 m in front of its own).
+    public static Vector3 HerdSlot(int member)
+    {
+        float side = member % 2 == 1 ? 1f : -1f;
+        int row = (member + 1) / 2;
+        return new Vector3(side * Random.Range(2.8f, 3.4f), 0f, -6f * row + Random.Range(-0.5f, 0.5f));
+    }
+
+    // A calf walks close beside its mother, on the side the first member leaves free.
+    public static Vector3 CalfSlot() => new Vector3(-2.6f, 0f, Random.Range(-1.5f, -0.5f));
 
     void Update()
     {
