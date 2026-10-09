@@ -9,6 +9,11 @@ using UnityEngine;
 public class DebriefPanel : MonoBehaviour
 {
     public GameObject panel;
+    [Tooltip("The ending title and its one line, at the top of the board.")]
+    public TextMeshPro header;
+    [Tooltip("The three score plaques: you, elephants, crop.")]
+    public TextMeshPro[] scores;
+    [Tooltip("Good choices, next time, and how to restart.")]
     public TextMeshPro results;
     public TextMeshPro credits;
     public GameObject restartButton;
@@ -56,11 +61,22 @@ public class DebriefPanel : MonoBehaviour
         var sb = new StringBuilder();
         // Inks for the ola-leaf page (BoardStyle): dark green for good, burnt orange for warnings.
         string colour = ending == GameManager.Ending.EveryoneSafe ? Good : Warn;
-        sb.AppendLine($"<size=150%><color={colour}><b>{game.ResultTitle}</b></color></size>");
-        sb.AppendLine(game.ResultLine);
-        sb.AppendLine();
-        sb.AppendLine($"You <b>{game.peopleSafe:0}%</b>        Elephants <b>{game.elephantsSafe:0}%</b>        Crop <b>{game.CropSaved:0}%</b>");
-        sb.AppendLine();
+        string title = $"<size=150%><color={colour}><b>{game.ResultTitle}</b></color></size>\n{game.ResultLine}";
+        // The scores on their own wooden plaques (like the buttons), so they stand out.
+        if (header != null && scores != null && scores.Length >= 3)
+        {
+            header.text = title;
+            scores[0].text = $"You  {game.peopleSafe:0}%";
+            scores[1].text = $"Elephants  {game.elephantsSafe:0}%";
+            scores[2].text = $"Crop  {game.CropSaved:0}%";
+        }
+        else
+        {
+            sb.AppendLine(title);
+            sb.AppendLine();
+            sb.AppendLine($"You <b>{game.peopleSafe:0}%</b>        Elephants <b>{game.elephantsSafe:0}%</b>        Crop <b>{game.CropSaved:0}%</b>");
+            sb.AppendLine();
+        }
 
         // Each choice once, in the order it first happened, with how many times.
         var good = new List<string>();
@@ -96,7 +112,7 @@ public class DebriefPanel : MonoBehaviour
         if (tips.Count == 0) sb.AppendLine("-  Nothing to change. Well done!");
         foreach (var tip in tips) sb.AppendLine("-  " + tip);
         sb.AppendLine();
-        sb.AppendLine("Point at RESTART and Grab (grip / G) to play again, or at QUIT to close the game.");
+        sb.AppendLine("Point at RESTART or QUIT and Grab (grip / G).");
 
         if (results != null) results.text = sb.ToString();
         if (credits != null) credits.text = creditsText;

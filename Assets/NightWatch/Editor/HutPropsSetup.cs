@@ -460,9 +460,23 @@ public static class HutPropsSetup
         var center = new Vector3(0f, 4.4f, 7f);
         BoardStyle.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f));
         // The results fill the board above the buttons.
-        // Up to 2.6 (it shrinks only when the list is long): 1.4 was too small to read from the hut.
-        var results = BoardStyle.BodyText(EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, 0.35f, 0f), Quaternion.identity,
-            new Vector2(5.7f, 2.6f), "", 2.6f));
+        // Top: the ending title and its line. Then three score plaques (wood, gold letters, like the
+        // buttons). Then good choices and next time, above the buttons. Text up to 2.4 (it shrinks
+        // only when long): 1.4 was too small to read from the hut.
+        var header = BoardStyle.BodyText(EditorKit.Text("Header", debriefPanel.transform, center + new Vector3(0f, 1.32f, 0f), Quaternion.identity,
+            new Vector2(5.7f, 0.75f), "", 2.4f));
+        var scores = new TextMeshPro[3];
+        for (int i = 0; i < 3; i++)
+        {
+            var at = center + new Vector3((i - 1) * 1.95f, 0.66f, -0.06f);
+            EditorKit.Part("ScorePlaque", PrimitiveType.Cube, debriefPanel.transform, at, new Vector3(1.75f, 0.42f, 0.08f),
+                BoardStyle.ButtonMaterial(false), false);
+            scores[i] = EditorKit.Text("Score", debriefPanel.transform, at + new Vector3(0f, 0f, -0.05f), Quaternion.identity,
+                new Vector2(1.6f, 0.34f), "", 2f, TextAlignmentOptions.Center);
+            BoardStyle.ButtonText(scores[i]);
+        }
+        var results = BoardStyle.BodyText(EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, -0.45f, 0f), Quaternion.identity,
+            new Vector2(5.7f, 1.3f), "", 2.2f));
         // The credits on their own board to the right, turned toward the hut: every third-party
         // asset with its author and licence did not fit beside the results.
         var creditsAt = center + new Vector3(5.3f, 0f, -1.3f);
@@ -496,6 +510,8 @@ public static class HutPropsSetup
 
         var dp = debriefRoot.AddComponent<DebriefPanel>();
         dp.panel = debriefPanel;
+        dp.header = header;
+        dp.scores = scores;
         dp.results = results;
         dp.credits = credits;
         dp.restartButton = restart;

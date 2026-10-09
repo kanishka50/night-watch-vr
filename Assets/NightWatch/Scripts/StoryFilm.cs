@@ -9,8 +9,10 @@ using UnityEngine.UI;
 using UnityEngine.Video;
 
 // The story at the very beginning, before the START screen: our story film (docs/story-film.md),
-// full screen over a black view as soon as the game starts (the VideoPlayer draws it on the
-// camera's near plane, in front of everything). The video is silent; the film's sounds are played
+// full screen as soon as the game starts. On the screen (simulator, Windows build) it fills the
+// whole window: the black cinema bar baked into the top of the video is cut off and the sides are
+// trimmed a little, so only the bottom bar with the captions stays black. On a headset the screen
+// layer is not seen, so there the VideoPlayer draws on the camera's near plane, over black. The video is silent; the film's sounds are played
 // here at set video times, so they stay in time. Space, Enter or the controller's A button skip it
 // (an input action). Then the view fades in on the START board at the start spot.
 // The video is Assets/StreamingAssets/NightWatchStory.mp4 (made by tools/film_make.py video);
@@ -79,10 +81,22 @@ public class StoryFilm : MonoBehaviour
         var note = SkipNote();
         yield return null;
 
-        player.renderMode = VideoRenderMode.CameraNearPlane;
-        player.targetCamera = Camera.main;
-        player.aspectRatio = VideoAspectRatio.FitInside;
-        player.targetCameraAlpha = 1f;
+        RenderTexture frame = null;
+        GameObject filmScreen = null;
+        if (UnityEngine.XR.XRSettings.isDeviceActive)
+        {
+            player.renderMode = VideoRenderMode.CameraNearPlane;
+            player.targetCamera = Camera.main;
+            player.aspectRatio = VideoAspectRatio.FitInside;
+            player.targetCameraAlpha = 1f;
+        }
+        else
+        {
+            frame = new RenderTexture(VideoWidth, VideoHeight, 0);
+            player.renderMode = VideoRenderMode.RenderTexture;
+            player.targetTexture = frame;
+            filmScreen = FilmScreen(frame);
+        }
         player.url = path;
         player.loopPointReached += OnEnded;
         player.Prepare();
@@ -109,7 +123,46 @@ public class StoryFilm : MonoBehaviour
         skipAction.Disable();
         skipAction.Dispose();
         if (note != null) Destroy(note);
+        if (filmScreen != null) Destroy(filmScreen);
+        if (frame != null)
+        {
+            player.targetTexture = null;
+            frame.Release();
+            Destroy(frame);
+        }
         yield return Finish();
+    }
+
+    // The video file: 1280 x 720 with black cinema bars baked in, 92 pixels at the top and at the
+    // bottom (the captions are in the bottom one).
+    const int VideoWidth = 1280, VideoHeight = 720, TopBar = 92;
+
+    // A screen layer that the video fills: the top bar is cut off, and the picture is scaled to
+    // cover the whole window (the sides are trimmed a little on a 16:9 screen).
+    static GameObject FilmScreen(RenderTexture frame)
+    {
+        var go = new GameObject("FilmScreen");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 90;   // under the skip note (100)
+
+        var black = new GameObject("Black").AddComponent<Image>();
+        black.transform.SetParent(go.transform, false);
+        black.color = Color.black;
+        var blackRect = black.rectTransform;
+        blackRect.anchorMin = Vector2.zero;
+        blackRect.anchorMax = Vector2.one;
+        blackRect.offsetMin = blackRect.offsetMax = Vector2.zero;
+
+        var picture = new GameObject("Picture").AddComponent<RawImage>();
+        picture.transform.SetParent(go.transform, false);
+        picture.texture = frame;
+        float kept = (VideoHeight - TopBar) / (float)VideoHeight;
+        picture.uvRect = new Rect(0f, 0f, 1f, kept);   // UV 0 is the bottom row
+        var fitter = picture.gameObject.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        fitter.aspectRatio = VideoWidth / (VideoHeight * kept);
+        return go;
     }
 
     void OnEnded(VideoPlayer source) => ended = true;
