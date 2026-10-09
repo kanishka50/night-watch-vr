@@ -29,6 +29,10 @@ public static class FarmLayout
     // East of the hut, in the yard, in view from the start spot.
     public static readonly Vector3 Energiser = new Vector3(2.8f, 0f, 1.2f);
 
+    // No heavy village trees (40,000+ triangles each) this close to the hut: from the hut they
+    // would always be drawn in full. Two big trees north of the hut are left out by this.
+    public const float NoHeavyTrees = 30f;
+
     const float YardRadius = 4f, BonfireRadius = 3f, HouseRadius = 6.5f, PathHalfWidth = 0.8f;
 
     // Walking routes from the hut and the start spot, along the bunds where possible.

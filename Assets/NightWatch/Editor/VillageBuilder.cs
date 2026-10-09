@@ -404,23 +404,29 @@ public static class VillageBuilder
             {
                 for (int k = 0; k < count; k++)
                 {
-                    var go = (GameObject)PrefabUtility.InstantiatePrefab(model, sceneRoot);
+                    // The village's pose goes on a parent, so the model keeps its own size and offset
+                    // (the shed's file shrinks it to 0.007, the wire fence's to 0.87).
                     int o = k * PropSet.PoseSize;
-                    go.name = count > 1 ? $"{g.name}_{k + 1}" : g.name;
-                    go.transform.SetPositionAndRotation(new Vector3(poses[o], poses[o + 1], poses[o + 2]),
+                    var placed = new GameObject(count > 1 ? $"{g.name}_{k + 1}" : g.name).transform;
+                    placed.SetParent(sceneRoot, false);
+                    placed.SetPositionAndRotation(new Vector3(poses[o], poses[o + 1], poses[o + 2]),
                         Quaternion.Euler(0f, poses[o + 3], 0f));
-                    go.transform.localScale = new Vector3(poses[o + 4], poses[o + 5], poses[o + 6]);
-                    foreach (var t in go.GetComponentsInChildren<Transform>(true)) t.gameObject.isStatic = true;
+                    placed.localScale = new Vector3(poses[o + 4], poses[o + 5], poses[o + 6]);
+                    var go = (GameObject)PrefabUtility.InstantiatePrefab(model, placed);
+                    go.transform.localPosition = model.transform.localPosition;
+                    go.transform.localRotation = model.transform.localRotation;
+                    go.transform.localScale = model.transform.localScale;
+                    foreach (var t in placed.GetComponentsInChildren<Transform>(true)) t.gameObject.isStatic = true;
                     sceneCount++;
                 }
                 continue;
             }
 
-            poses = ClearFarm(poses, ref cleared);
+            var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
+            // Heavy trees (the ones with a cheap far stand-in) are drawn in full near the player.
+            poses = ClearFarm(poses, rule.proxy != null ? FarmLayout.NoHeavyTrees : 0f, ref cleared);
             count = poses.Length / PropSet.PoseSize;
             if (count == 0) continue;
-
-            var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
             float size = ModelSize(model) * MaxScale(poses);
             var parts = Parts(model, g.name);
             groups.Add(new PropSet.Group
@@ -523,13 +529,15 @@ public static class VillageBuilder
         return poses;
     }
 
-    // Leaves out the copies that stand in the farm's open places and crop plots.
-    static float[] ClearFarm(float[] poses, ref int cleared)
+    // Leaves out the copies that stand in the farm's open places and crop plots, and any closer to
+    // the hut than keepAway (m).
+    static float[] ClearFarm(float[] poses, float keepAway, ref int cleared)
     {
         var kept = new List<float>(poses.Length);
         for (int o = 0; o < poses.Length; o += PropSet.PoseSize)
         {
-            if (FarmLayout.ClearOfPlants(new Vector3(poses[o], 0f, poses[o + 2]))) { cleared++; continue; }
+            var p = new Vector3(poses[o], 0f, poses[o + 2]);
+            if (FarmLayout.ClearOfPlants(p) || p.magnitude < keepAway) { cleared++; continue; }
             for (int s = 0; s < PropSet.PoseSize; s++) kept.Add(poses[o + s]);
         }
         return kept.ToArray();
@@ -547,7 +555,6 @@ public static class VillageBuilder
     static PropSet.Part[] Parts(GameObject model, string name)
     {
         var parts = new List<PropSet.Part>();
-        var toModel = model.transform.worldToLocalMatrix;
         foreach (var r in model.GetComponentsInChildren<MeshRenderer>(true))
         {
             var mf = r.GetComponent<MeshFilter>();
@@ -562,7 +569,8 @@ public static class VillageBuilder
                     mesh = mf.sharedMesh,
                     submesh = s,
                     material = InstancedCopy(source, $"{name}_{parts.Count}"),
-                    local = toModel * r.transform.localToWorldMatrix,
+                    // Includes the model file's own top-level size and offset.
+                    local = r.transform.localToWorldMatrix,
                 });
             }
         }
@@ -597,7 +605,7 @@ public static class VillageBuilder
         {
             if (mf.sharedMesh == null) continue;
             var b = mf.sharedMesh.bounds;
-            var m = model.transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+            var m = mf.transform.localToWorldMatrix;
             foreach (var corner in new[] { b.min, b.max, new Vector3(b.min.x, b.max.y, b.min.z), new Vector3(b.max.x, b.min.y, b.max.z) })
             {
                 var p = m.MultiplyPoint3x4(corner);
