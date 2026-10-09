@@ -8,12 +8,12 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: NightSky
-  m_Shader: {fileID: 106, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 4800000, guid: 0e9a5976a9fa1e2458293fc4ed63254a, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
+  m_ValidKeywords: []
+  m_InvalidKeywords:
   - _SUNDISK_NONE
-  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -28,11 +28,20 @@ Material:
     m_Floats:
     - _AtmosphereThickness: 0.6
     - _Exposure: 0.12
+    - _MoonShow: 1
+    - _Stars: 1
     - _SunDisk: 0
+    - _SunGlow: 0
     - _SunSize: 0.04
     - _SunSizeConvergence: 5
     m_Colors:
     - _GroundColor: {r: 0.02, g: 0.03, b: 0.06, a: 1}
+    - _HorizonColor: {r: 0.05, g: 0.07, b: 0.13, a: 1}
+    - _MoonColor: {r: 0.85, g: 0.9, b: 1, a: 1}
+    - _MoonDir: {r: -0.28016648, g: 0.5735764, b: -0.76975113, a: 0}
     - _SkyTint: {r: 0.2, g: 0.25, b: 0.45, a: 1}
+    - _SunColor: {r: 1, g: 0.54999995, b: 0.29999998, a: 1}
+    - _SunDir: {r: 0.97, g: -0.03, b: -0.14, a: 0}
+    - _ZenithColor: {r: 0.015, g: 0.025, b: 0.07, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

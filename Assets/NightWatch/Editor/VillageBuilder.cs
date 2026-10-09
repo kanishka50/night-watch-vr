@@ -715,9 +715,10 @@ public static class VillageBuilder
         return parts.ToArray();
     }
 
-    // The haystacks' straw, lighter and more golden: from the drone shots the thatch texture
-    // blurs into one colour, which was a dull brown ("plain brown eggs").
-    static readonly Color ThatchTint = new Color(1.3f, 1.25f, 1.1f);
+    // The haystacks' straw colour: from the drone shots the thatch texture (dark grey, 0.33)
+    // blurs into one colour, which was a dull brown ("plain brown eggs"). This colour times the
+    // texture gives dry golden straw (about 0.78, 0.65, 0.38 on screen in daylight).
+    static readonly Color StrawColor = new Color(2.3f, 2.05f, 1.35f);
 
     static void LightenThatch(GameObject haystack, string model)
     {
@@ -726,7 +727,11 @@ public static class VillageBuilder
             var mats = r.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
                 if (mats[i] != null && mats[i].name.StartsWith("thatch"))
-                    mats[i] = TintedCopy(mats[i], $"{model}_thatch", ThatchTint);
+                {
+                    mats[i] = TintedCopy(mats[i], $"{model}_thatch", Color.white);
+                    string property = mats[i].HasProperty("baseColorFactor") ? "baseColorFactor" : "_BaseColor";
+                    mats[i].SetColor(property, StrawColor);
+                }
             r.sharedMaterials = mats;
         }
     }

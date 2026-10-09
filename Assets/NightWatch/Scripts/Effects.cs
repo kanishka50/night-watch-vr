@@ -12,7 +12,10 @@ public static class Effects
         var cloud = Object.Instantiate(DustTemplate, at, Quaternion.identity);
         cloud.transform.localScale = Vector3.one * scale;
         var main = cloud.main;
-        main.startColor = color;
+        // The dust material is unlit, so dim it with the light of the moment (the sky part of the
+        // ambient light): full colour by day, about a third at night, so it does not glow.
+        float light = Mathf.Clamp01(RenderSettings.ambientSkyColor.maxColorComponent / 0.6f);
+        main.startColor = new Color(color.r * light, color.g * light, color.b * light, color.a);
         main.scalingMode = ParticleSystemScalingMode.Hierarchy;
         cloud.gameObject.SetActive(true);
         cloud.Play();
