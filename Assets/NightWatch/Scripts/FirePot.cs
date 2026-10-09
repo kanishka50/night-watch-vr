@@ -46,6 +46,8 @@ public class FirePot : MonoBehaviour
         if (crackle == null) return;
         crackle.clip = SoundBank.FireCrackle;
         crackle.loop = true;
+        // From a random point, so its crackles never line up with the other fires' loops.
+        crackle.time = Random.Range(0f, crackle.clip.length);
         crackle.Play();
     }
 

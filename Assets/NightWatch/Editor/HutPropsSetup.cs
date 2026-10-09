@@ -176,7 +176,7 @@ public static class HutPropsSetup
         crackle.spatialBlend = 1f;
         crackle.minDistance = 1f;
         crackle.maxDistance = 15f;
-        crackle.volume = 0.5f;
+        crackle.volume = 0.3f;   // it is about 1 m from the player all night
 
         var fire = pot.AddComponent<FirePot>();
         fire.fireLight = light;
