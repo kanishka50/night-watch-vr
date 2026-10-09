@@ -2,9 +2,13 @@
 // moving in the wind. It draws like the glTF material it replaces (same property names, so the
 // texture, colour, cut-out and two-sided setting carry over), lit by the sun or moon, the sky and
 // the torches and fires (URP lights), with fog.
-// The wind bends each plant from its foot: nothing at the ground, most at the top. A slow wave
-// rolls across the land (whole fields of rice lean together), gusts come through now and then,
-// and leaves flutter a little. WindDriver sets the wind for the whole scene (_NightWatchWind);
+// Two ways of moving (_WindMode):
+//  0 = whole plant (rice, grass, reeds, shrubs): it bends from its foot, nothing at the ground,
+//      most at the top. A slow wave rolls across the land (whole fields of rice lean together).
+//  1 = leaves of a tree, palm or banana: the trunk is not drawn with this shader and stays still;
+//      the leaves move more the further they are from the crown (where they join the trunk),
+//      so frond tips sway and bob while the crown stays on the trunk.
+// Gusts come through now and then, and leaves flutter a little. WindDriver sets the wind for the whole scene (_NightWatchWind);
 // each material says how much its plant bends (VillageBuilder sets it per model).
 Shader "NightWatch/Foliage"
 {
@@ -22,6 +26,10 @@ Shader "NightWatch/Foliage"
         _WindRowY ("Part to model: y row (set by the builder)", Vector) = (0, 1, 0, 0)
         _ModelBase ("Model foot (y, model space)", Float) = 0
         _ModelHeight ("Model height (model space)", Float) = 1
+        _WindMode ("0 = whole plant bends, 1 = leaves move round the crown", Float) = 0
+        _WindRowX ("Part to model: x row (set by the builder)", Vector) = (1, 0, 0, 0)
+        _WindRowZ ("Part to model: z row (set by the builder)", Vector) = (0, 0, 1, 0)
+        _LeafAnchor ("Crown x, z and leaf reach (model space)", Vector) = (0, 0, 1, 0)
     }
     SubShader
     {
@@ -34,8 +42,8 @@ Shader "NightWatch/Foliage"
             float4 baseColorTexture_ST;
             half4 baseColorFactor;
             half alphaCutoff, roughnessFactor;
-            float _WindBend, _WindFlutter, _ModelBase, _ModelHeight;
-            float4 _WindRowY;
+            float _WindBend, _WindFlutter, _ModelBase, _ModelHeight, _WindMode;
+            float4 _WindRowY, _WindRowX, _WindRowZ, _LeafAnchor;
         CBUFFER_END
 
         TEXTURE2D(baseColorTexture);
@@ -52,16 +60,7 @@ Shader "NightWatch/Foliage"
             float2 dir = _NightWatchWind.w > 0.5 ? normalize(_NightWatchWind.xy + 1e-5) : normalize(float2(-1, -1));
             float strength = _NightWatchWind.w > 0.5 ? _NightWatchWind.z : 1.0;
 
-            // How high this point is on its plant (0 at the foot, 1 at the top).
-            float modelY = dot(_WindRowY, float4(positionOS, 1.0));
-            float up = saturate((modelY - _ModelBase) / max(_ModelHeight, 1e-4));
-            float bend = up * up;
-
-            // The plant's height in the world (copies can be scaled).
-            float scaleY = length(float3(UNITY_MATRIX_M._m01, UNITY_MATRIX_M._m11, UNITY_MATRIX_M._m21));
-            float height = _ModelHeight * scaleY * length(_WindRowY.xyz);
-
-            // A wave rolling across the land, a slower second one, and gusts now and then.
+            float4 p4 = float4(positionOS, 1.0);
             float2 foot = float2(UNITY_MATRIX_M._m03, UNITY_MATRIX_M._m23);
             float t = _Time.y;
             float along = dot(foot, dir);
@@ -69,6 +68,34 @@ Shader "NightWatch/Foliage"
             float swell = 0.5 + 0.5 * sin(along * 0.11 + foot.x * 0.05 - t * 0.55);
             float gust = pow(saturate(sin(along * 0.045 - t * 0.33) * 0.5 + 0.5), 6.0);
             float lean = (0.25 + 0.45 * wave * swell + 0.9 * gust) * strength;
+
+            if (_WindMode > 0.5)
+            {
+                // Leaves: how far out from the crown this point is (0 at the crown, 1 at the tips).
+                float2 modelXZ = float2(dot(_WindRowX, p4), dot(_WindRowZ, p4));
+                float reach = max(_LeafAnchor.z, 1e-3);
+                float out1 = saturate(length(modelXZ - _LeafAnchor.xy) / reach);
+                float w = out1 * sqrt(out1);
+                float scaleXZ = length(float3(UNITY_MATRIX_M._m00, UNITY_MATRIX_M._m10, UNITY_MATRIX_M._m20)) * length(_WindRowX.xyz);
+                float size = reach * scaleXZ;
+                // Each leaf on its own beat (by where it points), so fronds do not move as one board.
+                float beat = dot(positionWS.xz, float2(0.9, 0.7));
+                float bob = sin(t * 1.9 + beat) * 0.6 + sin(t * 3.3 + beat * 1.7) * 0.4;
+                float3 leaf = float3(dir.x, 0, dir.y) * (lean * _WindBend * size * w);
+                leaf.y += bob * _WindBend * 0.7 * size * w * (0.4 + 0.6 * strength);
+                float leafShiver = sin(t * 8.0 + dot(positionWS, float3(3.1, 2.3, 2.7)));
+                leaf += float3(dir.y, 0.7, -dir.x) * (leafShiver * _WindFlutter * 0.03 * min(size, 4.0) * w * (0.4 + strength * 0.6));
+                return positionWS + leaf;
+            }
+
+            // Whole plant: how high this point is on it (0 at the foot, 1 at the top).
+            float modelY = dot(_WindRowY, p4);
+            float up = saturate((modelY - _ModelBase) / max(_ModelHeight, 1e-4));
+            float bend = up * up;
+
+            // The plant's height in the world (copies can be scaled).
+            float scaleY = length(float3(UNITY_MATRIX_M._m01, UNITY_MATRIX_M._m11, UNITY_MATRIX_M._m21));
+            float height = _ModelHeight * scaleY * length(_WindRowY.xyz);
 
             float3 offset = float3(dir.x, 0, dir.y) * (lean * _WindBend * height * bend);
             // Leaves shiver: a small fast movement that differs from point to point.

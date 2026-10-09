@@ -100,9 +100,11 @@ public static class VillageBuilder
         { "fence_stick", new Rule(100f, true) }, { "fence_bamboo", new Rule(100f, true) }, { "gate_wood", new Rule(Always, true) },
     };
 
-    // Plants that move in the wind (shader NightWatch/Foliage, WindDriver): how far the top leans
-    // (share of the plant's height) and how much the leaves flutter. Rice leans most, so waves roll
-    // across the field; big trees only stir. Everything else (rocks, stumps, props) stays still.
+    // Plants that move in the wind (shader NightWatch/Foliage, WindDriver) and how much the leaves
+    // flutter. Small plants bend as a whole: bend = how far the top leans (share of the plant's
+    // height); rice leans most, so waves roll across the field. Trees, palms and bananas (Trees)
+    // keep their trunks and branches still; only their leaves move: bend = how far the leaf tips
+    // sway (share of the leaves' reach from the crown). Everything else stays still.
     static readonly Dictionary<string, (float bend, float flutter)> Wind = new Dictionary<string, (float, float)>
     {
         { "rice_green", (0.16f, 0.3f) }, { "rice_gold", (0.14f, 0.25f) },
@@ -110,12 +112,13 @@ public static class VillageBuilder
         { "grass_medium_02", (0.12f, 0.3f) }, { "grass_bermuda_01", (0.1f, 0.2f) }, { "reeds", (0.12f, 0.3f) },
         { "shrub_01", (0.05f, 0.5f) }, { "shrub_02", (0.05f, 0.5f) }, { "shrub_03", (0.05f, 0.5f) }, { "shrub_04", (0.05f, 0.5f) },
         { "fern_02", (0.06f, 0.5f) }, { "nettle_plant", (0.06f, 0.4f) }, { "periwinkle_plant", (0.04f, 0.4f) }, { "weed_plant_02", (0.06f, 0.4f) },
-        { "banana_1", (0.04f, 0.6f) }, { "banana_2", (0.04f, 0.6f) },
-        { "palm_1", (0.025f, 0.5f) }, { "palm_2", (0.025f, 0.5f) }, { "palm_3", (0.025f, 0.5f) }, { "palm_4", (0.025f, 0.5f) },
-        { "island_tree_01", (0.012f, 0.5f) }, { "island_tree_02", (0.012f, 0.5f) }, { "island_tree_03", (0.012f, 0.5f) },
-        { "tree_small_02", (0.02f, 0.5f) }, { "jacaranda_tree", (0.012f, 0.5f) },
-        { "jungle_tree_1", (0.012f, 0.4f) }, { "jungle_tree_2", (0.012f, 0.4f) }, { "jungle_tree_3", (0.012f, 0.4f) },
+        { "palm_1", (0.06f, 0.5f) }, { "palm_2", (0.06f, 0.5f) }, { "palm_3", (0.06f, 0.5f) }, { "palm_4", (0.06f, 0.5f) },
+        { "banana_1", (0.07f, 0.6f) }, { "banana_2", (0.07f, 0.6f) },
+        { "island_tree_01", (0.04f, 0.5f) }, { "island_tree_02", (0.04f, 0.5f) }, { "island_tree_03", (0.04f, 0.5f) },
+        { "tree_small_02", (0.045f, 0.5f) }, { "jacaranda_tree", (0.03f, 0.5f) },
+        { "jungle_tree_1", (0.035f, 0.4f) }, { "jungle_tree_2", (0.035f, 0.4f) }, { "jungle_tree_3", (0.035f, 0.4f) },
     };
+    static readonly string[] Trees = { "palm_", "banana_", "island_tree_", "jungle_tree_", "jacaranda_tree", "tree_small_" };
 
     // The four ground textures: file name, tile size (m) and tint, as in the browser's terrain shader
     // (it pushes the dry-season grass scans towards monsoon green; ours a little greener still).
@@ -735,7 +738,9 @@ public static class VillageBuilder
     {
         var parts = new List<PropSet.Part>();
         bool windy = Wind.TryGetValue(name, out var wind);
+        bool tree = windy && System.Array.Exists(Trees, t => name.StartsWith(t));
         var (footY, height) = windy ? ModelHeight(model) : (0f, 1f);
+        var (crown, reach) = tree ? Crown(model, name) : (Vector2.zero, 1f);
         foreach (var r in model.GetComponentsInChildren<MeshRenderer>(true))
         {
             var mf = r.GetComponent<MeshFilter>();
@@ -746,7 +751,9 @@ public static class VillageBuilder
                 var source = mats.Length > 0 ? mats[Mathf.Min(s, mats.Length - 1)] : null;
                 if (source == null) continue;
                 var material = InstancedCopy(source, $"{name}_{parts.Count}");
-                if (windy) Foliage(material, r.transform.localToWorldMatrix, footY, height, wind.bend, wind.flutter);
+                if (windy && !tree) Foliage(material, r.transform.localToWorldMatrix, footY, height, wind.bend, wind.flutter);
+                // Trees: only the leaves move; the trunk and branches keep the still glTF material.
+                if (tree && IsLeaves(source.name)) Leaves(material, r.transform.localToWorldMatrix, crown, reach, wind.bend, wind.flutter);
                 parts.Add(new PropSet.Part
                 {
                     mesh = mf.sharedMesh,
@@ -776,8 +783,72 @@ public static class VillageBuilder
         mat.SetFloat("_ModelHeight", Mathf.Max(height, 0.01f));
         mat.SetFloat("_WindBend", bend);
         mat.SetFloat("_WindFlutter", flutter);
+        mat.SetFloat("_WindMode", 0f);
         mat.enableInstancing = true;
         EditorUtility.SetDirty(mat);
+    }
+
+    // A tree's leaves: the village models name them "...leaves" (broadleaf trees) or "col" (palm
+    // fronds and coconuts, the banana plant).
+    static bool IsLeaves(string material) => material.Contains("leaves") || material == "col";
+
+    static void Leaves(Material mat, Matrix4x4 local, Vector2 crown, float reach, float bend, float flutter)
+    {
+        Foliage(mat, local, 0f, 1f, bend, flutter);
+        if (mat.shader.name != "NightWatch/Foliage") return;
+        mat.SetFloat("_WindMode", 1f);
+        mat.SetVector("_WindRowX", local.GetRow(0));
+        mat.SetVector("_WindRowZ", local.GetRow(2));
+        mat.SetVector("_LeafAnchor", new Vector4(crown.x, crown.y, Mathf.Max(reach, 0.1f), 0f));
+        EditorUtility.SetDirty(mat);
+    }
+
+    // Where a tree's leaves join it (x, z in the model's space) and how far they reach from there.
+    // Palms: the coconut bunch (their smallest leaf part) sits at the crown. Broadleaf trees: the
+    // middle of the trunk part. Bananas (one part): the stem at the model's origin.
+    static (Vector2 crown, float reach) Crown(GameObject model, string name)
+    {
+        var leaves = new List<Bounds>();
+        Bounds? trunk = null, smallest = null;
+        foreach (var r in model.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            var mf = r.GetComponent<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null) continue;
+            var mats = r.sharedMaterials;
+            var m = r.transform.localToWorldMatrix;
+            for (int s = 0; s < mf.sharedMesh.subMeshCount; s++)
+            {
+                var mat = mats.Length > 0 ? mats[Mathf.Min(s, mats.Length - 1)] : null;
+                if (mat == null) continue;
+                var b = ToModel(mf.sharedMesh.GetSubMesh(s).bounds, m);
+                if (IsLeaves(mat.name))
+                {
+                    leaves.Add(b);
+                    if (smallest == null || b.size.sqrMagnitude < smallest.Value.size.sqrMagnitude) smallest = b;
+                }
+                else if (mat.name.Contains("bark") || mat.name.Contains("trunk") || mat.name == name) trunk = b;
+            }
+        }
+        var crown = name.StartsWith("palm_") && smallest != null ? Flat(smallest.Value.center)
+                  : trunk != null ? Flat(trunk.Value.center) : Vector2.zero;
+        float reach = 0.1f;
+        foreach (var b in leaves)
+            for (int i = 0; i < 4; i++)
+            {
+                var corner = new Vector2((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.z : b.max.z);
+                reach = Mathf.Max(reach, Vector2.Distance(corner, crown));
+            }
+        return (crown, reach);
+    }
+
+    static Vector2 Flat(Vector3 p) => new Vector2(p.x, p.z);
+
+    static Bounds ToModel(Bounds b, Matrix4x4 m)
+    {
+        var box = new Bounds(m.MultiplyPoint3x4(b.center), Vector3.zero);
+        for (int i = 0; i < 8; i++)
+            box.Encapsulate(m.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents, new Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1) * 2f - Vector3.one)));
+        return box;
     }
 
     // The lowest point and the height of a model, in its own space (all parts).
