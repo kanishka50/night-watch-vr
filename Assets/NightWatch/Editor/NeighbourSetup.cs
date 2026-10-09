@@ -7,7 +7,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 // NavMesh is baked), on the back of the village house hut_c (FarmLayout.NeighbourHouse), the
 // side that faces our hut:
 //  - a back door that opens and a window that glows, the bottle lamp by the door, the neighbour
-//    (a simple figure with a lamp), the evening fire in the back yard and the rice store
+//    (a Sri Lankan farmer with a lamp, animated), the evening fire in the back yard and the rice store
 //  - the places they walk between (door, fire, yard, the far side of the yard) and where the
 //    bull goes (the store). The bull comes in through the garden gate on the village side.
 //  - the phone on the hut's west rail, to call and warn the neighbour
@@ -60,12 +60,13 @@ public static class NeighbourSetup
         EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute, false);
         EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0f, 0.7f, 0f), new Vector3(0.6f, 0.4f, 0.45f), jute, false);
 
-        var figure = BuildFigure(root, doorPoint.position, out var lampPivot, out var lamp);
+        var figure = BuildFigure(root, doorPoint.position, out var lampPivot, out var lamp, out var animator);
 
         var house = root.gameObject.AddComponent<NeighbourHouse>();
         house.door = hinge;
         house.window = window.GetComponent<Renderer>();
         house.figure = figure;
+        house.body = animator;
         house.lampPivot = lampPivot;
         house.lamp = lamp;
         house.bottleLamp = bottleLamp;
@@ -140,7 +141,210 @@ public static class NeighbourSetup
 
     // A simple standing person, feet at the pivot, facing +Z: sarong, shirt, head, arms, and a
     // lamp held out in the right hand. No colliders.
-    static Transform BuildFigure(Transform root, Vector3 at, out Transform lampPivot, out Light lamp)
+    // ---------------- The neighbour: a Sri Lankan farmer ----------------
+    // Quaternius "Animated Human" (CC0, OpenGameArt), repainted with our own palette: an off-white
+    // banian, a dark blue sarong colour, black hair, brown skin, a white cloth tied round the head.
+    // Its clips: Idle, Walk, Run, Working (bending to the fire), Death (falls; the neighbour is
+    // hurt, not killed). The lamp hangs from the right hand. Falls back to the old block figure
+    // if the model is missing.
+
+    const string CharacterFolder = "Assets/NightWatch/Characters/Neighbour";
+    const string FarmerModel = CharacterFolder + "/AnimatedHuman.fbx";
+    const string FarmerPalette = CharacterFolder + "/NeighbourPalette.png";
+    const string FarmerController = CharacterFolder + "/NeighbourAnimator.controller";
+    const float FarmerHeight = 1.65f;
+    static readonly string[] FarmerClips = { "Idle", "Walk", "Run", "Working", "Death" };
+    static readonly string[] LoopingClips = { "Idle", "Walk", "Run", "Working" };
+
+    static Transform BuildFigure(Transform root, Vector3 at, out Transform lampPivot, out Light lamp, out Animator animator)
+    {
+        animator = null;
+        PrepareFarmerModel();
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(FarmerModel);
+        if (model == null)
+        {
+            Debug.LogWarning($"Night Watch: no {FarmerModel}; the neighbour is the old block figure.");
+            return BuildBlockFigure(root, at, out lampPivot, out lamp);
+        }
+
+        var figure = EditorKit.Empty("NeighbourFigure", root, at);
+        var body = (GameObject)PrefabUtility.InstantiatePrefab(model, figure);
+        body.name = "Farmer";
+        body.transform.localPosition = Vector3.zero;
+        body.transform.localRotation = Quaternion.identity;
+        body.transform.localScale = Vector3.one;
+
+        // Face forward (+z): the toes point the way the farmer faces.
+        var foot = FindBone(body.transform, "LeftFoot");
+        var toe = FindBone(body.transform, "LeftToe_End");
+        if (foot != null && toe != null && figure.InverseTransformDirection(toe.position - foot.position).z < 0f)
+            body.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+        // Real size: the top of the head at 1.65 m, the soles on the ground.
+        var top = FindBone(body.transform, "HeadTop_End");
+        float height = top != null ? top.position.y - figure.position.y : 0f;
+        if (height > 0.01f) body.transform.localScale = Vector3.one * (FarmerHeight / height);
+        float lowest = float.MaxValue;
+        foreach (var t in body.GetComponentsInChildren<Transform>())
+            if (t.name.Contains("Toe") || t.name.Contains("Foot")) lowest = Mathf.Min(lowest, t.position.y);
+        if (lowest < float.MaxValue) body.transform.position += Vector3.up * (figure.position.y - lowest);
+
+        var skin = FarmerMaterial();
+        foreach (var r in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+        {
+            var mats = new Material[r.sharedMaterials.Length];
+            for (int i = 0; i < mats.Length; i++) mats[i] = skin;
+            r.sharedMaterials = mats;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        }
+
+        animator = body.GetComponent<Animator>();
+        if (animator == null) animator = body.AddComponent<Animator>();
+        animator.runtimeAnimatorController = FarmerAnimator();
+        animator.applyRootMotion = false;   // NeighbourHouse moves the figure; the clips walk on the spot
+        animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+
+        TieHeadCloth(body.transform, figure);
+
+        // The bottle lamp hangs from the right hand (NeighbourHouse keeps it upright).
+        var hand = FindBone(body.transform, "RightHand");
+        lampPivot = EditorKit.Group("LampPivot", hand != null ? hand : figure);
+        if (hand == null) lampPivot.localPosition = new Vector3(0.28f, 0.98f, 0.3f);
+        lampPivot.rotation = figure.rotation;
+        lamp = BuildHandLamp(lampPivot);
+        return figure;
+    }
+
+    // A white cotton cloth (a towel) tied round the head, the knot at the back, as farmers wear
+    // it in the sun and at night against the dew.
+    static void TieHeadCloth(Transform body, Transform figure)
+    {
+        var head = FindBone(body, "Head");
+        var top = FindBone(body, "HeadTop_End");
+        if (head == null || top == null) return;
+        float size = Vector3.Distance(head.position, top.position);
+        var cloth = EditorKit.Mat("HeadCloth", new Color(0.92f, 0.90f, 0.85f));
+        cloth.SetFloat("_Smoothness", 0.05f);
+        var center = Vector3.Lerp(head.position, top.position, 0.55f);
+        var band = EditorKit.Part("HeadCloth", PrimitiveType.Cylinder, head, Vector3.zero,
+            new Vector3(size * 1.05f, size * 0.14f, size * 1.12f), cloth, false);
+        band.transform.SetPositionAndRotation(center, figure.rotation);
+        band.transform.localScale = new Vector3(size * 1.05f, size * 0.14f, size * 1.12f) / Mathf.Max(0.0001f, head.lossyScale.x);
+        var knot = EditorKit.Part("ClothKnot", PrimitiveType.Sphere, head, Vector3.zero, Vector3.one, cloth, false);
+        knot.transform.position = center - figure.forward * size * 0.55f;
+        knot.transform.localScale = Vector3.one * (size * 0.3f) / Mathf.Max(0.0001f, head.lossyScale.x);
+    }
+
+    static Light BuildHandLamp(Transform lampPivot)
+    {
+        EditorKit.Part("Handle", PrimitiveType.Cube, lampPivot, new Vector3(0f, -0.05f, 0f), new Vector3(0.02f, 0.1f, 0.02f),
+            EditorKit.Mat("Switch", new Color(0.08f, 0.08f, 0.08f)), false);
+        EditorKit.Part("Lamp", PrimitiveType.Cube, lampPivot, new Vector3(0f, -0.16f, 0f), new Vector3(0.12f, 0.14f, 0.12f),
+            EditorKit.Mat("LampGlow", new Color(1f, 0.8f, 0.45f), true), false);
+        var lightGo = new GameObject("LampLight");
+        lightGo.transform.SetParent(lampPivot, false);
+        lightGo.transform.localPosition = new Vector3(0f, -0.16f, 0f);
+        var lamp = lightGo.AddComponent<Light>();
+        lamp.type = LightType.Point;
+        lamp.color = new Color(1f, 0.7f, 0.4f);
+        lamp.range = 7f;
+        lamp.intensity = 2.5f;
+        lamp.shadows = LightShadows.None;
+        return lamp;
+    }
+
+    static Transform FindBone(Transform root, string name)
+    {
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name == name) return t;
+        return null;
+    }
+
+    // Generic rig, no imported materials (ours is set), short clip names, the walking clips loop.
+    static void PrepareFarmerModel()
+    {
+        var importer = AssetImporter.GetAtPath(FarmerModel) as ModelImporter;
+        if (importer == null) return;
+        bool changed = false;
+        if (importer.animationType != ModelImporterAnimationType.Generic)
+        {
+            importer.animationType = ModelImporterAnimationType.Generic;
+            changed = true;
+        }
+        if (importer.materialImportMode != ModelImporterMaterialImportMode.None)
+        {
+            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            changed = true;
+        }
+        if (changed)
+        {
+            importer.SaveAndReimport();
+            changed = false;
+        }
+
+        var clips = importer.clipAnimations;
+        if (clips == null || clips.Length == 0) clips = importer.defaultClipAnimations;
+        var keep = new System.Collections.Generic.List<ModelImporterClipAnimation>();
+        foreach (var clip in clips)
+        {
+            string take = clip.takeName ?? clip.name;
+            string name = take.Contains("|") ? take.Substring(take.LastIndexOf('|') + 1) : take;
+            if (System.Array.IndexOf(FarmerClips, name) < 0) { changed = true; continue; }
+            bool loop = System.Array.IndexOf(LoopingClips, name) >= 0;
+            if (clip.name != name || clip.loopTime != loop) changed = true;
+            clip.name = name;
+            clip.loopTime = loop;
+            keep.Add(clip);
+        }
+        if (changed || importer.clipAnimations.Length == 0)
+        {
+            importer.clipAnimations = keep.ToArray();
+            importer.SaveAndReimport();
+        }
+
+        var texture = AssetImporter.GetAtPath(FarmerPalette) as TextureImporter;
+        if (texture != null && (texture.filterMode != FilterMode.Point || texture.mipmapEnabled))
+        {
+            // A 32 x 32 colour palette: sharp, no blending between the colour squares.
+            texture.filterMode = FilterMode.Point;
+            texture.mipmapEnabled = false;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.textureCompression = TextureImporterCompression.Uncompressed;
+            texture.SaveAndReimport();
+        }
+    }
+
+    static Material FarmerMaterial()
+    {
+        var mat = EditorKit.Mat("NeighbourFarmer", Color.white);
+        mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(FarmerPalette));
+        mat.SetColor("_BaseColor", Color.white);
+        mat.SetFloat("_Smoothness", 0.1f);
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    static RuntimeAnimatorController FarmerAnimator()
+    {
+        AssetDatabase.DeleteAsset(FarmerController);
+        var controller = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(FarmerController);
+        var machine = controller.layers[0].stateMachine;
+        foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(FarmerModel))
+        {
+            if (!(asset is AnimationClip clip) || clip.name.StartsWith("__preview__")) continue;
+            if (System.Array.IndexOf(FarmerClips, clip.name) < 0) continue;
+            var state = machine.AddState(clip.name);
+            state.motion = clip;
+            if (clip.name == "Idle") machine.defaultState = state;
+        }
+        if (machine.states.Length < FarmerClips.Length)
+            Debug.LogWarning($"Night Watch: {FarmerModel} gave {machine.states.Length} of the clips {string.Join(", ", FarmerClips)}.");
+        EditorUtility.SetDirty(controller);
+        return controller;
+    }
+
+    // The old stand-in: a block figure (used only if the farmer model is missing).
+    static Transform BuildBlockFigure(Transform root, Vector3 at, out Transform lampPivot, out Light lamp)
     {
         var figure = EditorKit.Empty("NeighbourFigure", root, at);
         var skin = EditorKit.Mat("Skin", new Color(0.45f, 0.30f, 0.20f));

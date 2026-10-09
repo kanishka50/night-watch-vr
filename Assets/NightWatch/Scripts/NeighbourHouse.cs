@@ -35,6 +35,8 @@ public class NeighbourHouse : MonoBehaviour
     public Transform figure;
     public Transform lampPivot;
     public Light lamp;
+    [Tooltip("The farmer's animations (Idle, Walk, Run, Working, Death). Empty = the old block figure.")]
+    public Animator body;
 
     [Header("Places")]
     public Transform doorPoint;
@@ -78,6 +80,8 @@ public class NeighbourHouse : MonoBehaviour
     float bullCameTime = float.PositiveInfinity;
     float atStoreTime = -1f;
     bool walking;
+    // How the lamp hangs, relative to the way the neighbour faces (a swing, a wave).
+    Quaternion lampTilt = Quaternion.identity;
     float lampIntensity;
     MaterialPropertyBlock windowBlock;
     Light fireLight;
@@ -198,7 +202,8 @@ public class NeighbourHouse : MonoBehaviour
 
         // Light the evening fire, then walk about the yard.
         yield return Walk(firePoint.position, walkSpeed, false);
-        yield return new WaitForSeconds(1f);
+        Play("Working");
+        yield return new WaitForSeconds(1.5f);
         if (yardFire != null) yardFire.SetActive(true);
         while (true)
         {
@@ -226,8 +231,10 @@ public class NeighbourHouse : MonoBehaviour
         if (!hurry)
         {
             FaceTowards(ElephantAI.HutCenter);
+            Play("Idle");
             yield return LiftLamp(1.5f);
             yield return Walk(firePoint.position, walkSpeed, false);
+            Play("Working");
             yield return new WaitForSeconds(0.8f);
             yield return GrowFire();
         }
@@ -241,7 +248,9 @@ public class NeighbourHouse : MonoBehaviour
         State = Mood.Danger;
         NoticeBoard.Message("The bull has seen your neighbour in the yard! Scare it away now!");
         FaceTowards(bull.transform.position);
-        if (lampPivot != null && lampPivot.parent == figure) lampPivot.localRotation = Quaternion.Euler(-60f, 0f, 0f);
+        Play("Idle");
+        // Frozen with fear; the old block figure holds its lamp up.
+        if (LampInHand) lampTilt = body != null ? Quaternion.identity : Quaternion.Euler(-60f, 0f, 0f);
 
         // The bull rears, flaps its ears and trumpets: a warning before it runs.
         bull.Alarm(warnDisplaySeconds);
@@ -280,7 +289,7 @@ public class NeighbourHouse : MonoBehaviour
         ActionLog.Record("Saved your neighbour", true,
             "You drove the bull away from the house.");
         NoticeBoard.Message("The bull has gone. Your neighbour is hurrying back inside, safe.");
-        if (lampPivot != null && lampPivot.parent == figure) lampPivot.localRotation = Quaternion.identity;
+        lampTilt = Quaternion.identity;
         yield return Walk(doorPoint.position, walkSpeed * 1.8f, false);
         yield return GoInAndLightUp();
         State = Mood.Safe;
@@ -313,23 +322,34 @@ public class NeighbourHouse : MonoBehaviour
         var startPos = figure.position;
         var upright = figure.rotation;
         var down = upright * Quaternion.Euler(-85f, 0f, 0f);
+        bool animated = body != null;
+        if (animated) Play("Death", 1.3f, 0.1f);
         for (float t = 0f; t < 0.45f; t += Time.deltaTime)
         {
             float k = t / 0.45f;
             figure.position = startPos + pushDirection * 1.8f * k + Vector3.up * 0.4f * Mathf.Sin(k * Mathf.PI);
-            figure.rotation = Quaternion.Slerp(upright, down, Mathf.SmoothStep(0f, 1f, k));
+            if (!animated) figure.rotation = Quaternion.Slerp(upright, down, Mathf.SmoothStep(0f, 1f, k));
             yield return null;
         }
         figure.position = startPos + pushDirection * 1.8f;
-        figure.rotation = down;
+        if (!animated) figure.rotation = down;
 
         // Hurt, not killed: after a while they get up slowly and limp back inside.
         yield return new WaitForSeconds(hurtLieSeconds);
         NoticeBoard.Message("Your neighbour is hurt, but alive. They are limping back inside.");
-        for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+        if (animated)
         {
-            figure.rotation = Quaternion.Slerp(down, upright, Mathf.SmoothStep(0f, 1f, t / 1.5f));
-            yield return null;
+            // A slow blend from lying to standing reads as getting up.
+            Play("Idle", 0.6f, 1.2f);
+            yield return new WaitForSeconds(1.5f);
+        }
+        else
+        {
+            for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+            {
+                figure.rotation = Quaternion.Slerp(down, upright, Mathf.SmoothStep(0f, 1f, t / 1.5f));
+                yield return null;
+            }
         }
         figure.rotation = upright;
         yield return Walk(doorPoint.position, limpSpeed, true);
@@ -393,19 +413,22 @@ public class NeighbourHouse : MonoBehaviour
 
     IEnumerator LiftLamp(float seconds)
     {
-        if (lampPivot == null || lampPivot.parent != figure) yield break;
+        if (!LampInHand) yield break;
         for (float t = 0f; t < seconds; t += Time.deltaTime)
         {
-            // Raised high and waved toward the hut.
-            lampPivot.localRotation = Quaternion.Euler(-100f, 0f, Mathf.Sin(t * 8f) * 20f);
+            // Waved toward the hut (the old block figure raises it high).
+            lampTilt = body != null
+                ? Quaternion.Euler(0f, 0f, Mathf.Sin(t * 8f) * 35f)
+                : Quaternion.Euler(-100f, 0f, Mathf.Sin(t * 8f) * 20f);
             yield return null;
         }
-        lampPivot.localRotation = Quaternion.identity;
+        lampTilt = Quaternion.identity;
     }
 
     IEnumerator Walk(Vector3 target, float speed, bool limp)
     {
         walking = true;
+        Play(limp || speed <= walkSpeed * 1.5f ? "Walk" : "Run", limp ? 0.6f : 1f);
         target.y = figure.position.y;
         FaceTowards(target);
         float baseY = figure.position.y;
@@ -416,13 +439,16 @@ public class NeighbourHouse : MonoBehaviour
             // A limp: slower, with a deep dip on every other step.
             float step = limp ? speed * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(t * 3f))) : speed;
             var next = Vector3.MoveTowards(figure.position, target, step * Time.deltaTime);
-            float bob = limp ? -0.1f * Mathf.Abs(Mathf.Sin(t * 3f)) : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
+            // The animated farmer bobs by itself; the limp still dips a little.
+            float bob = limp ? -(body != null ? 0.04f : 0.1f) * Mathf.Abs(Mathf.Sin(t * 3f))
+                : body != null ? 0f : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
             next.y = baseY + bob;
             figure.position = next;
             if (!limp) SwingLamp(1f);
             yield return null;
         }
         figure.position = new Vector3(target.x, baseY, target.z);
+        Play("Idle");
         walking = false;
     }
 
@@ -446,10 +472,26 @@ public class NeighbourHouse : MonoBehaviour
         if (look.sqrMagnitude > 0.01f) figure.rotation = Quaternion.LookRotation(look);
     }
 
+    // The lamp is in the hand while it sits anywhere inside the figure (it flies off in a fall).
+    bool LampInHand => lampPivot != null && figure != null && lampPivot.IsChildOf(figure);
+
+    void Play(string state, float speed = 1f, float blend = 0.2f)
+    {
+        if (body == null || !body.isActiveAndEnabled) return;
+        body.speed = speed;
+        body.CrossFadeInFixedTime(state, blend);
+    }
+
+    // The lamp hangs upright from the hand, after the animation has moved the hand.
+    void LateUpdate()
+    {
+        if (LampInHand && figure.gameObject.activeInHierarchy) lampPivot.rotation = figure.rotation * lampTilt;
+    }
+
     void SwingLamp(float amount)
     {
-        if (lampPivot == null || lampPivot.parent != figure) return;
-        lampPivot.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * 5f) * 12f * amount);
+        if (!LampInHand) return;
+        lampTilt = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * 5f) * 12f * amount);
         if (lamp != null) lamp.intensity = lampIntensity * (0.85f + 0.15f * Mathf.PerlinNoise(Time.time * 6f, 3f));
     }
 
