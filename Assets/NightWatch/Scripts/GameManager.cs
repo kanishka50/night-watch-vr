@@ -12,7 +12,7 @@ using UnityEngine.SceneManagement;
 public class GameManager : MonoBehaviour
 {
     public enum Phase { Afternoon, Dusk, Night, Dawn, Debrief }
-    public enum Ending { None, EveryoneSafe, ElephantHurt, CropLost, FarmerHurt, ElephantKilled, PlayerDied, NeighbourHurt }
+    public enum Ending { None, EveryoneSafe, ElephantHurt, CropLost, FarmerHurt, ElephantKilled, PlayerDied, NeighbourKilled }
 
     public static GameManager Instance { get; private set; }
 
@@ -70,7 +70,6 @@ public class GameManager : MonoBehaviour
     string pendingReason;
     string lastHurtReason;
     bool elephantKilled;
-    bool neighbourHurt;
     bool showDebriefFromGround;
     float dawnTimer = -1f;
 
@@ -241,11 +240,14 @@ public class GameManager : MonoBehaviour
         elephantsSafe = Mathf.Max(0f, elephantsSafe - amount);
     }
 
-    // The neighbour was knocked down outside their house. The night goes on; it shows at dawn.
-    public void NeighbourHurt()
+    // The bull reached the neighbour outside their house and killed them. The night ends, as when
+    // an elephant is killed: a slow fade, then the ending.
+    public void NeighbourKilled()
     {
-        neighbourHurt = true;
-        NoticeBoard.Message("The bull knocked your neighbour down! Keep it away from the house.");
+        NoticeBoard.Message("The bull has killed your neighbour.");
+        ScreenFeedback.FadeOut(6f);
+        EndEarly(Ending.NeighbourKilled, "Your neighbour went outside not knowing an elephant was there, and the bull killed them. " +
+            "Warn the people around you early: one phone call would have kept them inside.", 6.5f);
     }
 
     public void ElephantKilled(string reason)
@@ -271,8 +273,6 @@ public class GameManager : MonoBehaviour
     {
         if (elephantKilled)
             Finish(Ending.ElephantKilled, "An elephant died tonight. Hakka patas is illegal and cruel, and it does not solve the conflict.");
-        else if (neighbourHurt)
-            Finish(Ending.NeighbourHurt, "Your neighbour went outside not knowing an elephant was there, and was knocked down. Warn the people around you early.");
         else if (peopleSafe < 100f)
             Finish(Ending.FarmerHurt, lastHurtReason);
         else if (elephantsSafe < 100f)
@@ -351,7 +351,7 @@ public class GameManager : MonoBehaviour
             case Ending.CropLost: return "Safe, but the crop is lost";
             case Ending.FarmerHurt: return "You survived, but you were hurt";
             case Ending.PlayerDied: return "You did not survive the night";
-            case Ending.NeighbourHurt: return "Your neighbour was hurt";
+            case Ending.NeighbourKilled: return "Your neighbour was killed";
             case Ending.ElephantKilled: return "An elephant was killed";
             default: return "";
         }
@@ -367,7 +367,7 @@ public class GameManager : MonoBehaviour
             case Ending.CropLost: return "No one was hurt, but most of the paddy is gone.";
             case Ending.FarmerHurt: return "You made it to dawn, but you were injured.";
             case Ending.PlayerDied: return "An elephant reached you. No one can outrun an elephant in the dark.";
-            case Ending.NeighbourHurt: return "Your neighbour went outside in the dark, and the bull was there.";
+            case Ending.NeighbourKilled: return "Your neighbour went outside in the dark, and the bull was there.";
             case Ending.ElephantKilled: return "The others stood by its body, calling, until they had to leave.";
             default: return "";
         }

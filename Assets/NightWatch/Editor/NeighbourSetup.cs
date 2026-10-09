@@ -144,8 +144,8 @@ public static class NeighbourSetup
     // ---------------- The neighbour: a Sri Lankan farmer ----------------
     // Quaternius "Animated Human" (CC0, OpenGameArt), repainted with our own palette: an off-white
     // banian, a dark blue sarong colour, black hair, brown skin, a white cloth tied round the head.
-    // Its clips: Idle, Walk, Run, Working (bending to the fire), Death (falls; the neighbour is
-    // hurt, not killed). The lamp hangs from the right hand. Falls back to the old block figure
+    // Its clips: Idle, Walk, Run, Working (bending to the fire), Death (the bull kills the
+    // neighbour). The lamp hangs from the right hand. Falls back to the old block figure
     // if the model is missing.
 
     const string CharacterFolder = "Assets/NightWatch/Characters/Neighbour";

@@ -15,11 +15,11 @@ using UnityEngine;
 //            side then goes to the field.
 //   No call: the bull from the village side goes for the rice at the house (Danger):
 //            it sees the neighbour, rears and trumpets, then runs at them. The player can still
-//            drive it away (Safe). If it reaches them, they are thrown down (Hurt), lie still for
-//            a while, then get up and limp inside.
+//            drive it away (Safe). If it reaches them, they are thrown down and killed (Killed):
+//            the lamp goes out, the house stays dark, and the night ends.
 public class NeighbourHouse : MonoBehaviour
 {
-    public enum Mood { Inside, Outside, GoingIn, Warned, Danger, Safe, Hurt }
+    public enum Mood { Inside, Outside, GoingIn, Warned, Danger, Safe, Killed }
 
     public static NeighbourHouse Instance { get; private set; }
 
@@ -58,9 +58,6 @@ public class NeighbourHouse : MonoBehaviour
     [Tooltip("The bull's centre this close to the neighbour during its run knocks them down (the trunk is 2.4 m in front of it).")]
     public float hitDistance = 3.2f;
     public float walkSpeed = 1f;
-    [Tooltip("After being knocked down: seconds on the ground, then a slow limp back inside.")]
-    public float hurtLieSeconds = 6f;
-    public float limpSpeed = 0.45f;
     [Tooltip("How far the door turns to open (inward, into the house).")]
     public float doorOpenAngle = 100f;
     public Color windowOnColor = new Color(1f, 0.75f, 0.40f);
@@ -125,8 +122,8 @@ public class NeighbourHouse : MonoBehaviour
                 // A late call: they hurry inside.
                 Switch(AnswerAndGoInside(true));
                 break;
-            case Mood.Hurt:
-                NoticeBoard.Message("Your neighbour is hurt. They are going back inside.");
+            case Mood.Killed:
+                NoticeBoard.Message("No one answers the phone.");
                 break;
             default:
                 NoticeBoard.Message("Your neighbour is already safe inside.");
@@ -295,13 +292,14 @@ public class NeighbourHouse : MonoBehaviour
         State = Mood.Safe;
     }
 
-    // The bull reaches the neighbour: they are thrown back and fall, the lamp flies off.
+    // The bull reaches the neighbour: they are thrown back and fall, the lamp flies off and goes
+    // out. They do not get up; the house stays dark. (Shown without any wound or blood.)
     IEnumerator Hit(Vector3 pushDirection)
     {
-        State = Mood.Hurt;
-        GameManager.Instance?.NeighbourHurt();
-        ActionLog.Record("Your neighbour was hurt", false,
-            "Scare the bull away from the house sooner.");
+        State = Mood.Killed;
+        GameManager.Instance?.NeighbourKilled();
+        ActionLog.Record("Your neighbour was killed", false,
+            "Phone your neighbour at dusk, and scare the bull away from the house sooner.");
         SoundBank.PlayAt(SoundBank.Bang, figure.position, 0.6f, 6f);
         if (bull != null)
         {
@@ -323,6 +321,8 @@ public class NeighbourHouse : MonoBehaviour
         var upright = figure.rotation;
         var down = upright * Quaternion.Euler(-85f, 0f, 0f);
         bool animated = body != null;
+        // Clear of what the walk was doing.
+        walking = false;
         if (animated) Play("Death", 1.3f, 0.1f);
         for (float t = 0f; t < 0.45f; t += Time.deltaTime)
         {
@@ -334,26 +334,14 @@ public class NeighbourHouse : MonoBehaviour
         figure.position = startPos + pushDirection * 1.8f;
         if (!animated) figure.rotation = down;
 
-        // Hurt, not killed: after a while they get up slowly and limp back inside.
-        yield return new WaitForSeconds(hurtLieSeconds);
-        NoticeBoard.Message("Your neighbour is hurt, but alive. They are limping back inside.");
-        if (animated)
+        // The lamp on the ground burns low, then goes out.
+        yield return new WaitForSeconds(1.5f);
+        if (lamp != null) lamp.enabled = false;
+        if (lampPivot != null)
         {
-            // A slow blend from lying to standing reads as getting up.
-            Play("Idle", 0.6f, 1.2f);
-            yield return new WaitForSeconds(1.5f);
+            var glow = lampPivot.Find("Lamp");
+            if (glow != null) glow.gameObject.SetActive(false);
         }
-        else
-        {
-            for (float t = 0f; t < 1.5f; t += Time.deltaTime)
-            {
-                figure.rotation = Quaternion.Slerp(down, upright, Mathf.SmoothStep(0f, 1f, t / 1.5f));
-                yield return null;
-            }
-        }
-        figure.rotation = upright;
-        yield return Walk(doorPoint.position, limpSpeed, true);
-        yield return GoInAndLightUp();
     }
 
     // ---------------- Small animations ----------------
