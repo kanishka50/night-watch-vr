@@ -124,6 +124,7 @@ public static class VillageExtras
         CanalBuilder.Build(root);
         foreach (var s in Scarecrows) BuildScarecrow(root, s);
         AddColliders(root, village);
+        VillageLife.Build(root);
     }
 
     static void BuildKamatha(Transform root)
@@ -161,7 +162,8 @@ public static class VillageExtras
     }
 
     // A scarecrow (pambaya): a pole and a cross stick, an old shirt and sarong, a clay-pot head
-    // with a face marked in white lime.
+    // with a face marked in white lime, and a tin can hung from one arm as a clapper. The shirt,
+    // sarong and can hang from pivots so ScarecrowLife can sway them in the wind.
     static void BuildScarecrow(Transform root, Vector3 at)
     {
         var go = EditorKit.Empty("Scarecrow", root, FarmLayout.OnGround(at));
@@ -170,10 +172,31 @@ public static class VillageExtras
         EditorKit.Part("Pole", PrimitiveType.Cylinder, go, new Vector3(0f, 0.9f, 0f), new Vector3(0.06f, 0.9f, 0.06f), stick, false);
         var arms = EditorKit.Part("Arms", PrimitiveType.Cylinder, go, new Vector3(0f, 1.35f, 0f), new Vector3(0.05f, 0.55f, 0.05f), stick, false);
         arms.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-        EditorKit.Part("Shirt", PrimitiveType.Cube, go, new Vector3(0f, 1.2f, 0f), new Vector3(0.5f, 0.45f, 0.18f),
+        var shirt = Hinge("ShirtHinge", go, new Vector3(0f, 1.42f, 0f));
+        EditorKit.Part("Shirt", PrimitiveType.Cube, shirt, new Vector3(0f, -0.22f, 0f), new Vector3(0.5f, 0.45f, 0.18f),
             EditorKit.Mat("ScarecrowShirt", new Color(0.62f, 0.55f, 0.45f)), false);
-        EditorKit.Part("Sarong", PrimitiveType.Cylinder, go, new Vector3(0f, 0.75f, 0f), new Vector3(0.36f, 0.25f, 0.24f),
+        var sarong = Hinge("SarongHinge", go, new Vector3(0f, 0.99f, 0f));
+        EditorKit.Part("Sarong", PrimitiveType.Cylinder, sarong, new Vector3(0f, -0.24f, 0f), new Vector3(0.36f, 0.25f, 0.24f),
             EditorKit.Mat("ScarecrowSarong", new Color(0.30f, 0.22f, 0.35f)), false);
+        // The tin clapper on a string at the end of one arm.
+        var can = Hinge("CanHinge", go, new Vector3(0.5f, 1.32f, 0f));
+        EditorKit.Part("String", PrimitiveType.Cylinder, can, new Vector3(0f, -0.08f, 0f), new Vector3(0.006f, 0.08f, 0.006f), stick, false);
+        var tin = EditorKit.Mat("TinCan", new Color(0.6f, 0.6f, 0.62f));
+        tin.SetFloat("_Smoothness", 0.55f);
+        tin.SetFloat("_Metallic", 0.6f);
+        EditorKit.Part("Can", PrimitiveType.Cylinder, can, new Vector3(0f, -0.21f, 0f), new Vector3(0.08f, 0.06f, 0.08f), tin, false);
+        var clapper = go.gameObject.AddComponent<AudioSource>();
+        clapper.playOnAwake = false;
+        clapper.spatialBlend = 1f;
+        clapper.rolloffMode = AudioRolloffMode.Linear;
+        clapper.minDistance = 2f;
+        clapper.maxDistance = 30f;
+        clapper.volume = 0.6f;
+        var life = go.gameObject.AddComponent<ScarecrowLife>();
+        life.shirt = shirt;
+        life.sarong = sarong;
+        life.can = can;
+        life.clapper = clapper;
         var head = EditorKit.Part("PotHead", PrimitiveType.Sphere, go, new Vector3(0f, 1.62f, 0f), new Vector3(0.28f, 0.3f, 0.28f),
             EditorKit.Mat("ClayPot", new Color(0.62f, 0.33f, 0.20f)), false);
         var lime = EditorKit.Mat("LimeMark", new Color(0.95f, 0.95f, 0.92f));
@@ -181,6 +204,14 @@ public static class VillageExtras
             EditorKit.Part("Eye", PrimitiveType.Sphere, go, new Vector3(x, 1.66f, 0.13f), new Vector3(0.05f, 0.05f, 0.02f), lime, false);
         EditorKit.Part("Mouth", PrimitiveType.Cube, go, new Vector3(0f, 1.56f, 0.135f), new Vector3(0.1f, 0.015f, 0.01f), lime, false);
         head.transform.localRotation = Quaternion.identity;
+    }
+
+    static Transform Hinge(string name, Transform parent, Vector3 local)
+    {
+        var t = new GameObject(name).transform;
+        t.SetParent(parent, false);
+        t.localPosition = local;
+        return t;
     }
 
     // Collision shapes for what we added (the village's own come from world.json): the dagaba,

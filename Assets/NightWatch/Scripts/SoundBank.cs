@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker, trickle, moo;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker, trickle, moo, frogs, bark, clapper;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -26,6 +26,9 @@ public static class SoundBank
     public static AudioClip Cracker => cracker != null ? cracker : cracker = Make("Cracker", 1.4f, MakeCracker);
     public static AudioClip Trickle => trickle != null ? trickle : trickle = Make("Trickle", 3f, MakeTrickle);
     public static AudioClip Moo => moo != null ? moo : moo = Make("Moo", 1.7f, MakeMoo);
+    public static AudioClip Frogs => frogs != null ? frogs : frogs = Make("Frogs", 6f, MakeFrogs);
+    public static AudioClip Bark => bark != null ? bark : bark = Make("Bark", 0.35f, MakeBark);
+    public static AudioClip Clapper => clapper != null ? clapper : clapper = Make("Clapper", 0.9f, MakeClapper);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -345,6 +348,75 @@ public static class SoundBank
             d[i] = (s + 0.15f * breath * open) * Envelope(t, len, 0.15f, 0.45f);
         }
         Normalise(d, 0.8f);
+    }
+
+    // Frogs at night near water: five frogs, each croaking now and then in its own voice. A croak
+    // is a quick run of clicks (a rattle) on a 500 to 1200 Hz tone. Croaks past the end carry on at
+    // the start, so the loop has no seam.
+    static void MakeFrogs(float[] d, System.Random r)
+    {
+        for (int frog = 0; frog < 5; frog++)
+        {
+            float tone = 500f + (float)r.NextDouble() * 700f;
+            float pulseRate = 22f + (float)r.NextDouble() * 20f;
+            int pulses = 6 + r.Next(8);
+            float gap = 0.5f + (float)r.NextDouble() * 1.2f;
+            float loud = 0.4f + 0.6f * (float)r.NextDouble();
+            for (float start = (float)r.NextDouble() * gap; start < d.Length / (float)Rate; start += gap * (0.7f + 0.6f * (float)r.NextDouble()))
+            {
+                int i0 = (int)(start * Rate);
+                int count = (int)(pulses / pulseRate * Rate);
+                for (int k = 0; k < count; k++)
+                {
+                    float t = k / (float)Rate;
+                    float inPulse = (t * pulseRate) % 1f;
+                    float env = Mathf.Exp(-inPulse * 9f) * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * pulseRate / pulses * 1.2f));
+                    d[(i0 + k) % d.Length] += loud * env * (Sin(tone, t) + 0.4f * Sin(tone * 2.1f, t));
+                }
+            }
+        }
+        Normalise(d, 0.6f);
+    }
+
+    // A village dog's bark: a sharp "woof" that drops in pitch, rough with breath noise. Its tones
+    // are 300 to 1500 Hz, so it carries on laptop speakers.
+    static void MakeBark(float[] d, System.Random r)
+    {
+        float len = d.Length / (float)Rate;
+        float phase = 0f, rough = 0f;
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float f = 520f - 260f * Mathf.Min(1f, t / 0.18f);
+            phase += f / Rate;
+            float p = 2f * Mathf.PI * phase;
+            float voice = Mathf.Sin(p) + 0.7f * Mathf.Sin(2f * p) + 0.5f * Mathf.Sin(3f * p) + 0.25f * Mathf.Sin(4f * p);
+            rough += 0.5f * (Noise(r) - rough);
+            float env = Mathf.Min(1f, t / 0.008f) * Mathf.Exp(-t * 11f);
+            d[i] = (float)System.Math.Tanh(1.6f * (voice + 0.8f * rough)) * env * Envelope(t, len, 0.001f, 0.05f);
+        }
+        Normalise(d, 0.85f);
+    }
+
+    // A scarecrow's tin clapper: a can knocking against its stick three or four times.
+    static void MakeClapper(float[] d, System.Random r)
+    {
+        int knocks = 3 + r.Next(2);
+        float[] tones = { 880f, 1460f, 2270f };
+        for (int k = 0; k < knocks; k++)
+        {
+            int i0 = (int)((0.04f + k * 0.17f + 0.04f * (float)r.NextDouble()) * Rate);
+            float amp = 1f - 0.18f * k;
+            for (int i = 0; i + i0 < d.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float s = 0f;
+                for (int n = 0; n < tones.Length; n++) s += Sin(tones[n] * (1f + 0.01f * k), t) * Mathf.Exp(-t * (28f + 10f * n)) / (n + 1);
+                if (t < 0.004f) s += Noise(r);
+                d[i0 + i] += amp * s;
+            }
+        }
+        Normalise(d, 0.6f);
     }
 
     // A phone ringing: two quick tones, twice.

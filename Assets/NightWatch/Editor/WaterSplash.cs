@@ -80,8 +80,9 @@ public static class WaterSplash
         return renderer;
     }
 
-    // Alpha-blended, lit by the sun or moon and the sky light, using FireEffect's soft dot.
-    static Material Material()
+    // Alpha-blended, lit by the sun or moon and the sky light, using FireEffect's soft dot. Also used
+    // for the evening smoke and falling leaves (VillageLife).
+    public static Material Material()
     {
         var mat = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
         if (mat != null) return mat;
