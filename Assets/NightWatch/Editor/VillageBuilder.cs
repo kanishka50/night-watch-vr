@@ -100,6 +100,23 @@ public static class VillageBuilder
         { "fence_stick", new Rule(100f, true) }, { "fence_bamboo", new Rule(100f, true) }, { "gate_wood", new Rule(Always, true) },
     };
 
+    // Plants that move in the wind (shader NightWatch/Foliage, WindDriver): how far the top leans
+    // (share of the plant's height) and how much the leaves flutter. Rice leans most, so waves roll
+    // across the field; big trees only stir. Everything else (rocks, stumps, props) stays still.
+    static readonly Dictionary<string, (float bend, float flutter)> Wind = new Dictionary<string, (float, float)>
+    {
+        { "rice_green", (0.16f, 0.3f) }, { "rice_gold", (0.14f, 0.25f) },
+        { "grass_tuft", (0.14f, 0.3f) }, { "grass_tuft_dry", (0.12f, 0.25f) }, { "grass_medium_01", (0.12f, 0.3f) },
+        { "grass_medium_02", (0.12f, 0.3f) }, { "grass_bermuda_01", (0.1f, 0.2f) }, { "reeds", (0.12f, 0.3f) },
+        { "shrub_01", (0.05f, 0.5f) }, { "shrub_02", (0.05f, 0.5f) }, { "shrub_03", (0.05f, 0.5f) }, { "shrub_04", (0.05f, 0.5f) },
+        { "fern_02", (0.06f, 0.5f) }, { "nettle_plant", (0.06f, 0.4f) }, { "periwinkle_plant", (0.04f, 0.4f) }, { "weed_plant_02", (0.06f, 0.4f) },
+        { "banana_1", (0.04f, 0.6f) }, { "banana_2", (0.04f, 0.6f) },
+        { "palm_1", (0.025f, 0.5f) }, { "palm_2", (0.025f, 0.5f) }, { "palm_3", (0.025f, 0.5f) }, { "palm_4", (0.025f, 0.5f) },
+        { "island_tree_01", (0.012f, 0.5f) }, { "island_tree_02", (0.012f, 0.5f) }, { "island_tree_03", (0.012f, 0.5f) },
+        { "tree_small_02", (0.02f, 0.5f) }, { "jacaranda_tree", (0.012f, 0.5f) },
+        { "jungle_tree_1", (0.012f, 0.4f) }, { "jungle_tree_2", (0.012f, 0.4f) }, { "jungle_tree_3", (0.012f, 0.4f) },
+    };
+
     // The four ground textures: file name, tile size (m) and tint, as in the browser's terrain shader
     // (it pushes the dry-season grass scans towards monsoon green; ours a little greener still).
     static readonly (string name, float tile, Color tint)[] GroundLayers =
@@ -551,6 +568,7 @@ public static class VillageBuilder
 
         var plants = new GameObject("Plants");
         plants.transform.SetParent(root, false);
+        plants.AddComponent<WindDriver>();
         var drawer = plants.AddComponent<InstancedProps>();
         drawer.set = set;
         drawer.cellSize = 48f;
@@ -716,6 +734,8 @@ public static class VillageBuilder
     public static PropSet.Part[] Parts(GameObject model, string name)
     {
         var parts = new List<PropSet.Part>();
+        bool windy = Wind.TryGetValue(name, out var wind);
+        var (footY, height) = windy ? ModelHeight(model) : (0f, 1f);
         foreach (var r in model.GetComponentsInChildren<MeshRenderer>(true))
         {
             var mf = r.GetComponent<MeshFilter>();
@@ -725,17 +745,59 @@ public static class VillageBuilder
             {
                 var source = mats.Length > 0 ? mats[Mathf.Min(s, mats.Length - 1)] : null;
                 if (source == null) continue;
+                var material = InstancedCopy(source, $"{name}_{parts.Count}");
+                if (windy) Foliage(material, r.transform.localToWorldMatrix, footY, height, wind.bend, wind.flutter);
                 parts.Add(new PropSet.Part
                 {
                     mesh = mf.sharedMesh,
                     submesh = s,
-                    material = InstancedCopy(source, $"{name}_{parts.Count}"),
+                    material = material,
                     // Includes the model file's own top-level size and offset.
                     local = r.transform.localToWorldMatrix,
                 });
             }
         }
         return parts.ToArray();
+    }
+
+    // Switches a copied glTF material to the wind shader (it reads the same property names). The
+    // shader bends each point by its height on the whole model, so a palm's trunk and leaves
+    // (two parts) bend as one: it gets the part's y row (part > model space) and the model's foot
+    // and height.
+    static void Foliage(Material mat, Matrix4x4 local, float footY, float height, float bend, float flutter)
+    {
+        var shader = Shader.Find("NightWatch/Foliage");
+        if (shader == null) { Debug.LogWarning("Night Watch: shader NightWatch/Foliage not found; plants stay still."); return; }
+        bool cutOut = mat.IsKeywordEnabled("_ALPHATEST_ON");
+        mat.shader = shader;
+        if (cutOut) mat.EnableKeyword("_ALPHATEST_ON"); else mat.DisableKeyword("_ALPHATEST_ON");
+        mat.SetVector("_WindRowY", local.GetRow(1));
+        mat.SetFloat("_ModelBase", footY);
+        mat.SetFloat("_ModelHeight", Mathf.Max(height, 0.01f));
+        mat.SetFloat("_WindBend", bend);
+        mat.SetFloat("_WindFlutter", flutter);
+        mat.enableInstancing = true;
+        EditorUtility.SetDirty(mat);
+    }
+
+    // The lowest point and the height of a model, in its own space (all parts).
+    static (float foot, float height) ModelHeight(GameObject model)
+    {
+        float lo = float.MaxValue, hi = float.MinValue;
+        foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (mf.sharedMesh == null) continue;
+            var b = mf.sharedMesh.bounds;
+            var m = mf.transform.localToWorldMatrix;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = b.center + Vector3.Scale(b.extents, new Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1) * 2f - Vector3.one);
+                float y = m.MultiplyPoint3x4(corner).y;
+                lo = Mathf.Min(lo, y);
+                hi = Mathf.Max(hi, y);
+            }
+        }
+        return lo > hi ? (0f, 1f) : (lo, hi - lo);
     }
 
     // The haystacks' straw colour: from the drone shots the thatch texture (dark grey, 0.33)
