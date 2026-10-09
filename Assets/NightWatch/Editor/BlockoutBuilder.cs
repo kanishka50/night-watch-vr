@@ -157,6 +157,7 @@ public static class BlockoutBuilder
         float ridgeY = eave + rise;
         float length = HutSize + 0.9f;
         var fringe = StrawFringeMaterial(length);
+        var shell = StrawShellMaterial();
 
         foreach (var z in new[] { -half, half })
             Pole("EaveBeam", roof, new Vector3(-half - 0.25f, eave, z), new Vector3(half + 0.25f, eave, z), 0.11f, pole);
@@ -186,17 +187,17 @@ public static class BlockoutBuilder
                 var row = Box("ThatchRow", roof, at, new Vector3(rowLength, rowThickness, rowWidth), thatch);
                 row.transform.localRotation = tilt * Quaternion.Euler(jitter(2f), jitter(1.5f), jitter(1.5f));
 
+                // Loose straw on top: two see-through layers of strands, so the row looks hairy
+                // like the haystacks, not flat.
+                var card = Quaternion.LookRotation(outward, -down);
+                for (int layer = 1; layer <= 2; layer++)
+                    StrawCard("LooseStraw", roof, at + outward * (rowThickness / 2f + 0.02f * layer) + down * 0.03f * layer, card,
+                        new Vector3(rowLength, rowWidth + 0.06f, 1f), shell);
+
                 // Straw ends hanging from the row's lower edge, longest at the eaves.
                 float hang = i == rows - 1 ? 0.32f : 0.14f;
                 var edge = at + down * (rowWidth / 2f + hang / 2f - 0.02f) - outward * (rowThickness * 0.3f);
-                var ends = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                ends.name = "StrawEnds";
-                Object.DestroyImmediate(ends.GetComponent<Collider>());
-                ends.transform.SetParent(roof, false);
-                ends.transform.localPosition = edge;
-                ends.transform.localRotation = Quaternion.LookRotation(outward, -down);
-                ends.transform.localScale = new Vector3(rowLength, hang, 1f);
-                ends.GetComponent<Renderer>().sharedMaterial = fringe;
+                StrawCard("StrawEnds", roof, edge, card, new Vector3(rowLength, hang, 1f), fringe);
             }
         }
 
@@ -205,6 +206,71 @@ public static class BlockoutBuilder
         var tie = Mat("RoofTie", new Color(0.30f, 0.22f, 0.14f));
         for (float x = -length / 2f + 0.35f; x < length / 2f; x += 0.7f)
             Pole("RidgeTie", roof, new Vector3(x - 0.02f, ridgeY + 0.16f, 0f), new Vector3(x + 0.02f, ridgeY + 0.16f, 0f), 0.36f, tie);
+    }
+
+    // A flat card (a quad with no collider) for straw pictures.
+    static void StrawCard(string name, Transform parent, Vector3 at, Quaternion turn, Vector3 size, Material mat)
+    {
+        var card = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        card.name = name;
+        Object.DestroyImmediate(card.GetComponent<Collider>());
+        card.transform.SetParent(parent, false);
+        card.transform.localPosition = at;
+        card.transform.localRotation = turn;
+        card.transform.localScale = size;
+        card.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+
+    // Loose straw lying on the thatch (made here, no download): short golden strands at random,
+    // all running down the slope, on a see-through ground; one picture covers 0.5 m.
+    const string ShellTexturePath = "Assets/NightWatch/Textures/StrawShell.png";
+
+    static Material StrawShellMaterial()
+    {
+        if (AssetDatabase.LoadAssetAtPath<Texture2D>(ShellTexturePath) == null)
+        {
+            const int size = 256;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var clear = new Color(0f, 0f, 0f, 0f);
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++) tex.SetPixel(x, y, clear);
+            var random = new System.Random(23);
+            var straw = new Color(0.80f, 0.66f, 0.40f);
+            for (int n = 0; n < 900; n++)
+            {
+                // One strand: a thin line, slightly slanted, its own length and shade (wraps round).
+                int x0 = random.Next(size), y0 = random.Next(size), length = 18 + random.Next(50);
+                float slant = ((float)random.NextDouble() - 0.5f) * 0.35f;
+                var colour = straw * (0.65f + 0.55f * (float)random.NextDouble());
+                colour.a = 1f;
+                for (int k = 0; k < length; k++)
+                {
+                    int x = ((int)(x0 + slant * k) % size + size) % size;
+                    tex.SetPixel(x, (y0 + k) % size, colour * (1f - 0.3f * k / length) + new Color(0f, 0f, 0f, 0.3f * k / length));
+                }
+            }
+            System.IO.File.WriteAllBytes(ShellTexturePath, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(ShellTexturePath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(ShellTexturePath);
+            importer.alphaIsTransparency = true;
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.SaveAndReimport();
+        }
+
+        var mat = Mat("StrawShell", Color.white);
+        mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(ShellTexturePath));
+        // The cards are about 4.1 x 0.6 m: one picture per 0.5 m each way.
+        mat.SetTextureScale("_BaseMap", new Vector2(8.2f, 1.2f));
+        mat.SetColor("_BaseColor", Color.white);
+        mat.SetFloat("_AlphaClip", 1f);
+        mat.SetFloat("_Cutoff", 0.5f);
+        mat.EnableKeyword("_ALPHATEST_ON");
+        mat.SetFloat("_Cull", 0f);
+        mat.SetFloat("_Smoothness", 0.03f);
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     // A strip of straw ends (made here, no download): golden strands of different lengths on a
