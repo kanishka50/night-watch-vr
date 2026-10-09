@@ -15,6 +15,9 @@ public static class BlockoutBuilder
     public const float HutFloorHeight = 2.5f;
     public const float HutFloorTop = HutFloorHeight + 0.075f;
     public const float HutSize = 3.2f;
+    // The ladder stands just south of the hut's open side; its poles rise this far above the floor.
+    public const float LadderZ = -HutSize / 2f - 0.2f;
+    public const float LadderAboveFloor = 0.9f;
 
     public static void Build(bool ask)
     {
@@ -108,11 +111,15 @@ public static class BlockoutBuilder
 
         BuildRoof(parent, half, eave, pole, cadjan, Jitter);
 
-        // A pole ladder: two side poles and stick rungs.
+        // A pole ladder: two side poles and stick rungs. The poles rise about 0.9 m above the floor,
+        // as on a real pela ladder (held when stepping on and off), with a last rung at the top.
+        // Pointing at the ladder climbs it (HutPropsSetup: LadderTop, LadderBottom).
         var ladder = Group("Ladder", parent);
-        float ladderZ = -HutSize / 2f - 0.2f;
-        Pole("Rail_L", ladder, new Vector3(-0.27f, 0f, ladderZ), new Vector3(-0.25f, HutFloorHeight + 0.1f, ladderZ), 0.08f, pole);
-        Pole("Rail_R", ladder, new Vector3(0.27f, 0f, ladderZ), new Vector3(0.25f, HutFloorHeight + 0.1f, ladderZ), 0.08f, pole);
+        float ladderZ = LadderZ;
+        Pole("Rail_L", ladder, new Vector3(-0.27f, 0f, ladderZ), new Vector3(-0.25f, HutFloorTop + LadderAboveFloor, ladderZ), 0.08f, pole);
+        Pole("Rail_R", ladder, new Vector3(0.27f, 0f, ladderZ), new Vector3(0.25f, HutFloorTop + LadderAboveFloor, ladderZ), 0.08f, pole);
+        Pole("TopRung", ladder, new Vector3(-0.29f, HutFloorTop + LadderAboveFloor - 0.08f, ladderZ),
+            new Vector3(0.29f, HutFloorTop + LadderAboveFloor - 0.08f, ladderZ), 0.05f, pole);
         for (float y = 0.3f; y < HutFloorHeight; y += 0.3f)
         {
             float tilt = Jitter(0.02f);

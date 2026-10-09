@@ -332,48 +332,65 @@ public static class HutPropsSetup
         return hakka.GetComponent<XRBaseInteractable>();
     }
 
+    // Climbing: point at the ladder itself (no extra bar). Its poles rise about 0.9 m above the
+    // floor (BlockoutBuilder), so from inside the hut you point at the ladder top to climb down,
+    // and from the ground at the ladder to climb up. Each target is an invisible box round that
+    // part of the ladder (big enough for the pointer to find easily); the ladder's poles light up
+    // yellow while pointed at.
     static void BuildLadderHandles(Transform root)
     {
-        // A thin bamboo rail at the top and bottom of the ladder (was a thick rope-coloured bar).
-        var rope = ToolMat("BambooRail", new Color(0.70f, 0.60f, 0.34f), 0.25f);
         var half = BlockoutBuilder.HutSize / 2f;
+        float ladderZ = BlockoutBuilder.LadderZ;
 
         var groundSpot = EditorKit.Empty("GroundSpot", root, FarmLayout.OnGround(new Vector3(0f, 0f, -half - 2f)));
         var hutSpot = EditorKit.Empty("HutSpot", root, new Vector3(0f, FloorTop, 0.3f));
 
-        var top = EditorKit.Part("LadderTop", PrimitiveType.Cube, root, new Vector3(0f, FloorTop + 0.9f, -half + 0.05f),
-            new Vector3(0.7f, 0.045f, 0.045f), rope);
-        WidenHandle(top);
-        top.AddComponent<XRSimpleInteractable>();
+        // The ladder's shapes: the poles and top rung light up for climbing down, all of it for up.
+        var topParts = new System.Collections.Generic.List<Renderer>();
+        var allParts = new System.Collections.Generic.List<Renderer>();
+        var ladder = GameObject.Find("WatchHut")?.transform.Find("Ladder");
+        if (ladder != null)
+            foreach (var r in ladder.GetComponentsInChildren<Renderer>())
+            {
+                allParts.Add(r);
+                if (r.name != "Rung") topParts.Add(r);
+            }
+        else Debug.LogWarning("Night Watch: no WatchHut/Ladder found; the climb targets will not light up.");
+
+        float above = BlockoutBuilder.LadderAboveFloor;
+        var top = ClimbTarget("LadderTop", root, new Vector3(0f, FloorTop + above / 2f, ladderZ), new Vector3(0.8f, above + 0.1f, 0.4f));
         var down = top.AddComponent<LadderClimb>();
         down.goesDown = true;
         down.highlightColor = HandleHighlight;
+        down.highlightRenderers = topParts.ToArray();
         down.destination = groundSpot;
-        down.label = PointLabel("Climb down", root, new Vector3(0f, FloorTop + 1.02f, -half + 0.05f),
+        down.label = PointLabel("Climb down", root, new Vector3(0f, FloorTop + above + 0.15f, ladderZ),
             top.GetComponent<XRSimpleInteractable>()).GetComponent<TextMeshPro>();
 
-        var bottom = EditorKit.Part("LadderBottom", PrimitiveType.Cube, root, new Vector3(0f, 1.2f, -half - 0.35f),
-            new Vector3(0.7f, 0.045f, 0.045f), rope);
-        WidenHandle(bottom);
-        bottom.AddComponent<XRSimpleInteractable>();
+        // From the ground: the ladder from knee height up to just under the floor.
+        float floor = BlockoutBuilder.HutFloorHeight;
+        var bottom = ClimbTarget("LadderBottom", root, new Vector3(0f, (0.3f + floor - 0.1f) / 2f, ladderZ - 0.05f),
+            new Vector3(0.8f, floor - 0.4f, 0.45f));
         var up = bottom.AddComponent<LadderClimb>();
         up.goesDown = false;
         up.highlightColor = HandleHighlight;
+        up.highlightRenderers = allParts.ToArray();
         up.destination = hutSpot;
-        // Faces south, toward a player standing on the ground.
-        var upLabel = EditorKit.Text("Label_Climb up", root, new Vector3(0f, 1.33f, -half - 0.4f), Quaternion.Euler(0f, 180f, 0f),
+        // Faces south, toward a player standing on the ground, at eye height beside the ladder.
+        var upLabel = EditorKit.Text("Label_Climb up", root, new Vector3(0f, 1.75f, ladderZ - 0.3f), Quaternion.Euler(0f, 180f, 0f),
             new Vector2(0.6f, 0.12f), "Climb up", LabelSize, TextAlignmentOptions.Center);
         upLabel.gameObject.AddComponent<HoverLabel>().targets = new XRBaseInteractable[] { bottom.GetComponent<XRSimpleInteractable>() };
     }
 
-    // A thin bar is easy to miss: the pointer's cone still picks it, but the thin ray that colours
-    // the line goes past it and hits a rung, so the line stays white. A bigger invisible hit box
-    // (0.8 x 0.35 x 0.3 m) fixes that. A stronger yellow shows the highlight on the bamboo colour.
-    static void WidenHandle(GameObject handle)
+    // An invisible box that the pointer can find, with the press logic added by the caller.
+    static GameObject ClimbTarget(string name, Transform root, Vector3 center, Vector3 size)
     {
-        var box = handle.GetComponent<BoxCollider>();
-        var scale = handle.transform.localScale;
-        box.size = new Vector3(0.8f / scale.x, 0.35f / scale.y, 0.3f / scale.z);
+        var go = new GameObject(name);
+        go.transform.SetParent(root, false);
+        go.transform.position = center;
+        go.AddComponent<BoxCollider>().size = size;
+        go.AddComponent<XRSimpleInteractable>();
+        return go;
     }
 
     static readonly Color HandleHighlight = new Color(1f, 1f, 0.2f);
