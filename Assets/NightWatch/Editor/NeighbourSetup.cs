@@ -211,6 +211,10 @@ public static class NeighbourSetup
         lampPivot = EditorKit.Group("LampPivot", hand != null ? hand : figure);
         if (hand == null) lampPivot.localPosition = new Vector3(0.28f, 0.98f, 0.3f);
         lampPivot.rotation = figure.rotation;
+        // The hand bone carries the model's own scale; undo it, so the lamp is built in metres
+        // (without this the 12 cm lamp grew into a big dark box).
+        float handScale = lampPivot.parent.lossyScale.x;
+        if (handScale > 0.0001f) lampPivot.localScale = Vector3.one / handScale;
         lamp = BuildHandLamp(lampPivot);
         return figure;
     }
