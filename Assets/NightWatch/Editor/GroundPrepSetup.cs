@@ -100,7 +100,7 @@ public static class GroundPrepSetup
         // A big label, turned so it reads from the hut side.
         var outward = new Vector3(position.x, 0f, position.z).normalized;
         EditorKit.Text("Label", go.transform, position + Vector3.up * 2.4f, Quaternion.LookRotation(outward),
-            new Vector2(2f, 0.4f), $"Bonfire ({side})", 2f, TextAlignmentOptions.Center);
+            new Vector2(2f, 0.4f), $"Bonfire ({side})", 2f, TextAlignmentOptions.Center).gameObject.AddComponent<FaceViewer>();
     }
 
     static void BuildEnergiser(Transform root, Vector3 position)
@@ -158,7 +158,7 @@ public static class GroundPrepSetup
 
         // Reads from the start spot, looking north at the front of the box.
         EditorKit.Text("Label", go.transform, position + new Vector3(0f, 1.7f, 0f), Quaternion.identity,
-            new Vector2(1.6f, 0.3f), "Fence energiser", 1.6f, TextAlignmentOptions.Center);
+            new Vector2(1.6f, 0.3f), "Fence energiser", 1.6f, TextAlignmentOptions.Center).gameObject.AddComponent<FaceViewer>();
     }
 
     struct Board
@@ -185,7 +185,7 @@ public static class GroundPrepSetup
         EditorKit.BodyWall("Solid", go.transform, new Vector3(center.x, (ground + top) / 2f, center.z + 0.03f), rotation,
             new Vector3(1.56f, top - ground, 0.15f));
 
-        var tasks = BoardStyle.BodyText(EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1f));
+        var tasks = BoardStyle.BodyText(EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1.15f));
         var alert = BoardStyle.BodyText(EditorKit.Text("Alert", go.transform, center - Vector3.up * 0.38f, rotation, new Vector2(1.4f, 0.14f), "", 0.8f), true);
         return new Board { tasks = tasks, alert = alert };
     }

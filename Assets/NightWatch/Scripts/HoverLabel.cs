@@ -27,6 +27,8 @@ public class HoverLabel : MonoBehaviour
     {
         shown = Mathf.MoveTowards(shown, Wanted() ? 1f : 0f, fadeSpeed * Time.deltaTime);
         Apply();
+        // Turned to the player, so it never reads mirrored from behind.
+        if (shown > 0.01f) FaceViewer.Face(transform);
     }
 
     bool Wanted()

@@ -12,7 +12,8 @@ using UnityEngine;
 // credits. The page texture is made here in code (no download).
 public static class BoardStyle
 {
-    public static readonly Color Ink = new Color(0.22f, 0.13f, 0.06f);
+    // A warm mid brown (the first, near-black brown was too heavy), in bold for reading at a distance.
+    public static readonly Color Ink = new Color(0.34f, 0.21f, 0.10f);
     public static readonly Color TitleInk = new Color(0.47f, 0.16f, 0.05f);
     public static readonly Color AlertInk = new Color(0.62f, 0.15f, 0.03f);
     public static readonly Color Gold = new Color(1f, 0.85f, 0.46f);
@@ -55,6 +56,7 @@ public static class BoardStyle
     public static TextMeshPro BodyText(TextMeshPro text, bool alert = false)
     {
         text.color = alert ? AlertInk : Ink;
+        text.fontStyle = FontStyles.Bold;
         return text;
     }
 

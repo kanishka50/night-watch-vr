@@ -423,7 +423,7 @@ public static class HutPropsSetup
         EditorKit.BodyWall("Solid", board.transform, new Vector3(-1.2f, FloorTop + 0.45f, 0.3f), Quaternion.identity,
             new Vector3(0.5f, 0.9f, 0.9f));
         var up = boardRot * Vector3.up;
-        var body = BoardStyle.BodyText(EditorKit.Text("Body", board.transform, boardCenter + up * 0.06f, boardRot, new Vector2(0.8f, 0.44f), "", 0.5f));
+        var body = BoardStyle.BodyText(EditorKit.Text("Body", board.transform, boardCenter + up * 0.06f, boardRot, new Vector2(0.8f, 0.44f), "", 0.6f));
         var alert = BoardStyle.BodyText(EditorKit.Text("Alert", board.transform, boardCenter - up * 0.2f, boardRot, new Vector2(0.8f, 0.07f), "", 0.4f), true);
         var status = BoardStyle.BodyText(EditorKit.Text("Status", board.transform, boardCenter - up * 0.26f, boardRot, new Vector2(0.8f, 0.05f), "", 0.3f));
         var nb = board.AddComponent<NoticeBoard>();
@@ -460,15 +460,16 @@ public static class HutPropsSetup
         var center = new Vector3(0f, 4.4f, 7f);
         BoardStyle.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f));
         // The results fill the board above the buttons.
+        // Up to 2.6 (it shrinks only when the list is long): 1.4 was too small to read from the hut.
         var results = BoardStyle.BodyText(EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, 0.35f, 0f), Quaternion.identity,
-            new Vector2(5.7f, 2.6f), "", 1.4f));
+            new Vector2(5.7f, 2.6f), "", 2.6f));
         // The credits on their own board to the right, turned toward the hut: every third-party
         // asset with its author and licence did not fit beside the results.
-        var creditsAt = center + new Vector3(5f, 0f, -1.2f);
+        var creditsAt = center + new Vector3(5.3f, 0f, -1.3f);
         var creditsTurn = Quaternion.Euler(0f, 35f, 0f);
-        BoardStyle.Board("CreditsBackground", debriefPanel.transform, creditsAt, creditsTurn, new Vector2(3.6f, 3.6f));
+        BoardStyle.Board("CreditsBackground", debriefPanel.transform, creditsAt, creditsTurn, new Vector2(4f, 3.6f));
         var credits = BoardStyle.BodyText(EditorKit.Text("Credits", debriefPanel.transform, creditsAt, creditsTurn,
-            new Vector2(3.2f, 3.2f), "", 1f));
+            new Vector2(3.7f, 3.3f), "", 1.3f));
 
         // Restart: a green button at the bottom of the results board. Reachable with the pointer
         // from the hut or from the ground (the hut may have collapsed).
