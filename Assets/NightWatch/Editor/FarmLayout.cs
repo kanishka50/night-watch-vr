@@ -2,8 +2,8 @@ using UnityEngine;
 
 // Where the farm's parts stand in the village (hut at the Unity origin, +z north), and the
 // places kept clear of the village's plants: the yard round the hut, the paths from the start
-// spot, round the bonfires and the neighbour's house, the strip under the fence, and the crop
-// plots (planted with our own rice). Used by the village builder, the field tools and the ground jobs. The village's paddy
+// spot, round the bonfires, the neighbour's back yard, the strip under the fence, and the crop
+// plots (planted with the village's rice). Used by the village builder, the field tools and the ground jobs. The village's paddy
 // plots are 9.25 x 8.75 m, with bunds (raised earth paths, about 1 m wide) along x = 0 and z = 0
 // through the hut. See docs/village-port.md.
 public static class FarmLayout
@@ -18,13 +18,32 @@ public static class FarmLayout
         ("Plot_SouthEast", new Rect(0f, -PlotZ, PlotX, PlotZ)),
     };
 
-    // Beside each lane, so elephants walk past within reach of the fire.
+    // On the two open sides (the fence guards north and west), beside the elephants' ways in:
+    // east on the bund between the crops and the neighbour's garden, south on the jungle way.
     public static readonly (string side, Vector3 position)[] Bonfires =
     {
-        ("east", new Vector3(22.5f, 0f, -4.5f)),
-        ("west", new Vector3(-22.5f, 0f, -4.5f)),
+        ("east", new Vector3(13.9f, 0f, -PlotZ)),
         ("south", new Vector3(-13f, 0f, -23.5f)),
     };
+
+    // Where the elephants come from (village-port.md): north from the tank (lake) shore, south
+    // from the jungle, and the village side from behind the houses to the north-east.
+    public static readonly Vector3 SpawnNorth = new Vector3(0f, 0f, 32f);
+    public static readonly Vector3 SpawnSouth = new Vector3(-13f, 0f, -62f);
+    public static readonly Vector3 SpawnVillage = new Vector3(38f, 0f, 42f);
+
+    // The neighbour's house: the village's hut_c, 27 m east of our hut. Its front porch faces the
+    // village (east); its back wall faces our hut. The neighbour's yard, evening fire, back door,
+    // window and rice store are on the back, in view and in reach of the hut (about 23 m).
+    public static readonly Vector3 NeighbourHouse = new Vector3(26.83f, 0f, -3.23f);
+    public const float NeighbourHouseYaw = 82.02f;
+    public const float NeighbourBackWall = -2.43f;   // local z of the back wall's outside (front is +z); the plinth reaches -2.65
+    public const float NeighbourFloor = 0.35f;       // the house stands on a 0.35 m plinth
+
+    // A point given in the house's own frame (x along the back wall, +z toward the front porch),
+    // standing on the village ground.
+    public static Vector3 AtNeighbour(float x, float z) =>
+        OnGround(NeighbourHouse + Quaternion.Euler(0f, NeighbourHouseYaw, 0f) * new Vector3(x, 0f, z));
 
     // East of the hut, in the yard, in view from the start spot.
     public static readonly Vector3 Energiser = new Vector3(2.8f, 0f, 1.2f);
@@ -43,7 +62,7 @@ public static class FarmLayout
     // would always be drawn in full. Two big trees north of the hut are left out by this.
     public const float NoHeavyTrees = 30f;
 
-    const float YardRadius = 4f, BonfireRadius = 3f, HouseRadius = 6.5f, PathHalfWidth = 0.8f;
+    const float YardRadius = 4f, BonfireRadius = 3f, NeighbourYardRadius = 4f, PathHalfWidth = 0.8f;
     // Farmers keep the ground under an electric fence clear: plants touching the wire drain the power.
     const float FenceStripHalfWidth = 1f;
 
@@ -51,18 +70,17 @@ public static class FarmLayout
     static readonly Vector2[][] Paths =
     {
         new[] { new Vector2(0f, 0f), new Vector2(0f, -PlotZ) },
-        new[] { new Vector2(0f, -PlotZ), new Vector2(22.5f, -PlotZ), new Vector2(22.5f, -4.5f) },
-        new[] { new Vector2(0f, -PlotZ), new Vector2(-22.5f, -PlotZ), new Vector2(-22.5f, -4.5f) },
+        new[] { new Vector2(0f, -PlotZ), new Vector2(13.9f, -PlotZ) },
         new[] { new Vector2(0f, -PlotZ), new Vector2(0f, -3f * PlotZ), new Vector2(-13f, -3f * PlotZ), new Vector2(-13f, -23.5f) },
     };
 
-    // Round open places: the yard, the bonfires and the neighbour's house.
+    // Round open places: the yard, the bonfires and the neighbour's back yard.
     static (Vector2 centre, float radius)[] Circles()
     {
-        var house = BlockoutBuilder.HouseCenter;
+        var yard = NeighbourHouse + Quaternion.Euler(0f, NeighbourHouseYaw, 0f) * new Vector3(0f, 0f, -5.5f);
         var list = new (Vector2, float)[Bonfires.Length + 2];
         list[0] = (Vector2.zero, YardRadius);
-        list[1] = (new Vector2(house.x, house.z), HouseRadius);
+        list[1] = (new Vector2(yard.x, yard.z), NeighbourYardRadius);
         for (int i = 0; i < Bonfires.Length; i++)
             list[i + 2] = (new Vector2(Bonfires[i].position.x, Bonfires[i].position.z), BonfireRadius);
         return list;

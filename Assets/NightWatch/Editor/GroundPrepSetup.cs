@@ -6,7 +6,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // Builds the afternoon jobs on the ground (called by Night Watch > Build Full Game, after the
 // NavMesh is baked, so these objects do not change the baked map):
-//  - three bonfires at the open sides (east, west and south lanes)
+//  - two bonfires at the open sides (east and south)
 //  - the fence energiser east of the hut, facing the start, with a wire on sticks to the fence
 // Where they stand is in FarmLayout; each is set on the village ground.
 //  - the task board by the ladder and the player's start spot

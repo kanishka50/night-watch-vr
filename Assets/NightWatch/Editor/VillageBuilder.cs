@@ -192,6 +192,7 @@ public static class VillageBuilder
         var level = JsonUtility.FromJson<Level>(File.ReadAllText(Folder + "/World/level.json"));
         var ground = LoadGround(level);
         CropRice.Clear();
+        RemovedSpots.Clear();
 
         EditorKit.Remove(RootName);
         var root = new GameObject(RootName).transform;
@@ -201,6 +202,7 @@ public static class VillageBuilder
         BuildTerrain(root, ground, level);
         BuildWater(root, ground, level);
         BuildPlacements(root, ground, level);
+        BuildColliders(root, ground, level);
         AssetDatabase.SaveAssets();
     }
 
@@ -572,10 +574,96 @@ public static class VillageBuilder
         for (int o = 0; o < poses.Length; o += PropSet.PoseSize)
         {
             var p = new Vector3(poses[o], 0f, poses[o + 2]);
-            if (FarmLayout.ClearOfPlants(p) || p.magnitude < keepAway) { cleared++; continue; }
+            if (FarmLayout.ClearOfPlants(p) || p.magnitude < keepAway)
+            {
+                cleared++;
+                RemovedSpots.Add(new Vector2(p.x, p.z));
+                continue;
+            }
             for (int s = 0; s < PropSet.PoseSize; s++) kept.Add(poses[o + s]);
         }
         return kept.ToArray();
+    }
+
+    // ------------------------------------------------------------------ colliders
+
+    // Copies left out of the farm (ClearFarm); their collision shapes are left out too.
+    static readonly List<Vector2> RemovedSpots = new List<Vector2>();
+
+    // Only near the farm: the walk map (ElephantSetup) covers x -75..65, z -75..55.
+    static readonly Rect ColliderArea = Rect.MinMaxRect(-78f, -78f, 68f, 58f);
+    const float ColliderHeight = 4f;
+
+    // The village's collision shapes (world.json "colliders": circles for trunks, haystacks and
+    // granaries, boxes for houses, thin segments for garden fences) as invisible static colliders,
+    // so the NavMesh bake makes elephants walk round them. Left out: shapes of copies the farm
+    // cleared away, and their wire fence (ours is built by ElephantSetup, FenceSection).
+    static void BuildColliders(Transform root, Ground ground, Level level)
+    {
+        var parent = EditorKit.Group("Colliders", root);
+        int made = 0, skipped = 0;
+        foreach (var c in level.colliders)
+        {
+            GameObject go;
+            if (c.t == "s")
+            {
+                // Their wire fence ran along x = -101 and z = 69.
+                if ((Mathf.Abs(c.ax + 101f) < 0.6f && Mathf.Abs(c.bx + 101f) < 0.6f) ||
+                    (Mathf.Abs(c.az - 69f) < 0.6f && Mathf.Abs(c.bz - 69f) < 0.6f)) { skipped++; continue; }
+                var a = ToUnity(c.ax, 0f, c.az);
+                var b = ToUnity(c.bx, 0f, c.bz);
+                var mid = (a + b) / 2f;
+                if (!InArea(mid)) continue;
+                go = ColliderAt(parent, "Fence", mid, ground, Quaternion.LookRotation(b - a));
+                var box = go.AddComponent<BoxCollider>();
+                box.center = new Vector3(0f, ColliderHeight / 2f, 0f);
+                box.size = new Vector3(2f * c.r, ColliderHeight, Vector3.Distance(a, b) + 2f * c.r);
+            }
+            else if (c.t == "b")
+            {
+                var at = ToUnity(c.x, 0f, c.z);
+                if (!InArea(at)) continue;
+                // Their turn is about +y with z to the south; with our z flip it is the other way.
+                go = ColliderAt(parent, "Box", at, ground, Quaternion.Euler(0f, -c.ry * Mathf.Rad2Deg, 0f));
+                var box = go.AddComponent<BoxCollider>();
+                box.center = new Vector3(0f, ColliderHeight / 2f, 0f);
+                box.size = new Vector3(2f * c.hx, ColliderHeight, 2f * c.hz);
+            }
+            else
+            {
+                var at = ToUnity(c.x, 0f, c.z);
+                if (!InArea(at)) continue;
+                if (WasRemoved(at)) { skipped++; continue; }
+                go = ColliderAt(parent, "Round", at, ground, Quaternion.identity);
+                var capsule = go.AddComponent<CapsuleCollider>();
+                capsule.radius = c.r;
+                capsule.height = Mathf.Max(ColliderHeight, 2f * c.r + 0.1f);
+                capsule.center = new Vector3(0f, capsule.height / 2f, 0f);
+            }
+            made++;
+        }
+        Debug.Log($"Night Watch: {made} village colliders near the farm ({skipped} left out: cleared copies and their wire fence).");
+    }
+
+    static bool InArea(Vector3 p) => ColliderArea.Contains(new Vector2(p.x, p.z));
+
+    static bool WasRemoved(Vector3 p)
+    {
+        var q = new Vector2(p.x, p.z);
+        foreach (var r in RemovedSpots)
+            if ((r - q).sqrMagnitude < 0.25f) return true;
+        return false;
+    }
+
+    // An empty, static object on the village ground (at a Unity point), turned as given.
+    static GameObject ColliderAt(Transform parent, string name, Vector3 at, Ground ground, Quaternion rotation)
+    {
+        float vx = at.x + HutX, vz = HutZ - at.z;   // back to village coordinates
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.SetPositionAndRotation(new Vector3(at.x, ground.Levelled(vx, vz) - 0.5f, at.z), rotation);
+        go.isStatic = true;
+        return go;
     }
 
     static float MaxScale(float[] poses)

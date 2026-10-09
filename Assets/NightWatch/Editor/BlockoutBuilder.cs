@@ -4,9 +4,8 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
-// Builds our coded shapes (blockout) in the open scene: the watch hut (pela) with its ladder and,
-// until it moves onto a village house (village-port.md step 3e), the neighbour's house.
-// North is +Z. The ground, trees and the rest of the village come from VillageBuilder, which
+// Builds our coded shapes (blockout) in the open scene: the watch hut (pela) with its ladder.
+// The neighbour lives in a village house (FarmLayout.NeighbourHouse, NeighbourSetup). North is +Z. The ground, trees and the rest of the village come from VillageBuilder, which
 // must run first. The fence and crop plots are built by ElephantSetup.
 // Called by Night Watch > Build Full Game (GameSetup). Running it again replaces the old one.
 public static class BlockoutBuilder
@@ -16,10 +15,6 @@ public static class BlockoutBuilder
     public const float HutFloorHeight = 2.5f;
     public const float HutFloorTop = HutFloorHeight + 0.075f;
     public const float HutSize = 3.2f;
-
-    // Where the elephants come in from the east, west and south (spawn points, until step 3d).
-    public const float SideLaneZ = -1f;
-    public const float SouthLaneX = -10f;
 
     public static void Build(bool ask)
     {
@@ -50,7 +45,6 @@ public static class BlockoutBuilder
         Undo.RegisterCreatedObjectUndo(root, "Build Blockout");
 
         BuildHut(root.transform);
-        BuildVillage(root.transform);
 
         foreach (var t in root.GetComponentsInChildren<Transform>())
             t.gameObject.isStatic = true;
@@ -101,29 +95,6 @@ public static class BlockoutBuilder
         Box("Rail_R", ladder, new Vector3(0.25f, HutFloorHeight / 2f, ladderZ), new Vector3(0.06f, HutFloorHeight, 0.06f), wood);
         for (float y = 0.3f; y < HutFloorHeight; y += 0.3f)
             Box("Rung", ladder, new Vector3(0f, y, ladderZ), new Vector3(0.5f, 0.04f, 0.04f), wood);
-    }
-
-    // The neighbour's house, 16 m south-east of the hut, on a bund of the paddy field, so the player can
-    // help from the hut (a cracker's bang reaches 15 m). Its door and window face the hut.
-    // The door, the neighbour and the rice store are built by NeighbourSetup.
-    public static readonly Vector3 HouseCenter = new Vector3(7f, 0f, -17.5f);
-    public const float HouseSize = 4f;
-
-    static void BuildVillage(Transform root)
-    {
-        var parent = Group("NeighbourHouse", root);
-        var wall = Mat("HouseWall", new Color(0.75f, 0.70f, 0.60f));
-        var roof = Mat("HouseRoof", new Color(0.55f, 0.25f, 0.18f));
-        var window = Mat("HouseWindow", new Color(1f, 0.85f, 0.45f));
-        var c = HouseCenter;
-        float front = c.z + HouseSize / 2f;
-
-        Box("Walls", parent, c + new Vector3(0f, 1.5f, 0f), new Vector3(HouseSize, 3f, HouseSize), wall);
-        Box("Roof", parent, c + new Vector3(0f, 3.2f, 0f), new Vector3(HouseSize + 0.6f, 0.4f, HouseSize + 0.6f), roof);
-        Box("Window", parent, new Vector3(c.x + 1.2f, 1.6f, front + 0.02f), new Vector3(1f, 0.8f, 0.05f), window);
-        // A dark doorway; the door that opens is in front of it.
-        Box("Doorway", parent, new Vector3(c.x - 1f, 0.95f, front + 0.02f), new Vector3(0.9f, 1.9f, 0.04f),
-            Mat("Doorway", new Color(0.05f, 0.04f, 0.03f)));
     }
 
     // The player starts on the ground in the afternoon (GroundPrep moves them there at run time too).

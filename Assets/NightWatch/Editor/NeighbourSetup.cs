@@ -4,50 +4,67 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // Builds the neighbour's side of the story (called by Night Watch > Build Full Game, after the
-// NavMesh is baked):
-//  - the door that opens, the bottle lamp by the door, the neighbour (a simple figure with a lamp),
-//    the evening fire in the yard and the rice store by the house
-//  - the places they walk between (door, fire, yard, west side) and where the bull goes (the store)
+// NavMesh is baked), on the back of the village house hut_c (FarmLayout.NeighbourHouse), the
+// side that faces our hut:
+//  - a back door that opens and a window that glows, the bottle lamp by the door, the neighbour
+//    (a simple figure with a lamp), the evening fire in the back yard and the rice store
+//  - the places they walk between (door, fire, yard, the far side of the yard) and where the
+//    bull goes (the store). The bull comes in through the garden gate on the village side.
 //  - the phone on the hut's west rail, to call and warn the neighbour
 //  - NeighbourHouse, which runs it all
-// The house walls and window are built by BlockoutBuilder, the window light by NightLighting.
+// Points are given in the house's frame: x along the back wall, z out from it (negative = yard).
 public static class NeighbourSetup
 {
     public static void Build(Transform game)
     {
         var root = EditorKit.Group("Neighbour", game);
-        var c = BlockoutBuilder.HouseCenter;
-        float front = c.z + BlockoutBuilder.HouseSize / 2f;
-        float doorX = c.x - 1f;
+        float back = FarmLayout.NeighbourBackWall;
+        float floor = FarmLayout.NeighbourFloor;
+        Vector3 At(float x, float z) => FarmLayout.AtNeighbour(x, z);
+        // Turned to face out of the back wall (toward our hut).
+        var outward = Quaternion.Euler(0f, FarmLayout.NeighbourHouseYaw + 180f, 0f);
 
-        // The door: a hinge on its left edge, the panel beside it. It opens inward.
-        var hinge = EditorKit.Empty("DoorHinge", root, new Vector3(doorX - 0.45f, 0f, front + 0.05f));
+        // The back door: a frame on the wall, the hinge inside it on the door's left edge.
+        const float doorX = -1f;
+        var frame = EditorKit.Empty("BackDoor", root, At(doorX, back - 0.02f) + Vector3.up * floor);
+        frame.rotation = outward;
+        EditorKit.Part("Doorway", PrimitiveType.Cube, frame, new Vector3(0f, 0.95f, 0.01f), new Vector3(0.9f, 1.9f, 0.04f),
+            EditorKit.Mat("Doorway", new Color(0.05f, 0.04f, 0.03f)), false);
+        var hinge = EditorKit.Group("DoorHinge", frame);
+        hinge.localPosition = new Vector3(-0.45f, 0f, 0.05f);
         EditorKit.Part("Door", PrimitiveType.Cube, hinge, new Vector3(0.45f, 0.95f, 0f), new Vector3(0.9f, 1.9f, 0.05f),
             EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
 
-        var bottleLamp = BuildBottleLamp(root, new Vector3(doorX + 0.7f, 1.55f, front + 0.08f));
+        // The window that glows when the neighbour is safe inside (NightLighting sets its glow).
+        var windowAt = EditorKit.Empty("BackWindow", root, At(1.3f, back - 0.03f) + Vector3.up * (floor + 1.4f));
+        windowAt.rotation = outward;
+        var window = EditorKit.Part("Window", PrimitiveType.Cube, windowAt, Vector3.zero, new Vector3(0.9f, 0.7f, 0.04f),
+            EditorKit.Mat("HouseWindow", new Color(1f, 0.85f, 0.45f)), false);
 
-        // The yard is on the west side of the house, between the house and the path.
-        var doorPoint = EditorKit.Empty("DoorPoint", root, new Vector3(doorX, 0f, front + 0.3f));
-        var firePoint = EditorKit.Empty("FirePoint", root, new Vector3(c.x - 3.1f, 0f, front - 0.2f));
-        var yardPoint = EditorKit.Empty("YardPoint", root, new Vector3(c.x - 2.5f, 0f, front + 1.2f));
-        var patrolPoint = EditorKit.Empty("PatrolPoint", root, new Vector3(c.x - 4.4f, 0f, c.z - 1.1f));
-        var fire = BuildYardFire(root, new Vector3(c.x - 3.8f, 0f, front - 0.8f));
-        var storePoint = EditorKit.Empty("StorePoint", root, new Vector3(c.x + BlockoutBuilder.HouseSize / 2f + 1.3f, 0f, c.z));
+        var bottleLamp = BuildBottleLamp(root, At(doorX - 0.75f, back - 0.08f) + Vector3.up * (floor + 1.55f));
+        bottleLamp.transform.rotation = outward;
 
-        // Rice sacks against the east wall: what the elephant comes for.
+        // The back yard, between the house and the garden fence on the field side.
+        var doorPoint = EditorKit.Empty("DoorPoint", root, At(doorX, back - 0.8f));
+        var fire = BuildYardFire(root, At(-2.8f, -6f));
+        var firePoint = EditorKit.Empty("FirePoint", root, At(-2.2f, -5.3f));
+        var yardPoint = EditorKit.Empty("YardPoint", root, At(-0.5f, -4.6f));
+        var patrolPoint = EditorKit.Empty("PatrolPoint", root, At(-3f, -7f));
+        var storePoint = EditorKit.Empty("StorePoint", root, At(2.6f, back - 1.5f));
+
+        // Rice sacks against the back wall: what the elephant comes for.
         var jute = EditorKit.Mat("RiceSack", new Color(0.62f, 0.52f, 0.34f));
-        float wallX = c.x + BlockoutBuilder.HouseSize / 2f;
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, root, new Vector3(wallX + 0.3f, 0.25f, c.z - 0.5f), new Vector3(0.5f, 0.5f, 0.7f), jute, false);
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, root, new Vector3(wallX + 0.3f, 0.25f, c.z + 0.4f), new Vector3(0.5f, 0.5f, 0.7f), jute, false);
-        EditorKit.Part("RiceSack", PrimitiveType.Cube, root, new Vector3(wallX + 0.3f, 0.7f, c.z), new Vector3(0.45f, 0.4f, 0.6f), jute, false);
+        var sacks = EditorKit.Empty("RiceStore", root, At(2.6f, back - 0.3f));
+        sacks.rotation = outward;
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(-0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute, false);
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0.45f, 0.25f, 0f), new Vector3(0.7f, 0.5f, 0.5f), jute, false);
+        EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0f, 0.7f, 0f), new Vector3(0.6f, 0.4f, 0.45f), jute, false);
 
         var figure = BuildFigure(root, doorPoint.position, out var lampPivot, out var lamp);
 
         var house = root.gameObject.AddComponent<NeighbourHouse>();
         house.door = hinge;
-        var window = GameObject.Find("Blockout/NeighbourHouse/Window");
-        if (window != null) house.window = window.GetComponent<Renderer>();
+        house.window = window.GetComponent<Renderer>();
         house.figure = figure;
         house.lampPivot = lampPivot;
         house.lamp = lamp;

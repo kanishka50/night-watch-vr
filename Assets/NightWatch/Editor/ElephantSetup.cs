@@ -11,7 +11,11 @@ using UnityEngine.AI;
 public static class ElephantSetup
 {
     const string NavMeshPath = "Assets/NightWatch/NightWatchNavMesh.asset";
-    const float NavMeshSize = 100f;
+    // The walk map covers the farm and every way in: x -75..65, z -75..55 (all three spawn points,
+    // the north and west fence lines, the neighbour's garden). Village houses, trees, haystacks and
+    // garden fences are invisible colliders made by VillageBuilder, so elephants walk round them.
+    static readonly Vector3 NavMeshCenter = new Vector3(-5f, 5f, -10f);
+    static readonly Vector3 NavMeshSize = new Vector3(140f, 60f, 130f);
 
     public static void BuildField()
     {
@@ -118,10 +122,10 @@ public static class ElephantSetup
         var surface = navigation.gameObject.AddComponent<NavMeshSurface>();
         // Colliders, not visible meshes: tree crowns have no collider, so only trunks block the way.
         surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
-        // Only the farm round the hut, not the whole 280 m village terrain (faster to bake).
+        // Only the farm and the ways in, not the whole 280 m village terrain (faster to bake).
         surface.collectObjects = CollectObjects.Volume;
-        surface.center = new Vector3(0f, 5f, 0f);
-        surface.size = new Vector3(NavMeshSize, 40f, NavMeshSize);
+        surface.center = NavMeshCenter;
+        surface.size = NavMeshSize;
         surface.BuildNavMesh();
 
         // Save the result as an asset so the scene keeps it after closing.
@@ -144,10 +148,9 @@ public static class ElephantSetup
         obstacle.carving = true;
 
         var spawns = EditorKit.Group("Spawns", game);
-        var north = Spawn("Spawn_North", spawns, new Vector3(0f, 0f, 26f));
-        var east = Spawn("Spawn_East", spawns, new Vector3(28f, 0f, BlockoutBuilder.SideLaneZ));
-        var west = Spawn("Spawn_West", spawns, new Vector3(-28f, 0f, BlockoutBuilder.SideLaneZ));
-        var south = Spawn("Spawn_South", spawns, new Vector3(BlockoutBuilder.SouthLaneX, 0f, -28f));
+        var north = Spawn("Spawn_North", spawns, FarmLayout.SpawnNorth);
+        var south = Spawn("Spawn_South", spawns, FarmLayout.SpawnSouth);
+        var village = Spawn("Spawn_Village", spawns, FarmLayout.SpawnVillage);
 
         var template = CreateTemplate(game);
 
@@ -155,14 +158,18 @@ public static class ElephantSetup
         arrivals.transform.SetParent(game, false);
         arrivals.elephantTemplate = template;
         arrivals.northSpawn = north;
-        arrivals.eastSpawn = east;
-        arrivals.westSpawn = west;
         arrivals.southSpawn = south;
+        arrivals.villageSpawn = village;
     }
 
     static Transform Spawn(string name, Transform parent, Vector3 position)
     {
         if (NavMesh.SamplePosition(position, out var hit, 6f, NavMesh.AllAreas)) position = hit.position;
+        else
+        {
+            position = FarmLayout.OnGround(position);
+            Debug.LogWarning($"Night Watch: {name} at {position} is not on the walk map (NavMesh).");
+        }
         return EditorKit.Empty(name, parent, position);
     }
 

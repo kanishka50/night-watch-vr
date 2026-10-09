@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// A bonfire at one of the open sides of the field (east, west or south lane). Farmers keep
+// A bonfire at one of the open sides of the field (east or south). Farmers keep
 // fires burning at the field edge so elephants coming out of the forest hesitate.
 // Point at the woodpile and press G to light it (in the afternoon, from the ground).
 // While it burns, every few seconds each elephant in range stops for a moment and loses a

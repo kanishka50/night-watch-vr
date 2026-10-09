@@ -10,17 +10,19 @@ using Random = UnityEngine.Random;
 //  - Night waves, one after another. The next wave comes 20 seconds after the previous one has
 //    left, or after 2 minutes at most if the player cannot deal with it.
 //  - When the last wave has left, the game manager brings dawn early.
-// A wave can have several groups at once (the peak: north and south together). A group is one
-// elephant or a herd (leader, followers, maybe a calf). "East or West" sides are random.
+// A wave can have several groups at once (the peak: north and the village side together). A
+// group is one elephant or a herd (leader, followers, maybe a calf). Three ways in: North from the
+// tank (lake) to the fence, South from the jungle through the field, and the Village side from
+// behind the houses to the north-east, past the neighbour's house.
 public class ArrivalManager : MonoBehaviour
 {
-    public enum Side { North, East, West, South, EastOrWest }
+    public enum Side { North, South, Village }
 
     [Serializable]
     public class Group
     {
         public string name = "A lone bull";
-        public Side side = Side.EastOrWest;
+        public Side side = Side.South;
         [Min(1)] public int adults = 1;
         public bool withCalf;
         public bool fenceBreaker;
@@ -39,7 +41,7 @@ public class ArrivalManager : MonoBehaviour
 
     [Tooltip("A hidden, ready-made elephant. Each arrival is a copy of it.")]
     public GameObject elephantTemplate;
-    public Transform northSpawn, eastSpawn, westSpawn, southSpawn;
+    public Transform northSpawn, southSpawn, villageSpawn;
     [Tooltip("How far from the spawn point an arrival can start.")]
     public float spawnSpread = 5f;
 
@@ -61,11 +63,11 @@ public class ArrivalManager : MonoBehaviour
 
     public List<Wave> nightWaves = new List<Wave>
     {
-        new Wave { groups = { new Group { name = "A lone bull", side = Side.EastOrWest } } },
+        new Wave { groups = { new Group { name = "A lone bull", side = Side.South } } },
         new Wave
         {
             message = "Listen: several elephants are moving. A herd is coming.",
-            groups = { new Group { name = "The herd", side = Side.EastOrWest, adults = 2, withCalf = true } }
+            groups = { new Group { name = "The herd", side = Side.South, adults = 2, withCalf = true } }
         },
         new Wave
         {
@@ -73,7 +75,7 @@ public class ArrivalManager : MonoBehaviour
             groups =
             {
                 new Group { name = "The fence breaker", side = Side.North, fenceBreaker = true },
-                new Group { name = "The bull from the village side", side = Side.South, villageSide = true },
+                new Group { name = "The bull from the village side", side = Side.Village, villageSide = true },
             }
         },
     };
@@ -130,7 +132,7 @@ public class ArrivalManager : MonoBehaviour
     public void SpawnVillageBull()
     {
         var members = new List<ElephantAI>();
-        SpawnGroup(new Group { name = "The bull from the village side", side = Side.South, villageSide = true }, members);
+        SpawnGroup(new Group { name = "The bull from the village side", side = Side.Village, villageSide = true }, members);
         NoticeBoard.Message("A bull is coming from the village side.");
     }
 
@@ -171,12 +173,12 @@ public class ArrivalManager : MonoBehaviour
 
     void SpawnGroup(Group g, List<ElephantAI> members)
     {
-        var side = g.side == Side.EastOrWest ? (Random.value < 0.5f ? Side.East : Side.West) : g.side;
+        var side = g.side;
         var spawn = SpawnFor(side);
         if (spawn == null) return;
 
-        // Spread along the edge of the map, not into the field.
-        var along = (side == Side.North || side == Side.South) ? Vector3.right : Vector3.forward;
+        // Spread sideways (east-west), not toward the field.
+        var along = Vector3.right;
         var start = spawn.position + along * Random.Range(-spawnSpread, spawnSpread);
         bool fromNorth = side == Side.North;
 
@@ -227,8 +229,7 @@ public class ArrivalManager : MonoBehaviour
         switch (side)
         {
             case Side.North: return northSpawn;
-            case Side.East: return eastSpawn;
-            case Side.West: return westSpawn;
+            case Side.Village: return villageSpawn;
             default: return southSpawn;
         }
     }

@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 
 // The afternoon jobs, done on the ground before dark, as a watcher really does:
-//   1. light the bonfires at the open sides (east, west and south lanes)
+//   1. light the bonfires at the open sides (east and south)
 //   2. switch on the fence energiser
 //   3. climb into the hut
 // The player starts on the ground. The task board by the ladder ticks each job and counts down
@@ -87,7 +87,7 @@ public class GroundPrep : MonoBehaviour
             int fires = Bonfire.LitCount;
             tasks.text =
                 header + "\n\n" +
-                Line(1, AllFiresLit, $"Light the 3 bonfires: east, west, south ({fires} of {Bonfire.All.Count})") + "\n" +
+                Line(1, AllFiresLit, $"Light the {Bonfire.All.Count} bonfires: east and south ({fires} of {Bonfire.All.Count})") + "\n" +
                 Line(2, FenceOn, "Switch on the fence energiser (box east of the hut)") + "\n" +
                 Line(3, InHut, "Climb into the hut (the ladder)") + "\n\n" +
                 "<size=80%>Teleport: I.   Light or switch: point at it + G.</size>";
