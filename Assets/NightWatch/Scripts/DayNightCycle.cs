@@ -13,6 +13,10 @@ public class DayNightCycle : MonoBehaviour
     public Color duskSun = new Color(1f, 0.55f, 0.30f);
     public Color dawnSun = new Color(1f, 0.70f, 0.55f);
 
+    [Header("Film")]
+    [Tooltip("0 to 1 = show this moment of the run instead of the game clock (used by the story film). -1 = follow the game.")]
+    [Range(-1f, 1f)] public float progressOverride = -1f;
+
     // One look of the world at one moment of the run.
     struct Look
     {
@@ -82,7 +86,7 @@ public class DayNightCycle : MonoBehaviour
             Setup();
             if (looks == null) return;
         }
-        float p = game.DayProgress;
+        float p = progressOverride >= 0f ? progressOverride : game.DayProgress;
         var look = Sample(p);
 
         RenderSettings.ambientLight = look.ambient;
