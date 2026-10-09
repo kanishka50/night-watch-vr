@@ -64,9 +64,12 @@ public static class NightLighting
     {
         RenderSettings.skybox = NightSkyMaterial();
 
-        // One flat ambient colour is cheap and keeps shadows from going pure black.
-        RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientLight = AmbientColor;
+        // A sky / horizon / ground gradient (cheap) keeps shadows from going pure black.
+        // DayNightCycle changes these colours with the time of day.
+        RenderSettings.ambientMode = AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(0.08f, 0.10f, 0.17f);
+        RenderSettings.ambientEquatorColor = AmbientColor;
+        RenderSettings.ambientGroundColor = new Color(0.03f, 0.035f, 0.05f);
 
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
@@ -74,24 +77,43 @@ public static class NightLighting
         RenderSettings.fogDensity = 0.035f;
     }
 
-    // A procedural sky turned very dark, with no sun disc (the light is the moon).
+    // Our own sky (NightWatch/Sky: gradient, sun glow, moon, stars), saved with its night look.
+    // DayNightCycle drives a copy of it at run time. Unity's procedural sky is the fallback.
     static Material NightSkyMaterial()
     {
         string path = $"{MaterialFolder}/NightSky.mat";
+        var shader = Shader.Find("NightWatch/Sky");
+        if (shader == null)
+        {
+            Debug.LogWarning("Night Watch: shader NightWatch/Sky not found (Assets/NightWatch/Shaders), using Unity's procedural sky.");
+            shader = Shader.Find("Skybox/Procedural");
+        }
         var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (mat == null)
         {
-            mat = new Material(Shader.Find("Skybox/Procedural"));
+            mat = new Material(shader);
             AssetDatabase.CreateAsset(mat, path);
         }
-        mat.SetFloat("_SunDisk", 0f);
-        mat.EnableKeyword("_SUNDISK_NONE");
-        mat.DisableKeyword("_SUNDISK_SIMPLE");
-        mat.DisableKeyword("_SUNDISK_HIGH_QUALITY");
-        mat.SetFloat("_AtmosphereThickness", 0.6f);
-        mat.SetColor("_SkyTint", new Color(0.20f, 0.25f, 0.45f));
-        mat.SetColor("_GroundColor", FogColor);
-        mat.SetFloat("_Exposure", 0.12f);
+        mat.shader = shader;
+        if (mat.HasProperty("_ZenithColor"))
+        {
+            mat.SetColor("_ZenithColor", new Color(0.015f, 0.025f, 0.07f));
+            mat.SetColor("_HorizonColor", new Color(0.05f, 0.07f, 0.13f));
+            mat.SetColor("_GroundColor", FogColor);
+            mat.SetFloat("_SunGlow", 0f);
+            mat.SetFloat("_MoonShow", 1f);
+            mat.SetFloat("_Stars", 1f);
+            // Where the moon light comes from (SetUpMoon): the moon is opposite its light.
+            mat.SetVector("_MoonDir", -(Quaternion.Euler(35f, 20f, 0f) * Vector3.forward));
+        }
+        else
+        {
+            mat.SetFloat("_SunDisk", 0f);
+            mat.EnableKeyword("_SUNDISK_NONE");
+            mat.SetColor("_SkyTint", new Color(0.20f, 0.25f, 0.45f));
+            mat.SetColor("_GroundColor", FogColor);
+            mat.SetFloat("_Exposure", 0.12f);
+        }
         EditorUtility.SetDirty(mat);
         return mat;
     }

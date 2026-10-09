@@ -57,6 +57,7 @@ public static class GameSetup
         HutPropsSetup.BuildTools();
         HutPropsSetup.BuildScreens(game);
         HutPropsSetup.BuildManagers(game, sun);
+        SkySetup.Build(game);
         GroundPrepSetup.Build(game);
         ComfortSetup.Build();
         NeighbourSetup.Build(game);
