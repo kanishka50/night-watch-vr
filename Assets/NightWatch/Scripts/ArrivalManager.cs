@@ -206,6 +206,12 @@ public class ArrivalManager : MonoBehaviour
             calf.name = g.name + " (calf)";
             members.Add(calf);
         }
+
+        // A herd is cows and calves, led by the oldest cow: no tusks. Bulls keep theirs, so the
+        // player can tell them apart (in Sri Lanka few bulls are tuskers).
+        if (g.adults > 1 || g.withCalf)
+            foreach (var m in members)
+                if (m.name.StartsWith(g.name) && m.body != null) m.body.SetTusks(false);
     }
 
     ElephantAI Create(Vector3 position, Vector3 home, bool fromNorth, float size)

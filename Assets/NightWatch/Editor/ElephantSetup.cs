@@ -1,5 +1,6 @@
 using Unity.AI.Navigation;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -134,6 +135,26 @@ public static class ElephantSetup
         EditorUtility.SetDirty(surface);
     }
 
+    // The animator controller: one state per clip of the model, played by name (ElephantBody).
+    static RuntimeAnimatorController Controller()
+    {
+        AssetDatabase.DeleteAsset(ControllerPath);
+        var controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+        var machine = controller.layers[0].stateMachine;
+        string modelPath = $"Assets/NightWatch/Village/Models/{ElephantModel}.glb";
+        foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(modelPath))
+        {
+            if (!(asset is AnimationClip clip) || clip.name.StartsWith("__preview__")) continue;
+            var state = machine.AddState(clip.name);
+            state.motion = clip;
+            if (clip.name == "Idle") machine.defaultState = state;
+        }
+        if (machine.states.Length < 4)
+            Debug.LogWarning($"Night Watch: {modelPath} gave {machine.states.Length} animation clips, expected Idle, Walk, Run, Attack.");
+        EditorUtility.SetDirty(controller);
+        return controller;
+    }
+
     public static void BuildElephants(Transform game)
     {
         // Elephants walk round the hut, never under it. A round keep-out zone, wide enough for the
@@ -173,34 +194,39 @@ public static class ElephantSetup
         return EditorKit.Empty(name, parent, position);
     }
 
-    // A hidden stand-in elephant (simple grey shapes, about the size of an Asian elephant).
-    // Arrivals are copies of it. Replace the shapes with a real model later.
+    // A hidden elephant to copy: the village's elephant.glb (the same model as aliya.zip; 4 clips:
+    // Idle, Walk, Run, Attack; the tusks are a separate material). The model is 0.8 m tall in
+    // its file; ModelScale makes an adult's back about 3.3 m high and 4.8 m long, a big Sri
+    // Lankan elephant (the largest Asian elephants), a little bigger than average so it reads well
+    // from the hut. Arrivals are copies of it (a calf is a 0.55 copy). Tried 3.5 (too small next
+    // to the hut) and 4.2 (real size, "ok, could be a little bigger").
+    const string ElephantModel = "elephant";
+    const float ModelScale = 4.6f;
+    const string ControllerPath = "Assets/NightWatch/Village/Generated/ElephantAnimator.controller";
+
     static GameObject CreateTemplate(Transform game)
     {
-        var mat = EditorKit.Mat("ElephantGrey", new Color(0.35f, 0.33f, 0.32f));
-        var tuskMat = EditorKit.Mat("Tusk", new Color(0.85f, 0.82f, 0.72f));
-
         var elephant = EditorKit.Empty("ElephantTemplate", game, new Vector3(0f, 0f, 40f));
-        var body = EditorKit.Group("StandInBody", elephant);
-        EditorKit.Part("Body", PrimitiveType.Cube, body, new Vector3(0f, 2f, 0f), new Vector3(1.8f, 1.8f, 3f), mat, false);
-        EditorKit.Part("Head", PrimitiveType.Cube, body, new Vector3(0f, 2.5f, 1.9f), new Vector3(1.2f, 1.3f, 1f), mat, false);
+        // The model sits on this; the fall (hakka patas) tips it over.
+        var body = EditorKit.Group("Model", elephant);
+        body.localScale = Vector3.one * ModelScale;
 
-        var earLeft = EditorKit.Group("EarPivot_L", body);
-        earLeft.localPosition = new Vector3(-0.6f, 2.6f, 1.75f);
-        EditorKit.Part("Ear", PrimitiveType.Cube, earLeft, new Vector3(-0.05f, 0f, -0.4f), new Vector3(0.1f, 0.9f, 0.8f), mat, false);
-        var earRight = EditorKit.Group("EarPivot_R", body);
-        earRight.localPosition = new Vector3(0.6f, 2.6f, 1.75f);
-        EditorKit.Part("Ear", PrimitiveType.Cube, earRight, new Vector3(0.05f, 0f, -0.4f), new Vector3(0.1f, 0.9f, 0.8f), mat, false);
-
-        var trunk = EditorKit.Group("TrunkPivot", body);
-        trunk.localPosition = new Vector3(0f, 2.1f, 2.4f);
-        EditorKit.Part("Trunk", PrimitiveType.Cylinder, trunk, new Vector3(0f, -0.7f, 0f), new Vector3(0.3f, 0.7f, 0.3f), mat, false);
-        EditorKit.Part("Tusk_L", PrimitiveType.Cylinder, body, new Vector3(-0.3f, 1.9f, 2.45f), new Vector3(0.08f, 0.25f, 0.08f), tuskMat, false);
-        EditorKit.Part("Tusk_R", PrimitiveType.Cylinder, body, new Vector3(0.3f, 1.9f, 2.45f), new Vector3(0.08f, 0.25f, 0.08f), tuskMat, false);
-
-        foreach (var x in new[] { -0.6f, 0.6f })
-        foreach (var z in new[] { -1f, 1f })
-            EditorKit.Part("Leg", PrimitiveType.Cylinder, body, new Vector3(x, 0.55f, z), new Vector3(0.5f, 0.55f, 0.5f), mat, false);
+        Animator animator = null;
+        SkinnedMeshRenderer skin = null;
+        var model = VillageBuilder.LoadModel(ElephantModel);
+        if (model != null)
+        {
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(model, body);
+            animator = go.GetComponentInChildren<Animator>(true);
+            if (animator == null) animator = go.AddComponent<Animator>();
+            animator.runtimeAnimatorController = Controller();
+            // The NavMesh agent moves the elephant; the clips walk on the spot.
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            skin = go.GetComponentInChildren<SkinnedMeshRenderer>();
+            // Cheaper: do not re-skin elephants that are out of view.
+            if (skin != null) skin.updateWhenOffscreen = false;
+        }
 
         // One collider for the whole animal, so thrown crackers can hit it.
         var hitbox = elephant.gameObject.AddComponent<CapsuleCollider>();
@@ -227,9 +253,8 @@ public static class ElephantSetup
 
         var bodyMotion = elephant.gameObject.AddComponent<ElephantBody>();
         bodyMotion.bodyRoot = body;
-        bodyMotion.earLeft = earLeft;
-        bodyMotion.earRight = earRight;
-        bodyMotion.trunk = trunk;
+        bodyMotion.animator = animator;
+        bodyMotion.skin = skin;
 
         var ai = elephant.gameObject.AddComponent<ElephantAI>();
         ai.body = bodyMotion;

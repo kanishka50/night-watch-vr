@@ -1,19 +1,35 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-// Simple body movement for the stand-in elephant, made in code:
-//  - ears flap when scared, spread wide and trunk lifted when agitated
-//  - body rocks while pushing the fence, bobs while walking
-//  - Eat: trunk down to the ground
-//  - Rear: head and trunk thrown up (the moment of the blast)
-//  - FallOver: staggers, front legs buckle, rolls onto its side, a few slow breaths, then still
-// A real model with an Animator replaces this later.
+// How the elephant's body moves. With the real model (an Animator with Idle, Walk, Run and
+// Attack, from the village's elephant.glb) the clip follows what the AI does:
+//  - Walk or Run by speed, played faster or slower so the feet do not slide
+//  - Idle when standing (at the fence, eating, stopped by a deterrent)
+//  - Attack when it rears (the moment of a blast) and while it pushes the fence
+//  - FallOver (hakka patas): staggers, front legs buckle, rolls onto its side, then still
+//    (no death clip yet, so the whole model is tipped over in code)
+// Without a model (old stand-in shapes) the ears, trunk and body are moved in code instead.
+// Tusks can be hidden: most Asian elephant cows (and most Sri Lankan bulls) have no tusks.
 public class ElephantBody : MonoBehaviour
 {
     public Transform bodyRoot;
     public Transform earLeft;
     public Transform earRight;
     public Transform trunk;
+
+    [Header("Real model")]
+    public Animator animator;
+    [Tooltip("The model's skin; its second material slot is the tusks.")]
+    public SkinnedMeshRenderer skin;
+    [Tooltip("Walking speed (m/s) at which the Walk clip plays at normal speed, for a full-size elephant.")]
+    public float walkClipSpeed = 1.7f;
+    [Tooltip("Running speed (m/s) at which the Run clip plays at normal speed, for a full-size elephant.")]
+    public float runClipSpeed = 4.6f;
+    [Tooltip("Faster than this (m/s) it runs instead of walking.")]
+    public float runFrom = 2.2f;
+
+    string playing;
+    Material[] withTusks;
 
     float flapTimer;
     float eatTimer;
@@ -29,13 +45,30 @@ public class ElephantBody : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         if (bodyRoot != null) bodyStart = bodyRoot.localPosition;
+        if (skin != null) withTusks = skin.sharedMaterials;
+    }
+
+    // Tusks shown or hidden (the tusk part of the mesh gets no material, so it is not drawn).
+    public void SetTusks(bool on)
+    {
+        if (skin == null || withTusks == null || withTusks.Length < 2) return;
+        skin.sharedMaterials = on ? withTusks : new[] { withTusks[0] };
     }
 
     public void FlapEars(float seconds = 1.5f) => flapTimer = Mathf.Max(flapTimer, seconds);
     public void SetAgitated(bool on) => agitated = on;
     public void SetPushing(bool on) => pushing = on;
     public void Eat(float seconds) => eatTimer = seconds;
-    public void Rear(float seconds = 0.9f) => rearTimer = seconds;
+    public void Rear(float seconds = 0.9f)
+    {
+        rearTimer = seconds;
+        if (animator == null) return;
+        // The Attack clip from the start: head up, trunk raised.
+        rearTimer = Mathf.Max(seconds, 1.6f);
+        animator.speed = 1f;
+        animator.Play("Attack", 0, 0f);
+        playing = "Attack";
+    }
 
     public void FallOver()
     {
@@ -54,6 +87,17 @@ public class ElephantBody : MonoBehaviour
         if (fallen)
         {
             UpdateFall(dt);
+            if (animator != null)
+            {
+                Play("Idle", 1f);
+                if (fallTime > 2.8f) animator.speed = 0f;   // lies still
+            }
+            return;
+        }
+
+        if (animator != null)
+        {
+            UpdateModel();
             return;
         }
 
@@ -83,6 +127,27 @@ public class ElephantBody : MonoBehaviour
         float rock = pushing ? 0.25f * Mathf.Max(0f, Mathf.Sin(t * 3f)) : 0f;
         bodyRoot.localRotation = Quaternion.identity;
         bodyRoot.localPosition = bodyStart + new Vector3(0f, bob, rock);
+    }
+
+    // Picks the clip from what the elephant is doing.
+    void UpdateModel()
+    {
+        float size = Mathf.Max(0.2f, transform.lossyScale.x);
+        float speed = agent != null ? agent.velocity.magnitude : 0f;
+        if (rearTimer > 0f || pushing) Play("Attack", 1f);
+        else if (speed > runFrom * size) Play("Run", Mathf.Clamp(speed / (runClipSpeed * size), 0.6f, 1.5f));
+        else if (speed > 0.15f) Play("Walk", Mathf.Clamp(speed / (walkClipSpeed * size), 0.5f, 1.6f));
+        else Play("Idle", 1f);
+    }
+
+    void Play(string state, float speed)
+    {
+        if (playing != state)
+        {
+            animator.CrossFadeInFixedTime(state, 0.25f);
+            playing = state;
+        }
+        animator.speed = speed;
     }
 
     // The fall, in stages over about 7 seconds.
