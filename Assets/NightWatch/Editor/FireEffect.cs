@@ -29,10 +29,12 @@ public static class FireEffect
         main.startColor = Color.white;
         main.simulationSpace = ParticleSystemSimulationSpace.World;   // a moving torch leaves a trail
         main.scalingMode = ParticleSystemScalingMode.Hierarchy;
-        main.maxParticles = 60;
+        // Big fires need more flames to stay full (a bonfire is size 2.5).
+        float fullness = Mathf.Max(1f, size * 0.6f);
+        main.maxParticles = Mathf.RoundToInt(60 * fullness);
 
         var emission = flames.emission;
-        emission.rateOverTime = 35f;
+        emission.rateOverTime = 35f * fullness;
 
         var shape = flames.shape;
         shape.shapeType = ParticleSystemShapeType.Cone;

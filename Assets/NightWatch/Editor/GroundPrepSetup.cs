@@ -70,17 +70,18 @@ public static class GroundPrepSetup
         var flame = new GameObject("Flame");
         flame.transform.SetParent(go.transform, false);
         flame.transform.localPosition = new Vector3(0f, 0.8f, 0f);
-        // The flames start at the top of the logs and rise.
-        FireEffect.Build(flame.transform, new Vector3(0f, -0.45f, 0f), 1f);
+        // The flames start low among the logs and rise well above them (about 1.5 m), as a
+        // night watch fire of this size burns.
+        FireEffect.Build(flame.transform, new Vector3(0f, -0.55f, 0f), 2.5f);
 
         var lightGo = new GameObject("FireLight");
         lightGo.transform.SetParent(flame.transform, false);
-        lightGo.transform.localPosition = new Vector3(0f, 0.7f, 0f);
+        lightGo.transform.localPosition = new Vector3(0f, 0.9f, 0f);
         var light = lightGo.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = new Color(1f, 0.55f, 0.25f);
-        light.range = 14f;
-        light.intensity = 4f;
+        light.range = 16f;
+        light.intensity = 5f;
         light.shadows = LightShadows.None;
 
         var crackle = flame.AddComponent<AudioSource>();
