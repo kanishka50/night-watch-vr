@@ -16,6 +16,8 @@ public class DayNightCycle : MonoBehaviour
     [Header("Film")]
     [Tooltip("0 to 1 = show this moment of the run instead of the game clock (used by the story film). -1 = follow the game.")]
     [Range(-1f, 1f)] public float progressOverride = -1f;
+    [Tooltip("Multiplies the fog (less than 1 = clearer, for the film's wide drone shots).")]
+    [Range(0.1f, 2f)] public float fogScale = 1f;
 
     // One look of the world at one moment of the run.
     struct Look
@@ -91,7 +93,7 @@ public class DayNightCycle : MonoBehaviour
 
         RenderSettings.ambientLight = look.ambient;
         RenderSettings.fogColor = look.fog;
-        RenderSettings.fogDensity = look.fogDensity;
+        RenderSettings.fogDensity = look.fogDensity * fogScale;
         if (sky != null)
         {
             sky.SetFloat("_Exposure", look.skyExposure);

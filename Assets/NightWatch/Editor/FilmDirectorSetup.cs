@@ -8,9 +8,10 @@ using UnityEngine.UI;
 
 // Builds the story film's director (docs/story-film.md): the film camera, the screen on it
 // (cinema bars, the black fade, the title card in gold with a small ornament, the caption in the
-// bottom bar) and the shot list. Called by Night Watch > Build Full Game, and on its own by
-// Night Watch > Story Film > Add Film Director (no full rebuild needed).
+// bottom bar), the film's oil lamp in the pela and the shot list. Called by Night Watch > Build
+// Full Game, and on its own by Night Watch > Story Film > Add Film Director (no full rebuild needed).
 // Night Watch > Story Film > Preview presses Play and runs the film once in the Game view.
+// Night Watch > Story Film > Stills saves one picture per second for the contact sheet.
 public static class FilmDirectorSetup
 {
     const string GameScene = "Assets/Scenes/NightWatch.unity";
@@ -25,22 +26,87 @@ public static class FilmDirectorSetup
     static readonly Color PaleGold = new Color(0.88f, 0.82f, 0.68f);
     static readonly Color CaptionGrey = new Color(0.80f, 0.80f, 0.80f);
 
+    // The light for each kind of shot (DayNightCycle: 0.22 dusk starts, 0.31 night starts).
+    const float LateAfternoon = 0.19f, Dusk = 0.25f, LateDusk = 0.28f, Night = 0.5f;
+    // Fog per kind of shot: clear for the wide drone views, the game's own fog at night.
+    const float ClearFog = 0.45f, DuskFog = 0.7f, NightFog = 0.8f;
+
     // Shot list (story-film.md section 4). Camera points: x and z in the world, y above the ground.
+    // Hut at the origin, +z north. Night shots stay close: the night fog hides everything past
+    // about 40 m.
     static FilmDirector.Shot[] Shots() => new[]
     {
-        new FilmDirector.Shot
-        {
-            name = "0 Title", seconds = 5f, card = true, bigTitle = true,
-            title = "NIGHT WATCH", subtitle = "A night in the dry zone of Sri Lanka",
-        },
+        Card("0 Title", "NIGHT WATCH", "A night in the dry zone of Sri Lanka", true),
         new FilmDirector.Shot
         {
             name = "1 The tank at sunset", seconds = 8f,
-            from = new Vector3(-20f, 25f, 90f), to = new Vector3(-5f, 10f, 30f),
-            lookFrom = new Vector3(-12f, 0f, 45f), lookTo = new Vector3(0f, 1f, -5f),
-            timeOfDay = 0.19f, caption = "An old village beside its tank (wewa)",
+            from = new Vector3(-25f, 30f, 115f), to = new Vector3(-5f, 12f, 32f),
+            lookFrom = new Vector3(-8f, 0f, 30f), lookTo = new Vector3(0f, 1f, -5f),
+            timeOfDay = LateAfternoon, fog = ClearFog, caption = "An old village beside its tank (wewa)",
         },
+        // Circling the stupa from the south-west (the fewest tall trees there), high enough to see
+        // over the palms.
+        new FilmDirector.Shot
+        {
+            name = "2 The stupa", seconds = 8f, orbit = true,
+            center = new Vector3(106.5f, 3f, 53.5f), radius = 20f, height = 24f, fromAngle = 190f, toAngle = 250f,
+            timeOfDay = LateAfternoon, fog = ClearFog, caption = "Harvest time",
+        },
+        Card("3 Card", "The rice is ripe.\nA family's whole year grows in this field."),
+        // Low along a bund south of the crop plots, toward the pela (a haystack stands by the
+        // nearer bund at x = -12.5, so this one is a plot further south).
+        new FilmDirector.Shot
+        {
+            name = "4 The paddy and the pela", seconds = 8f,
+            from = new Vector3(-34f, 1.5f, -17.5f), to = new Vector3(-18f, 1.5f, -17.5f),
+            lookFrom = new Vector3(-12f, 1f, -10f), lookTo = new Vector3(0f, 3.5f, 0f),
+            timeOfDay = Dusk, fog = DuskFog,
+        },
+        Card("5 Card", "At night, hungry elephants\nleave the jungle."),
+        // On the bund, looking south to the jungle edge, a slow push in. The herd comes in step 3.
+        new FilmDirector.Shot
+        {
+            name = "6 The herd leaves the jungle", seconds = 10f,
+            from = new Vector3(-9.25f, 1f, -38f), to = new Vector3(-9.25f, 1f, -41.5f),
+            lookFrom = new Vector3(-11f, 2.5f, -62f), lookTo = new Vector3(-11f, 2.5f, -62f),
+            timeOfDay = LateDusk, fog = DuskFog,
+        },
+        // Circling the south-west crop plot from the south, the pela behind it.
+        new FilmDirector.Shot
+        {
+            name = "7 The herd eats the rice", seconds = 7f, orbit = true,
+            center = new Vector3(-4.6f, 0.5f, -4.4f), radius = 12f, height = 6f, fromAngle = 150f, toAngle = 210f,
+            timeOfDay = Night, fog = NightFog, caption = "They are not cruel. They are hungry.", lamp = true,
+        },
+        // Behind the charging bull, then a straight cut to the side of the pela.
+        new FilmDirector.Shot
+        {
+            name = "8a The bull charges", seconds = 4.5f,
+            from = new Vector3(-3f, 2f, -24f), to = new Vector3(-1.5f, 2f, -15f),
+            lookFrom = new Vector3(0f, 3f, 0f), lookTo = new Vector3(0f, 3f, 0f),
+            timeOfDay = Night, fog = NightFog, lamp = true,
+        },
+        new FilmDirector.Shot
+        {
+            name = "8b The pela shakes", seconds = 2.5f, cutIn = true,
+            from = new Vector3(7f, 1.7f, -4f), to = new Vector3(6.5f, 1.7f, -3.5f),
+            lookFrom = new Vector3(0f, 2.6f, -1.2f), lookTo = new Vector3(0f, 2.6f, -1f),
+            timeOfDay = Night, fog = NightFog, lamp = true,
+        },
+        Card("9 Card", "When no one keeps watch,\npeople and elephants get hurt."),
+        // The pela with its lamp, pulling back and up until the dark field swallows it.
+        new FilmDirector.Shot
+        {
+            name = "10 The pela at night", seconds = 6f,
+            from = new Vector3(2.5f, 4f, -5.5f), to = new Vector3(10f, 15f, -22f),
+            lookFrom = new Vector3(0f, 3.2f, 0f), lookTo = new Vector3(0f, 3.2f, 0f),
+            timeOfDay = Night, fog = NightFog, lamp = true,
+        },
+        Card("11 Card", "Tonight, keep everyone alive:\nyou, your neighbour and the elephants."),
     };
+
+    static FilmDirector.Shot Card(string name, string title, string subtitle = "", bool big = false) =>
+        new FilmDirector.Shot { name = name, seconds = 5f, card = true, title = title, subtitle = subtitle, bigTitle = big };
 
     [MenuItem("Night Watch/Story Film/Add Film Director")]
     static void AddFilmDirector()
@@ -69,7 +135,13 @@ public static class FilmDirectorSetup
     }
 
     [MenuItem("Night Watch/Story Film/Preview")]
-    static void Preview()
+    static void Preview() => Run(FilmDirector.Mode.Preview);
+
+    [MenuItem("Night Watch/Story Film/Stills")]
+    static void Stills() => Run(FilmDirector.Mode.Stills);
+
+    // Presses Play and runs the film in this mode (or runs it at once if already playing).
+    static void Run(FilmDirector.Mode mode)
     {
         var director = Object.FindAnyObjectByType<FilmDirector>(FindObjectsInactive.Include);
         if (director == null)
@@ -79,10 +151,11 @@ public static class FilmDirectorSetup
         }
         if (EditorApplication.isPlaying)
         {
-            director.PlayFilm();
+            if (mode == FilmDirector.Mode.Stills) director.SaveStills();
+            else director.PlayFilm();
             return;
         }
-        SessionState.SetInt(FilmDirector.ModeKey, (int)FilmDirector.Mode.Preview);
+        SessionState.SetInt(FilmDirector.ModeKey, (int)mode);
         EditorApplication.isPlaying = true;
     }
 
@@ -108,6 +181,35 @@ public static class FilmDirectorSetup
 
         BuildScreen(director, cam);
         camGo.SetActive(false);
+        BuildLamp(root, director);
+    }
+
+    // The film's oil lamp in the pela: a small tin bottle lamp (kuppi lampuwa) hanging from the
+    // roof on a cord, with a flame and a warm light. Off unless a shot asks for it.
+    static void BuildLamp(Transform root, FilmDirector director)
+    {
+        var lamp = EditorKit.Group("FilmLamp", root);
+        lamp.position = new Vector3(0f, BlockoutBuilder.HutFloorTop + 1.75f, 0f);
+        EditorKit.Part("Cord", PrimitiveType.Cylinder, lamp, new Vector3(0f, 0.3f, 0f), new Vector3(0.01f, 0.25f, 0.01f),
+            EditorKit.Mat("OlaCord", new Color(0.55f, 0.08f, 0.06f), true), false);
+        EditorKit.Part("Tin", PrimitiveType.Cylinder, lamp, Vector3.zero, new Vector3(0.08f, 0.05f, 0.08f),
+            EditorKit.Mat("LampTin", new Color(0.35f, 0.33f, 0.30f)), false);
+        EditorKit.Part("Flame", PrimitiveType.Sphere, lamp, new Vector3(0f, 0.09f, 0f), new Vector3(0.03f, 0.06f, 0.03f),
+            EditorKit.Mat("LampFlame", new Color(1f, 0.72f, 0.3f), true), false);
+
+        var lightGo = new GameObject("Light");
+        lightGo.transform.SetParent(lamp, false);
+        lightGo.transform.localPosition = new Vector3(0f, 0.12f, 0f);
+        var light = lightGo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, 0.62f, 0.3f);
+        light.range = 8f;
+        light.intensity = director.lampIntensity;
+        light.shadows = LightShadows.None;
+
+        director.lamp = lamp.gameObject;
+        director.lampLight = light;
+        lamp.gameObject.SetActive(false);
     }
 
     // The screen in front of the film camera, drawn into the same picture.
@@ -120,7 +222,7 @@ public static class FilmDirectorSetup
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceCamera;
         canvas.worldCamera = cam;
-        canvas.planeDistance = 0.5f;
+        canvas.planeDistance = 0.31f;   // just past the near clip, so no world part comes in front
         var scaler = canvasGo.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(Width, Height);
@@ -158,6 +260,9 @@ public static class FilmDirectorSetup
         captionRect.offsetMin = Vector2.zero;
         captionRect.offsetMax = new Vector2(0f, BarHeight);
         director.caption.text = "";
+
+        // On the UI layer: title cards draw only this layer.
+        foreach (var t in canvasGo.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = FilmDirector.ScreenLayer;
     }
 
     static RectTransform Rect(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
