@@ -174,9 +174,11 @@ public static class HutPropsSetup
 
         var crackle = pot.AddComponent<AudioSource>();
         crackle.spatialBlend = 1f;
-        crackle.minDistance = 1f;
+        // Quiet: it is about 1 m from the player all night. Full volume only within 0.5 m, then
+        // softer with distance (it was full volume anywhere within 1 m, so loud up close).
+        crackle.minDistance = 0.5f;
         crackle.maxDistance = 15f;
-        crackle.volume = 0.3f;   // it is about 1 m from the player all night
+        crackle.volume = 0.12f;
 
         var fire = pot.AddComponent<FirePot>();
         fire.fireLight = light;
@@ -212,9 +214,10 @@ public static class HutPropsSetup
         light.intensity = 6f;
         var sound = flame.AddComponent<AudioSource>();
         sound.spatialBlend = 1f;
+        // A lit torch is held right by the head: half the old volume.
         sound.minDistance = 1f;
         sound.maxDistance = 15f;
-        sound.volume = 0.6f;
+        sound.volume = 0.3f;
 
         var ft = torch.AddComponent<FireTorch>();
         ft.flame = flame;
