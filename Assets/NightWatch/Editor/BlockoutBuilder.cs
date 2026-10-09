@@ -66,9 +66,9 @@ public static class BlockoutBuilder
     }
 
     // A pela, the traditional Sri Lankan watch hut: rough round poles lashed together, a floor of
-    // old planks, stick railings, and a two-slope roof of overlapping old cadjan (woven, dried
-    // coconut leaves), open on the south side where the ladder is. Every pole leans a little and
-    // every cadjan row is a little crooked, so it looks hand-made and old, like the village's
+    // old planks, stick railings, and a two-slope roof thatched with thick illuk grass (straw-like),
+    // open on the south side where the ladder is. Every pole leans a little and
+    // every thatch row is a little crooked, so it looks hand-made and old, like the village's
     // houses. Sizes and part names stay as before (HutDamage, the props and the floor teleport
     // use them): Floor, Rail_North, Rail_East, Rail_West, Roof, Ladder.
     static void BuildHut(Transform root)
@@ -76,7 +76,7 @@ public static class BlockoutBuilder
         var parent = Group("WatchHut", root);
         var pole = Mat("HutPole", new Color(0.40f, 0.31f, 0.22f));
         var planks = Mat("HutFloor", new Color(0.45f, 0.35f, 0.25f));
-        var cadjan = Mat("Cadjan", new Color(0.55f, 0.45f, 0.30f));
+        var thatch = Mat("PelaThatch", new Color(0.78f, 0.64f, 0.40f));
         var random = new System.Random(7);
         float Jitter(float amount) => (float)(random.NextDouble() * 2.0 - 1.0) * amount;
 
@@ -109,7 +109,7 @@ public static class BlockoutBuilder
         Railing("Rail_East", parent, new Vector3(half, 0f, -half), new Vector3(half, 0f, half), floorTop, pole, Jitter);
         Railing("Rail_West", parent, new Vector3(-half, 0f, -half), new Vector3(-half, 0f, half), floorTop, pole, Jitter);
 
-        BuildRoof(parent, half, eave, pole, cadjan, Jitter);
+        BuildRoof(parent, half, eave, pole, thatch, Jitter);
 
         // A pole ladder: two side poles and stick rungs. The poles rise about 0.9 m above the floor,
         // as on a real pela ladder (held when stepping on and off), with a last rung at the top.
@@ -144,16 +144,19 @@ public static class BlockoutBuilder
         }
     }
 
-    // The roof: eave beams and a ridge pole on the posts, and on each slope six overlapping rows
-    // of cadjan, the upper row over the lower one, each a little crooked; a cap along the ridge.
+    // The roof: eave beams and a ridge pole on the posts, and on each slope seven thick, soft rows
+    // of illuk grass thatch (the straw-like grass farmers cut to roof a pela), each row over the
+    // one below it, a little crooked, with a ragged fringe of straw ends hanging under it (longer
+    // at the eaves). A bundled straw roll, tied with coir, along the ridge.
     // The ridge runs east-west, so the slopes face north and south (the low eaves frame the view).
-    static void BuildRoof(Transform parent, float half, float eave, Material pole, Material cadjan, System.Func<float, float> jitter)
+    static void BuildRoof(Transform parent, float half, float eave, Material pole, Material thatch, System.Func<float, float> jitter)
     {
         var roof = Group("Roof", parent);
-        const float rise = 0.85f, overhang = 0.55f, rowWidth = 0.5f, rowStep = 0.38f, rowThickness = 0.05f;
-        const int rows = 6;
+        const float rise = 0.85f, overhang = 0.6f, rowWidth = 0.55f, rowStep = 0.33f, rowThickness = 0.12f;
+        const int rows = 7;
         float ridgeY = eave + rise;
         float length = HutSize + 0.9f;
+        var fringe = StrawFringeMaterial(length);
 
         foreach (var z in new[] { -half, half })
             Pole("EaveBeam", roof, new Vector3(-half - 0.25f, eave, z), new Vector3(half + 0.25f, eave, z), 0.11f, pole);
@@ -172,18 +175,86 @@ public static class BlockoutBuilder
             // Down the slope, and out of the roof surface.
             var down = new Vector3(0f, -Mathf.Sin(angle), side * Mathf.Cos(angle));
             var outward = new Vector3(0f, Mathf.Cos(angle), side * Mathf.Sin(angle));
+            var tilt = Quaternion.LookRotation(down, outward);
             float slope = (half + overhang) / Mathf.Cos(angle);
             for (int i = 0; i < rows; i++)
             {
                 float along = Mathf.Min(rowWidth / 2f + i * rowStep, slope - rowWidth / 2f);
-                // Upper rows lie on top of lower ones, like shingles.
-                var at = new Vector3(jitter(0.08f), ridgeY + 0.06f, 0f) + down * along + outward * (0.02f * (rows - i));
-                var row = Box("CadjanRow", roof, at, new Vector3(length + jitter(0.12f), rowThickness, rowWidth), cadjan);
-                row.transform.localRotation = Quaternion.LookRotation(down, outward) * Quaternion.Euler(jitter(2f), jitter(1.5f), jitter(1.5f));
+                // Upper rows lie on top of lower ones.
+                var at = new Vector3(jitter(0.08f), ridgeY + 0.08f, 0f) + down * along + outward * (0.05f * (rows - i));
+                float rowLength = length + jitter(0.12f);
+                var row = Box("ThatchRow", roof, at, new Vector3(rowLength, rowThickness, rowWidth), thatch);
+                row.transform.localRotation = tilt * Quaternion.Euler(jitter(2f), jitter(1.5f), jitter(1.5f));
+
+                // Straw ends hanging from the row's lower edge, longest at the eaves.
+                float hang = i == rows - 1 ? 0.32f : 0.14f;
+                var edge = at + down * (rowWidth / 2f + hang / 2f - 0.02f) - outward * (rowThickness * 0.3f);
+                var ends = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                ends.name = "StrawEnds";
+                Object.DestroyImmediate(ends.GetComponent<Collider>());
+                ends.transform.SetParent(roof, false);
+                ends.transform.localPosition = edge;
+                ends.transform.localRotation = Quaternion.LookRotation(outward, -down);
+                ends.transform.localScale = new Vector3(rowLength, hang, 1f);
+                ends.GetComponent<Renderer>().sharedMaterial = fringe;
             }
         }
-        var cap = Box("RidgeCap", roof, new Vector3(0f, ridgeY + 0.13f, 0f), new Vector3(length, rowThickness, 0.45f), cadjan);
-        cap.transform.localRotation = Quaternion.Euler(0f, jitter(1f), 0f);
+
+        // The ridge: a fat roll of straw, tied every 0.7 m.
+        Pole("RidgeRoll", roof, new Vector3(-length / 2f, ridgeY + 0.16f, 0f), new Vector3(length / 2f, ridgeY + 0.16f, 0f), 0.34f, thatch);
+        var tie = Mat("RoofTie", new Color(0.30f, 0.22f, 0.14f));
+        for (float x = -length / 2f + 0.35f; x < length / 2f; x += 0.7f)
+            Pole("RidgeTie", roof, new Vector3(x - 0.02f, ridgeY + 0.16f, 0f), new Vector3(x + 0.02f, ridgeY + 0.16f, 0f), 0.36f, tie);
+    }
+
+    // A strip of straw ends (made here, no download): golden strands of different lengths on a
+    // see-through ground, cut out (alpha clip) and seen from both sides.
+    const string FringeTexturePath = "Assets/NightWatch/Textures/StrawFringe.png";
+
+    static Material StrawFringeMaterial(float stripLength)
+    {
+        if (AssetDatabase.LoadAssetAtPath<Texture2D>(FringeTexturePath) == null)
+        {
+            const int w = 256, h = 64;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var random = new System.Random(11);
+            var straw = new Color(0.78f, 0.64f, 0.38f);
+            var clear = new Color(0f, 0f, 0f, 0f);
+            for (int x = 0; x < w; x++)
+            {
+                // Each column is one strand: its own length (from the top) and shade.
+                float length = 0.45f + 0.55f * (float)random.NextDouble();
+                float shade = 0.7f + 0.45f * (float)random.NextDouble();
+                for (int y = 0; y < h; y++)
+                {
+                    float fromTop = 1f - (y + 0.5f) / h;
+                    tex.SetPixel(x, y, fromTop < length ? straw * shade * (1f - 0.35f * fromTop) : clear);
+                }
+            }
+            for (int x = 0; x < w; x++) tex.SetPixel(x, h - 1, straw * 0.7f);
+            System.IO.File.WriteAllBytes(FringeTexturePath, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(FringeTexturePath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(FringeTexturePath);
+            importer.alphaIsTransparency = true;
+            importer.wrapModeU = TextureWrapMode.Repeat;
+            importer.wrapModeV = TextureWrapMode.Clamp;
+            importer.SaveAndReimport();
+        }
+
+        var mat = Mat("StrawFringe", Color.white);
+        mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(FringeTexturePath));
+        // One copy of the strand picture every 40 cm along the strip.
+        mat.SetTextureScale("_BaseMap", new Vector2(stripLength / 0.4f, 1f));
+        mat.SetColor("_BaseColor", Color.white);
+        mat.SetFloat("_AlphaClip", 1f);
+        mat.SetFloat("_Cutoff", 0.5f);
+        mat.EnableKeyword("_ALPHATEST_ON");
+        mat.SetFloat("_Cull", 0f);   // both sides
+        mat.SetFloat("_Smoothness", 0.03f);
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     // A round pole (a cylinder) from a to b.

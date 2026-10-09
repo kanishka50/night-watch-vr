@@ -39,6 +39,9 @@ public static class TextureKit
         { "HutPole", new Look("bark_brown_02", 1.2f, new Color(0.85f, 0.8f, 0.75f), 0.05f) },
         { "HutFloor", new Look("weathered_planks", 1.5f, new Color(0.78f, 0.72f, 0.65f), 0.05f) },
         { "Cadjan", new Look("thatch_roof_angled", 1.5f, new Color(0.78f, 0.62f, 0.42f), 0.02f) },
+        // The pela's illuk grass thatch: the reed photo in a dry golden straw colour, at a finer
+        // scale than the old cadjan, so the stems read from the ground.
+        { "PelaThatch", new Look("thatch_roof_angled", 1.1f, new Color(1f, 0.84f, 0.55f), 0.03f) },
     };
 
     // Puts the texture on the material (called every time a tool asks for the material).
