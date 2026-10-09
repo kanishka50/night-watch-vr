@@ -1,8 +1,6 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
 
 // The ending card: a big title and one short line that appear in front of the player's eyes on
 // the black screen at the end of the night, with a sound (birds for a good ending, a slow low
@@ -19,9 +17,12 @@ public class EndingCard : MonoBehaviour
     public Color badColor = new Color(1f, 0.70f, 0.42f);
 
     Coroutine soundRoutine;
-    // The controller rays, hidden while the card shows (they drew over the message).
-    readonly List<Behaviour> hiddenRayScripts = new List<Behaviour>();
-    readonly List<LineRenderer> hiddenRays = new List<LineRenderer>();
+    // While the card shows, the camera draws only the card's layer on black: nothing in the world
+    // (hands, rays, elephants, overlays) can cover or cut the message.
+    Camera shownBy;
+    int savedMask;
+    CameraClearFlags savedClear;
+    Color savedBackground;
 
     void Awake()
     {
@@ -44,7 +45,7 @@ public class EndingCard : MonoBehaviour
         instance.title.color = good ? instance.goodColor : instance.badColor;
         instance.line.text = lineText;
         instance.card.SetActive(true);
-        instance.HideRays();
+        instance.ShowOnlyCard();
         instance.StopSound();
         instance.soundRoutine = instance.StartCoroutine(instance.PlaySound(good));
     }
@@ -53,38 +54,31 @@ public class EndingCard : MonoBehaviour
     {
         if (instance == null || instance.card == null) return;
         instance.card.SetActive(false);
-        instance.ShowRays();
+        instance.ShowWorld();
         instance.StopSound();
     }
 
-    // The ray scripts switch their lines back on every frame, so they are paused too.
-    void HideRays()
+    void ShowOnlyCard()
     {
-        if (hiddenRays.Count > 0 || hiddenRayScripts.Count > 0) return;
+        if (shownBy != null) return;
         var cam = Camera.main;
-        if (cam == null) return;
-        var rig = cam.transform.root;
-        foreach (var script in rig.GetComponentsInChildren<Behaviour>())
-        {
-            if (!(script is CurveVisualController) && !(script is XRInteractorLineVisual)) continue;
-            if (!script.enabled) continue;
-            script.enabled = false;
-            hiddenRayScripts.Add(script);
-        }
-        foreach (var line in rig.GetComponentsInChildren<LineRenderer>())
-        {
-            if (!line.enabled) continue;
-            line.enabled = false;
-            hiddenRays.Add(line);
-        }
+        if (cam == null || card == null) return;
+        shownBy = cam;
+        savedMask = cam.cullingMask;
+        savedClear = cam.clearFlags;
+        savedBackground = cam.backgroundColor;
+        cam.cullingMask = 1 << card.layer;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = Color.black;
     }
 
-    void ShowRays()
+    void ShowWorld()
     {
-        foreach (var line in hiddenRays) if (line != null) line.enabled = true;
-        foreach (var script in hiddenRayScripts) if (script != null) script.enabled = true;
-        hiddenRays.Clear();
-        hiddenRayScripts.Clear();
+        if (shownBy == null) return;
+        shownBy.cullingMask = savedMask;
+        shownBy.clearFlags = savedClear;
+        shownBy.backgroundColor = savedBackground;
+        shownBy = null;
     }
 
     void StopSound()

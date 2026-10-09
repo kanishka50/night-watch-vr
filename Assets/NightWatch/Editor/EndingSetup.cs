@@ -7,6 +7,9 @@ using UnityEngine;
 // Kept within the middle of the view (about 35 degrees wide), where text is comfortable to read in VR.
 public static class EndingSetup
 {
+    // A layer nothing else uses (unnamed is fine), for the ending card alone.
+    public const int CardLayer = 31;
+
     public static void Build()
     {
         var cam = Camera.main;
@@ -28,8 +31,10 @@ public static class EndingSetup
         // The card itself is a child, so hiding it does not stop the sound on the root.
         var card = new GameObject("Card");
         card.transform.SetParent(root.transform, false);
-        var title = Text("Title", card.transform, new Vector3(0f, 0.07f, 1f), new Vector2(0.62f, 0.1f), 0.8f);
-        var line = Text("Line", card.transform, new Vector3(0f, -0.06f, 1f), new Vector2(0.56f, 0.12f), 0.35f);
+        var title = Text("Title", card.transform, new Vector3(0f, 0.07f, 1f), new Vector2(0.9f, 0.1f), 0.8f);
+        var line = Text("Line", card.transform, new Vector3(0f, -0.06f, 1f), new Vector2(0.8f, 0.12f), 0.35f);
+        // Its own layer: while it shows, the camera draws only this layer (EndingCard).
+        foreach (var t in card.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = CardLayer;
 
         var ending = root.AddComponent<EndingCard>();
         ending.card = card;
