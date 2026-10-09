@@ -2,15 +2,17 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using UnityEngine.Video;
 
 // The story at the very beginning, before the START screen: our story film (docs/story-film.md),
-// shown on a white cloth between two bamboo poles, like the open-air film shows of rural Sri
-// Lanka. The player stands at the start spot facing the cloth, free to look around (the camera
-// never moves by itself). The video is silent; the film's sounds are played here at set video
-// times, so they stay in time. "Skip film" ends it at once. Then the player turns back to the
-// hut (a fade) and the START screen appears.
+// full screen over a black view as soon as the game starts (the VideoPlayer draws it on the
+// camera's near plane, in front of everything). The video is silent; the film's sounds are played
+// here at set video times, so they stay in time. Space, Enter or the controller's A button skip it
+// (an input action). Then the view fades in on the START board at the start spot.
 // The video is Assets/StreamingAssets/NightWatchStory.mp4 (made by tools/film_make.py video);
 // without it the game goes straight to the START screen.
 public class StoryFilm : MonoBehaviour
@@ -33,15 +35,8 @@ public class StoryFilm : MonoBehaviour
     public Cue[] cues;
 
     [Header("Parts")]
-    [Tooltip("The cloth, the poles and the skip sign. Shown only while the film plays.")]
-    public GameObject screen;
-    public Renderer picture;
     public VideoPlayer player;
-    [Tooltip("Where the player stands to watch (facing the cloth).")]
-    public Transform watchSpot;
     public Transform startSpot;
-    [Tooltip("One-off sounds come from the cloth, loud up to this distance.")]
-    public float soundDistance = 12f;
 
     public bool IsPlaying { get; private set; }
 
@@ -53,11 +48,6 @@ public class StoryFilm : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetOnPlay() => seen = false;
     readonly List<(AudioSource source, float until)> loops = new List<(AudioSource, float)>();
-
-    void Awake()
-    {
-        if (screen != null) screen.SetActive(false);
-    }
 
     void Start()
     {
@@ -78,18 +68,21 @@ public class StoryFilm : MonoBehaviour
     IEnumerator Show(string path)
     {
         IsPlaying = true;
-        // GroundPrep puts the player at the start spot in its Start; wait for that first.
-        yield return null;
+        // Black at once; GroundPrep puts the player at the start spot in its Start, under the black.
+        ScreenFeedback.FadeOut(0.01f);
         ShowStartScreen(false);
-        screen.SetActive(true);
-        yield return MoveHead(watchSpot);
+        var skipAction = new InputAction("Skip film", InputActionType.Button, "<Keyboard>/space");
+        skipAction.AddBinding("<Keyboard>/enter");
+        skipAction.AddBinding("<XRController>/primaryButton");
+        skipAction.performed += _ => skip = true;
+        skipAction.Enable();
+        var note = SkipNote();
+        yield return null;
 
-        var frame = new RenderTexture(1920, 1080, 0);
-        player.targetTexture = frame;
-        var material = picture.material;
-        material.SetTexture("_BaseMap", frame);
-        material.SetColor("_BaseColor", Color.white);
-
+        player.renderMode = VideoRenderMode.CameraNearPlane;
+        player.targetCamera = Camera.main;
+        player.aspectRatio = VideoAspectRatio.FitInside;
+        player.targetCameraAlpha = 1f;
         player.url = path;
         player.loopPointReached += OnEnded;
         player.Prepare();
@@ -113,29 +106,47 @@ public class StoryFilm : MonoBehaviour
         player.loopPointReached -= OnEnded;
         player.Stop();
         StopLoops(float.MaxValue);
-        player.targetTexture = null;
-        frame.Release();
-        Destroy(frame);
+        skipAction.Disable();
+        skipAction.Dispose();
+        if (note != null) Destroy(note);
         yield return Finish();
     }
 
     void OnEnded(VideoPlayer source) => ended = true;
 
+    // Back at the start spot facing the START board, then the black fades away.
     IEnumerator Finish()
     {
-        yield return MoveHead(startSpot);
-        screen.SetActive(false);
+        var limit = PlayAreaLimit.Instance;
+        if (startSpot != null && limit != null)
+            limit.MoveHeadTo(startSpot.position, startSpot.rotation, onGround: true, fadeFirst: false);
         ShowStartScreen(true);
+        yield return null;
+        ScreenFeedback.FadeIn(0.8f);
         IsPlaying = false;
     }
 
-    // Fade out, stand at the spot in the dark, fade back in.
-    static IEnumerator MoveHead(Transform spot)
+    // "Space: skip film" in the corner of the screen while the film plays (a screen overlay, drawn
+    // after the film; a headset does not show it, there the A button skips).
+    static GameObject SkipNote()
     {
-        var limit = PlayAreaLimit.Instance;
-        if (spot == null || limit == null) yield break;
-        limit.MoveHeadTo(spot.position, spot.rotation);
-        while (limit.IsMoving) yield return null;
+        var go = new GameObject("SkipFilmNote");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
+        go.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        var textGo = new GameObject("Text");
+        textGo.transform.SetParent(go.transform, false);
+        var text = textGo.AddComponent<TextMeshProUGUI>();
+        text.text = "Space: skip film";
+        text.fontSize = 22f;
+        text.color = new Color(1f, 1f, 1f, 0.75f);
+        text.alignment = TextAlignmentOptions.BottomRight;
+        var rect = text.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 0f);
+        rect.anchoredPosition = new Vector2(-30f, 24f);
+        rect.sizeDelta = new Vector2(400f, 40f);
+        return go;
     }
 
     void Fire(Cue cue)
@@ -144,7 +155,9 @@ public class StoryFilm : MonoBehaviour
         if (clip == null) return;
         if (cue.until <= 0f)
         {
-            SoundBank.PlayAt(clip, picture.transform.position, cue.volume, soundDistance);
+            // Full screen, so the sounds are played at the player's head.
+            var head = PlayerState.Head;
+            SoundBank.PlayAt(clip, head != null ? head.position : transform.position, cue.volume, 12f);
             return;
         }
         // A background loop (birds, crickets), the same in both ears.
