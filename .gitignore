@@ -40,3 +40,7 @@ crashlytics-build.properties
 # Windows
 Thumbs.db
 Desktop.ini
+
+# Made by the performance testing package during each build (not ours)
+/Assets/Resources/PerformanceTestRun*
+/Assets/Resources.meta

@@ -27,6 +27,9 @@ public static class WindowsBuild
 
         // Controller types and company name (also set by Build Full Game).
         StartupSetup.ProjectSettings();
+        // Mono: built into Unity. The project was set to IL2CPP, which needs an extra module
+        // (not installed here or on the team's laptops), so the build failed.
+        PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
 
         var options = new BuildPlayerOptions
         {
