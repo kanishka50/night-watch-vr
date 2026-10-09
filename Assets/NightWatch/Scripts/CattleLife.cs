@@ -105,9 +105,9 @@ public class CattleLife : MonoBehaviour
     {
         get
         {
-            var game = GameManager.Instance;
-            return game != null && (game.CurrentPhase == GameManager.Phase.Night ||
-                (game.CurrentPhase == GameManager.Phase.Dusk && game.PhaseTime > game.duskLength * 0.6f));
+            // The time of day on screen: late dusk (0.27) until dawn (0.96).
+            float p = DayNightCycle.ShownProgress;
+            return p > 0.27f && p < 0.96f;
         }
     }
 

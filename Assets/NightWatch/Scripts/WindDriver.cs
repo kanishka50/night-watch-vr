@@ -33,19 +33,10 @@ public class WindDriver : MonoBehaviour
         // From the north-east means toward the south-west: the opposite of the bearing.
         Direction = new Vector2(-Mathf.Sin(rad), -Mathf.Cos(rad));
 
-        float strength = afternoonStrength;
-        var game = GameManager.Instance;
-        if (game != null)
-        {
-            switch (game.CurrentPhase)
-            {
-                case GameManager.Phase.Dusk:
-                    strength = Mathf.Lerp(afternoonStrength, nightStrength, game.PhaseTime / Mathf.Max(game.duskLength, 1f));
-                    break;
-                case GameManager.Phase.Night: strength = nightStrength; break;
-                case GameManager.Phase.Dawn: strength = nightStrength * 0.8f; break;
-            }
-        }
+        // By the time of day on screen (also in the story film): dusk 0.22 to 0.31, dawn from 0.96.
+        float p = Application.isPlaying ? DayNightCycle.ShownProgress : 0f;
+        float strength = Mathf.Lerp(afternoonStrength, nightStrength, Mathf.InverseLerp(0.22f, 0.31f, p));
+        if (p > 0.96f) strength = nightStrength * 0.8f;
         // A slow rise and fall, so it is never the same for long.
         strength *= 0.85f + 0.15f * Mathf.Sin(t * 0.09f);
         if (strengthOverride >= 0f) strength = strengthOverride;

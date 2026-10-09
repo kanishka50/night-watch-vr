@@ -60,6 +60,14 @@ public class DayNightCycle : MonoBehaviour
     [Header("Film")]
     [Tooltip("0 to 1 = show this moment of the run instead of the game clock (used by the story film). -1 = follow the game.")]
     [Range(-1f, 1f)] public float progressOverride = -1f;
+
+    // The time of day on screen, 0 to 1: the game clock, or the film's moment while the story film
+    // runs. The village's living things (lamps, fireflies, egrets, bats, wind, cattle) follow
+    // this, so the film shows them at the right time too.
+    public static float ShownProgress =>
+        shownSet ? shown : (GameManager.Instance != null ? GameManager.Instance.DayProgress : 0f);
+    static float shown;
+    static bool shownSet;
     [Tooltip("Multiplies the fog (less than 1 = clearer, for the film's wide drone shots).")]
     [Range(0.1f, 2f)] public float fogScale = 1f;
 
@@ -209,6 +217,8 @@ public class DayNightCycle : MonoBehaviour
             if (looks == null) return;
         }
         float p = progressOverride >= 0f ? progressOverride : game.DayProgress;
+        shown = p;
+        shownSet = true;
         var look = Sample(p);
         if (pictureSky) TakeColoursFromPictures(ref look);
 

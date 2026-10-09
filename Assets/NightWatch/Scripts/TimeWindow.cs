@@ -4,8 +4,11 @@ using UnityEngine;
 // Switches a group of effects on for one part of the day and off again, fading in and out:
 // particle emission, lights, sounds and (if asked) the visible parts. Used for the evening smoke,
 // the fireflies, the oil lamps at the dagaba, the frogs and the falling leaves.
-// Times are GameManager.DayProgress: 0 = start of the afternoon, about 0.22 = dusk begins,
-// 0.31 = night, 0.96 = dawn, 1 = full morning. Off when the camera is far away (saves work).
+// Times are the time of day on screen (DayNightCycle.ShownProgress, the game clock or the story
+// film's moment): 0 = start of the afternoon, about 0.22 = dusk begins, 0.31 = night,
+// 0.96 = dawn, 1 = full morning. The fade comes from `fade` (a share of the day), so a jump in
+// time (the film cutting from dusk to night) shows the right state at once. Off when the camera
+// is far away (saves work).
 public class TimeWindow : MonoBehaviour
 {
     [Range(0f, 1f)] public float from = 0.25f;
@@ -39,17 +42,12 @@ public class TimeWindow : MonoBehaviour
 
     void Update()
     {
-        float target = 0f;
-        var game = GameManager.Instance;
-        if (game != null)
-        {
-            float p = game.DayProgress;
-            target = Mathf.Clamp01(Mathf.Min((p - from) / fade, (to - p) / fade));
-        }
+        float p = DayNightCycle.ShownProgress;
+        float target = Mathf.Clamp01(Mathf.Min((p - from) / fade, (to - p) / fade));
         if (testOverride >= 0f) target = testOverride;
         var cam = Camera.main;
         if (cam != null && (cam.transform.position - transform.position).sqrMagnitude > maxDistance * maxDistance) target = 0f;
-        if (Mathf.Abs(target - level) > 0.001f) Apply(Mathf.MoveTowards(level, target, Time.deltaTime * 0.5f));
+        if (Mathf.Abs(target - level) > 0.001f) Apply(target);
     }
 
     void Apply(float value)

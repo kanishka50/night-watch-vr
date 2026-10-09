@@ -8,7 +8,7 @@ using UnityEngine;
 public class Egret : MonoBehaviour
 {
     public Transform neck, leftLeg, rightLeg, leftWing, rightWing;
-    [Tooltip("Leaves for the roost at this DayProgress (dusk begins at about 0.22).")]
+    [Tooltip("Leaves for the roost at this time of day (DayNightCycle.ShownProgress; dusk begins at about 0.22).")]
     public float leaveAt = 0.2f;
     [Tooltip("Where the roost is (it flies toward it and disappears).")]
     public Vector3 roost = new Vector3(-90f, 25f, 110f);
@@ -33,8 +33,7 @@ public class Egret : MonoBehaviour
 
     void Update()
     {
-        var game = GameManager.Instance;
-        float p = game != null ? game.DayProgress : 0f;
+        float p = DayNightCycle.ShownProgress;
         if (state == State.Gone)
         {
             // Back in the morning (a new game starts in the afternoon too).

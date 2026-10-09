@@ -24,8 +24,7 @@ public class Bat : MonoBehaviour
 
     void Update()
     {
-        var game = GameManager.Instance;
-        float p = game != null ? game.DayProgress : 0f;
+        float p = DayNightCycle.ShownProgress;
         bool on = p > from && p < to;
         if (on != shown) Show(on);
         if (!on) return;
