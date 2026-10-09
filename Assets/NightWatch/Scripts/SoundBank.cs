@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // All the game's sounds, made in code by simple sound synthesis, except the elephant's trumpet
-// and roar: real recordings in Resources/Sounds (CC0, credited in CREDITS.md). If a recording is
+// and roar and the cattle's moo: real recordings in Resources/Sounds (CC0, credited in CREDITS.md). If a recording is
 // missing, the code-made sound is used instead.
 // Each clip is made (or loaded) the first time it is needed, then reused.
 public static class SoundBank
@@ -19,7 +19,7 @@ public static class SoundBank
     // A real elephant roar: the moment it hits the hut or the player.
     public static AudioClip ElephantRoar => Recording("ElephantRoar", ref roar) ?? Rumble;
 
-    static AudioClip realTrumpet, roar;
+    static AudioClip realTrumpet, roar, realMoo;
 
     static AudioClip Recording(string name, ref AudioClip cache)
     {
@@ -38,7 +38,8 @@ public static class SoundBank
     public static AudioClip Ring => ring != null ? ring : ring = Make("Ring", 1.2f, MakeRing);
     public static AudioClip Cracker => cracker != null ? cracker : cracker = Make("Cracker", 1.4f, MakeCracker);
     public static AudioClip Trickle => trickle != null ? trickle : trickle = Make("Trickle", 3f, MakeTrickle);
-    public static AudioClip Moo => moo != null ? moo : moo = Make("Moo", 1.7f, MakeMoo);
+    // A real cow's moo (the code-made one sounded like a buffalo).
+    public static AudioClip Moo => Recording("CowMoo", ref realMoo) ?? (moo != null ? moo : moo = Make("Moo", 1.7f, MakeMoo));
     public static AudioClip Frogs => frogs != null ? frogs : frogs = Make("Frogs", 6f, MakeFrogs);
     public static AudioClip Bark => bark != null ? bark : bark = Make("Bark", 0.35f, MakeBark);
     public static AudioClip Clapper => clapper != null ? clapper : clapper = Make("Clapper", 0.9f, MakeClapper);

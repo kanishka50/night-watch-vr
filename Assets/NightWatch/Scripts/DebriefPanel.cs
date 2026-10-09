@@ -35,7 +35,8 @@ public class DebriefPanel : MonoBehaviour
         "Sebastian Platen, Kuutti Siitonen, James Ray Cock, Miroslav Turura, eye-candy.xyz).\n" +
         "Neighbour, cow and bull: Quaternius.\n" +
         "Sky: Cloudy Skyboxes by Screaming Brain Studios.\n" +
-        "Elephant trumpet and roar: \"Elephant sound\" by ikbenraar (Freesound).\n\n" +
+        "Elephant trumpet and roar: \"Elephant sound\" by ikbenraar (Freesound).\n" +
+        "Cow moo: \"Cow mooing in south of France (Limousin)\" by Felix Blume (Freesound).\n\n" +
         "<color=#7A2C10><b>Font</b></color>\n" +
         "Cinzel by The Cinzel Project Authors, SIL Open Font License 1.1.\n\n" +
         "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation. Other sounds made in code by the team.\n" +
