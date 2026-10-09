@@ -34,6 +34,11 @@ public static class TextureKit
         { "Wood", new Look("weathered_planks", 1.5f, Color.white, 0.1f) },
         // The thatch photo is grey reed; a straw tint makes it look like a dry paddy-straw roof.
         { "Thatch", new Look("thatch_roof_angled", 2f, new Color(1f, 0.82f, 0.5f), 0.05f) },
+        // The pela, restyled to match the village (old and hand-made): rough bark poles, grey old
+        // planks, and old cadjan (dried coconut leaves): the reed photo tinted grey-brown.
+        { "HutPole", new Look("bark_brown_02", 1.2f, new Color(0.85f, 0.8f, 0.75f), 0.05f) },
+        { "HutFloor", new Look("weathered_planks", 1.5f, new Color(0.78f, 0.72f, 0.65f), 0.05f) },
+        { "Cadjan", new Look("thatch_roof_angled", 1.5f, new Color(0.78f, 0.62f, 0.42f), 0.02f) },
     };
 
     // Puts the texture on the material (called every time a tool asks for the material).

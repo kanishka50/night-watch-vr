@@ -62,39 +62,125 @@ public static class BlockoutBuilder
         Debug.Log("Night Watch: blockout built. Save the scene with Ctrl+S.");
     }
 
-    // A pela: a small hut on stilts, open on the south side where the ladder is.
+    // A pela, the traditional Sri Lankan watch hut: rough round poles lashed together, a floor of
+    // old planks, stick railings, and a two-slope roof of overlapping old cadjan (woven, dried
+    // coconut leaves), open on the south side where the ladder is. Every pole leans a little and
+    // every cadjan row is a little crooked, so it looks hand-made and old, like the village's
+    // houses. Sizes and part names stay as before (HutDamage, the props and the floor teleport
+    // use them): Floor, Rail_North, Rail_East, Rail_West, Roof, Ladder.
     static void BuildHut(Transform root)
     {
         var parent = Group("WatchHut", root);
-        var wood = Mat("Wood", new Color(0.45f, 0.30f, 0.16f));
-        var thatch = Mat("Thatch", new Color(0.62f, 0.52f, 0.30f));
+        var pole = Mat("HutPole", new Color(0.40f, 0.31f, 0.22f));
+        var planks = Mat("HutFloor", new Color(0.45f, 0.35f, 0.25f));
+        var cadjan = Mat("Cadjan", new Color(0.55f, 0.45f, 0.30f));
+        var random = new System.Random(7);
+        float Jitter(float amount) => (float)(random.NextDouble() * 2.0 - 1.0) * amount;
 
         float half = HutSize / 2f - 0.1f;
+        float floorTop = HutFloorTop;
+        float eave = floorTop + 2.25f;
+
+        // Four corner poles from the ground to the roof, each leaning a little.
         foreach (var x in new[] { -half, half })
         foreach (var z in new[] { -half, half })
+            Pole("Post", parent, new Vector3(x, 0f, z), new Vector3(x + Jitter(0.06f), eave, z + Jitter(0.06f)), 0.2f, pole);
+
+        // Under the floor: two logs that carry it, and crossed braces on the east and west sides.
+        foreach (var z in new[] { -half, half })
+            Pole("FloorLog", parent, new Vector3(-half - 0.2f, HutFloorHeight - 0.15f, z), new Vector3(half + 0.2f, HutFloorHeight - 0.15f, z), 0.16f, pole);
+        foreach (var x in new[] { -half, half })
         {
-            Post("Stilt", parent, x, z, 0f, HutFloorHeight, 0.18f, wood);
-            Post("RoofPost", parent, x, z, HutFloorHeight, 2.3f, 0.12f, wood);
+            Pole("Brace", parent, new Vector3(x, 0.4f, -half), new Vector3(x, HutFloorHeight - 0.25f, half), 0.08f, pole);
+            Pole("Brace", parent, new Vector3(x, 0.4f, half), new Vector3(x, HutFloorHeight - 0.25f, -half), 0.08f, pole);
         }
 
         // In the hut, the floor is the only place the player can teleport to.
-        var floor = Box("Floor", parent, new Vector3(0f, HutFloorHeight, 0f), new Vector3(HutSize, 0.15f, HutSize), wood);
+        var floor = Box("Floor", parent, new Vector3(0f, HutFloorHeight, 0f), new Vector3(HutSize, 0.15f, HutSize), planks);
         // The starter rig's teleport pointer only accepts surfaces on the "Teleport" interaction layer.
         var teleportArea = floor.AddComponent<TeleportationArea>();
         teleportArea.interactionLayers = InteractionLayerMask.GetMask("Teleport");
 
-        float railY = HutFloorHeight + 0.5f;
-        Box("Rail_North", parent, new Vector3(0f, railY, half), new Vector3(HutSize, 0.9f, 0.08f), wood);
-        Box("Rail_East", parent, new Vector3(half, railY, 0f), new Vector3(0.08f, 0.9f, HutSize), wood);
-        Box("Rail_West", parent, new Vector3(-half, railY, 0f), new Vector3(0.08f, 0.9f, HutSize), wood);
+        // Stick railings on three sides: a top rail, a middle rail and a few upright sticks.
+        Railing("Rail_North", parent, new Vector3(-half, 0f, half), new Vector3(half, 0f, half), floorTop, pole, Jitter);
+        Railing("Rail_East", parent, new Vector3(half, 0f, -half), new Vector3(half, 0f, half), floorTop, pole, Jitter);
+        Railing("Rail_West", parent, new Vector3(-half, 0f, -half), new Vector3(-half, 0f, half), floorTop, pole, Jitter);
 
-        Box("Roof", parent, new Vector3(0f, HutFloorHeight + 2.4f, 0f), new Vector3(HutSize + 0.8f, 0.2f, HutSize + 0.8f), thatch);
+        BuildRoof(parent, half, eave, pole, cadjan, Jitter);
+
+        // A pole ladder: two side poles and stick rungs.
         var ladder = Group("Ladder", parent);
         float ladderZ = -HutSize / 2f - 0.2f;
-        Box("Rail_L", ladder, new Vector3(-0.25f, HutFloorHeight / 2f, ladderZ), new Vector3(0.06f, HutFloorHeight, 0.06f), wood);
-        Box("Rail_R", ladder, new Vector3(0.25f, HutFloorHeight / 2f, ladderZ), new Vector3(0.06f, HutFloorHeight, 0.06f), wood);
+        Pole("Rail_L", ladder, new Vector3(-0.27f, 0f, ladderZ), new Vector3(-0.25f, HutFloorHeight + 0.1f, ladderZ), 0.08f, pole);
+        Pole("Rail_R", ladder, new Vector3(0.27f, 0f, ladderZ), new Vector3(0.25f, HutFloorHeight + 0.1f, ladderZ), 0.08f, pole);
         for (float y = 0.3f; y < HutFloorHeight; y += 0.3f)
-            Box("Rung", ladder, new Vector3(0f, y, ladderZ), new Vector3(0.5f, 0.04f, 0.04f), wood);
+        {
+            float tilt = Jitter(0.02f);
+            Pole("Rung", ladder, new Vector3(-0.3f, y + tilt, ladderZ), new Vector3(0.3f, y - tilt, ladderZ), 0.045f, pole);
+        }
+    }
+
+    // One side's railing between two floor corners (their y is ignored).
+    static void Railing(string name, Transform parent, Vector3 a, Vector3 b, float floorTop, Material pole, System.Func<float, float> jitter)
+    {
+        var rail = Group(name, parent);
+        Pole("TopRail", rail, a + Vector3.up * (floorTop + 0.88f + jitter(0.03f)), b + Vector3.up * (floorTop + 0.88f + jitter(0.03f)), 0.08f, pole);
+        Pole("MidRail", rail, a + Vector3.up * (floorTop + 0.45f + jitter(0.03f)), b + Vector3.up * (floorTop + 0.45f + jitter(0.03f)), 0.05f, pole);
+        for (int i = 1; i <= 3; i++)
+        {
+            var at = Vector3.Lerp(a, b, i / 4f);
+            Pole("Stick", rail, at + Vector3.up * floorTop, at + Vector3.up * (floorTop + 0.95f) + new Vector3(jitter(0.03f), 0f, jitter(0.03f)), 0.045f, pole);
+        }
+    }
+
+    // The roof: eave beams and a ridge pole on the posts, and on each slope six overlapping rows
+    // of cadjan, the upper row over the lower one, each a little crooked; a cap along the ridge.
+    // The ridge runs east-west, so the slopes face north and south (the low eaves frame the view).
+    static void BuildRoof(Transform parent, float half, float eave, Material pole, Material cadjan, System.Func<float, float> jitter)
+    {
+        var roof = Group("Roof", parent);
+        const float rise = 0.85f, overhang = 0.55f, rowWidth = 0.5f, rowStep = 0.38f, rowThickness = 0.05f;
+        const int rows = 6;
+        float ridgeY = eave + rise;
+        float length = HutSize + 0.9f;
+
+        foreach (var z in new[] { -half, half })
+            Pole("EaveBeam", roof, new Vector3(-half - 0.25f, eave, z), new Vector3(half + 0.25f, eave, z), 0.11f, pole);
+        foreach (var x in new[] { -half, half })
+        {
+            Pole("TieBeam", roof, new Vector3(x, eave, -half - 0.1f), new Vector3(x, eave, half + 0.1f), 0.1f, pole);
+            Pole("KingPost", roof, new Vector3(x, eave, 0f), new Vector3(x, ridgeY, 0f), 0.09f, pole);
+            Pole("Rafter", roof, new Vector3(x, ridgeY, 0f), new Vector3(x, eave - 0.05f, -half - 0.1f), 0.07f, pole);
+            Pole("Rafter", roof, new Vector3(x, ridgeY, 0f), new Vector3(x, eave - 0.05f, half + 0.1f), 0.07f, pole);
+        }
+        Pole("RidgePole", roof, new Vector3(-half - 0.3f, ridgeY, 0f), new Vector3(half + 0.3f, ridgeY, 0f), 0.11f, pole);
+
+        float angle = Mathf.Atan2(rise, half);
+        foreach (var side in new[] { -1f, 1f })
+        {
+            // Down the slope, and out of the roof surface.
+            var down = new Vector3(0f, -Mathf.Sin(angle), side * Mathf.Cos(angle));
+            var outward = new Vector3(0f, Mathf.Cos(angle), side * Mathf.Sin(angle));
+            float slope = (half + overhang) / Mathf.Cos(angle);
+            for (int i = 0; i < rows; i++)
+            {
+                float along = Mathf.Min(rowWidth / 2f + i * rowStep, slope - rowWidth / 2f);
+                // Upper rows lie on top of lower ones, like shingles.
+                var at = new Vector3(jitter(0.08f), ridgeY + 0.06f, 0f) + down * along + outward * (0.02f * (rows - i));
+                var row = Box("CadjanRow", roof, at, new Vector3(length + jitter(0.12f), rowThickness, rowWidth), cadjan);
+                row.transform.localRotation = Quaternion.LookRotation(down, outward) * Quaternion.Euler(jitter(2f), jitter(1.5f), jitter(1.5f));
+            }
+        }
+        var cap = Box("RidgeCap", roof, new Vector3(0f, ridgeY + 0.13f, 0f), new Vector3(length, rowThickness, 0.45f), cadjan);
+        cap.transform.localRotation = Quaternion.Euler(0f, jitter(1f), 0f);
+    }
+
+    // A round pole (a cylinder) from a to b.
+    static GameObject Pole(string name, Transform parent, Vector3 a, Vector3 b, float diameter, Material mat)
+    {
+        var go = Box(name, parent, (a + b) / 2f, new Vector3(diameter, Vector3.Distance(a, b) / 2f, diameter), mat, PrimitiveType.Cylinder);
+        go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, b - a);
+        return go;
     }
 
     // The player starts on the ground in the afternoon (GroundPrep moves them there at run time too).
@@ -142,12 +228,6 @@ public static class BlockoutBuilder
         go.transform.localScale = size;
         go.GetComponent<Renderer>().sharedMaterial = mat;
         return go;
-    }
-
-    // Unity's cylinder is 2 m tall at scale 1, so the Y scale is half the height.
-    static void Post(string name, Transform parent, float x, float z, float baseY, float height, float diameter, Material mat)
-    {
-        Box(name, parent, new Vector3(x, baseY + height / 2f, z), new Vector3(diameter, height / 2f, diameter), mat, PrimitiveType.Cylinder);
     }
 
     // Materials are saved as assets so the scene keeps them after it is closed.
