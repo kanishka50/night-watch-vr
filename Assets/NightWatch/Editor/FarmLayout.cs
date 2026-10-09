@@ -2,8 +2,8 @@ using UnityEngine;
 
 // Where the farm's parts stand in the village (hut at the Unity origin, +z north), and the
 // places kept clear of the village's plants: the yard round the hut, the paths from the start
-// spot, round the bonfires and the neighbour's house, and the crop plots (planted with our own
-// rice). Used by the village builder, the field tools and the ground jobs. The village's paddy
+// spot, round the bonfires and the neighbour's house, the strip under the fence, and the crop
+// plots (planted with our own rice). Used by the village builder, the field tools and the ground jobs. The village's paddy
 // plots are 9.25 x 8.75 m, with bunds (raised earth paths, about 1 m wide) along x = 0 and z = 0
 // through the hut. See docs/village-port.md.
 public static class FarmLayout
@@ -29,11 +29,23 @@ public static class FarmLayout
     // East of the hut, in the yard, in view from the start spot.
     public static readonly Vector3 Energiser = new Vector3(2.8f, 0f, 1.2f);
 
+    // The electric fence: two lines of the village's wire_fence sections, meeting at the north-west
+    // corner. The west line stands where the village had its own; the north line is new (toward the
+    // tank). South (jungle) and east (village) are open. outside: the side elephants come from.
+    public const float NorthFenceZ = 19.5f, WestFenceX = -58.5f;
+    public static readonly (string name, Vector2 from, Vector2 to, int sections, Vector3 outside)[] FenceLines =
+    {
+        ("West", new Vector2(WestFenceX, -55.5f), new Vector2(WestFenceX, NorthFenceZ), 21, Vector3.left),
+        ("North", new Vector2(WestFenceX, NorthFenceZ), new Vector2(18.5f, NorthFenceZ), 22, Vector3.forward),
+    };
+
     // No heavy village trees (40,000+ triangles each) this close to the hut: from the hut they
     // would always be drawn in full. Two big trees north of the hut are left out by this.
     public const float NoHeavyTrees = 30f;
 
     const float YardRadius = 4f, BonfireRadius = 3f, HouseRadius = 6.5f, PathHalfWidth = 0.8f;
+    // Farmers keep the ground under an electric fence clear: plants touching the wire drain the power.
+    const float FenceStripHalfWidth = 1f;
 
     // Walking routes from the hut and the start spot, along the bunds where possible.
     static readonly Vector2[][] Paths =
@@ -65,6 +77,8 @@ public static class FarmLayout
         foreach (var path in Paths)
             for (int i = 0; i + 1 < path.Length; i++)
                 if (DistanceToSegment(q, path[i], path[i + 1]) < PathHalfWidth) return true;
+        foreach (var line in FenceLines)
+            if (DistanceToSegment(q, line.from, line.to) < FenceStripHalfWidth) return true;
         return false;
     }
 

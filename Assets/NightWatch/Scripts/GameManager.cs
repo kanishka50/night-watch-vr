@@ -405,6 +405,13 @@ public class GameManager : MonoBehaviour
         if (arrivals != null) arrivals.SpawnNow(1);
     }
 
+    [ContextMenu("Test: bring the fence breaker now")]
+    void TestFenceBreaker()
+    {
+        var arrivals = FindFirstObjectByType<ArrivalManager>();
+        if (arrivals != null) arrivals.SpawnFenceBreaker();
+    }
+
     [ContextMenu("Test: the nearest elephant eats hakka patas")]
     void TestBait()
     {

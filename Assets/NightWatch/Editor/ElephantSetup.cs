@@ -5,14 +5,12 @@ using UnityEngine;
 using UnityEngine.AI;
 
 // Builds the field and the elephants (called by Night Watch > Build Full Game):
-//  - the electric fence on the north side, in sections that block elephants until broken
+//  - the electric fence on the north and west sides, in sections that block elephants until broken
 //  - three crop plots beside the hut that elephants eat
 //  - the NavMesh (the map of walkable ground)
 //  - the four spawn points, a hidden stand-in elephant to copy, and the arrival manager
 public static class ElephantSetup
 {
-    const float FenceZ = 12f;
-    const float SectionLength = 4f;
     const string NavMeshPath = "Assets/NightWatch/NightWatchNavMesh.asset";
     const float NavMeshSize = 100f;
 
@@ -124,34 +122,50 @@ public static class ElephantSetup
         return mat;
     }
 
+    // The electric fence on the north and west sides (FarmLayout.FenceLines), made of the village's
+    // wire_fence sections. The model runs along its own z, about 3.5 m long: one part is the wires,
+    // the other the wooden posts. Each section is a FenceSection: shock, push, break, gap.
+    // Not marked Static: a broken section's posts fall over.
     static void BuildFence(Transform root)
     {
         var parent = EditorKit.Group("ElectricFence", root);
-        var postMat = EditorKit.Mat("FencePost", new Color(0.35f, 0.28f, 0.20f));
-        var wireMat = EditorKit.Mat("FenceWire", new Color(0.7f, 0.7f, 0.7f));
+        var model = VillageBuilder.LoadModel(VillageBuilder.FenceModel);
+        if (model == null) return;
 
-        // Full width of the map, so elephants from the north cannot walk round the ends.
-        for (float x = -30f; x < 30f; x += SectionLength)
+        foreach (var (lineName, from, to, sections, outside) in FarmLayout.FenceLines)
         {
-            var section = EditorKit.Empty("FenceSection", parent, new Vector3(x + SectionLength / 2f, 0f, FenceZ));
-            var obstacle = section.gameObject.AddComponent<NavMeshObstacle>();
-            obstacle.shape = NavMeshObstacleShape.Box;
-            obstacle.center = new Vector3(0f, 1.25f, 0f);
-            obstacle.size = new Vector3(SectionLength, 2.5f, 0.6f);
-            obstacle.carving = true;
+            var line = EditorKit.Group("Fence_" + lineName, parent);
+            var along = to - from;
+            float length = along.magnitude / sections;
+            var yaw = Quaternion.LookRotation(new Vector3(along.x, 0f, along.y));
+            for (int i = 0; i < sections; i++)
+            {
+                var c = from + along * ((i + 0.5f) / sections);
+                var section = EditorKit.Empty($"FenceSection_{lineName}_{i + 1}", line, FarmLayout.OnGround(new Vector3(c.x, 0f, c.y)));
+                section.rotation = yaw;
 
-            var post = EditorKit.Part("Post", PrimitiveType.Cylinder, section, new Vector3(-SectionLength / 2f, 0.75f, 0f),
-                new Vector3(0.12f, 0.75f, 0.12f), postMat);
-            var wires = EditorKit.Group("Wires", section);
-            EditorKit.Part("Wire_Low", PrimitiveType.Cube, wires, new Vector3(0f, 0.6f, 0f), new Vector3(SectionLength, 0.02f, 0.02f), wireMat, false);
-            EditorKit.Part("Wire_High", PrimitiveType.Cube, wires, new Vector3(0f, 1.2f, 0f), new Vector3(SectionLength, 0.02f, 0.02f), wireMat, false);
+                var obstacle = section.gameObject.AddComponent<NavMeshObstacle>();
+                obstacle.shape = NavMeshObstacleShape.Box;
+                obstacle.center = new Vector3(0f, 1.25f, 0f);
+                obstacle.size = new Vector3(0.6f, 2.5f, length);
+                obstacle.carving = true;
 
-            var fs = section.gameObject.AddComponent<FenceSection>();
-            fs.post = post.transform;
-            fs.wires = wires.gameObject;
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(model, section);
+                go.transform.localPosition = model.transform.localPosition;
+                go.transform.localRotation = model.transform.localRotation;
+                go.transform.localScale = model.transform.localScale;
+
+                var fs = section.gameObject.AddComponent<FenceSection>();
+                fs.outside = outside;
+                foreach (var r in go.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    if (r.name.ToLowerInvariant().Contains("wood")) fs.post = r.transform;
+                    else fs.wires = r.gameObject;
+                }
+                if (fs.post == null || fs.wires == null)
+                    Debug.LogWarning($"Night Watch: {section.name} could not find the wood and wire parts of {VillageBuilder.FenceModel}.");
+            }
         }
-        var end = EditorKit.Empty("EndPost", parent, new Vector3(30f, 0f, FenceZ));
-        EditorKit.Part("Post", PrimitiveType.Cylinder, end, new Vector3(0f, 0.75f, 0f), new Vector3(0.12f, 0.75f, 0.12f), postMat);
     }
 
     public static void BakeNavMesh()

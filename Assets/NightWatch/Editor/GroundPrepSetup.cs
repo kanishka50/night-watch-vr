@@ -7,7 +7,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 // Builds the afternoon jobs on the ground (called by Night Watch > Build Full Game, after the
 // NavMesh is baked, so these objects do not change the baked map):
 //  - three bonfires at the open sides (east, west and south lanes)
-//  - the fence energiser east of the hut, facing the start, with a cable to the fence
+//  - the fence energiser east of the hut, facing the start, with a wire on sticks to the fence
 // Where they stand is in FarmLayout; each is set on the village ground.
 //  - the task board by the ladder and the player's start spot
 public static class GroundPrepSetup
@@ -122,11 +122,26 @@ public static class GroundPrepSetup
         EditorKit.Part("Switch", PrimitiveType.Cube, go.transform, new Vector3(0.1f, 1.06f, -0.11f), new Vector3(0.06f, 0.12f, 0.05f),
             EditorKit.Mat("Switch", new Color(0.08f, 0.08f, 0.08f)), false);
 
-        // The cable along the ground to the fence.
-        float fenceZ = 12f;
-        float length = fenceZ - position.z - 0.2f;
-        EditorKit.Part("Cable", PrimitiveType.Cube, go.transform, new Vector3(0f, 0.03f, 0.2f + length / 2f),
-            new Vector3(0.03f, 0.03f, length), EditorKit.Mat("Cable", new Color(0.05f, 0.05f, 0.05f)), false);
+        // The lead-out wire to the north fence, held up on short sticks (it crosses a flooded plot,
+        // so it does not lie on the ground). It ends where the bund x = 0 meets the fence, which
+        // keeps it clear of the haystack at (3.4, 12.8).
+        const float wireHeight = 1.2f;
+        const int sticks = 4;
+        var end = new Vector3(-position.x, 0f, FarmLayout.NorthFenceZ - 0.05f - position.z);
+        var dir = end.normalized;
+        var start = dir * 0.12f;
+        var wire = EditorKit.Part("LeadOutWire", PrimitiveType.Cube, go.transform, (start + end) / 2f + Vector3.up * wireHeight,
+            new Vector3(0.015f, 0.015f, (end - start).magnitude), EditorKit.Mat("Cable", new Color(0.05f, 0.05f, 0.05f)), false);
+        wire.transform.localRotation = Quaternion.LookRotation(dir);
+        var stickMat = EditorKit.Mat("FencePost", new Color(0.35f, 0.28f, 0.20f));
+        for (int i = 1; i <= sticks; i++)
+        {
+            var at = end * i / (sticks + 1f);
+            float ground = FarmLayout.OnGround(position + at).y - position.y;
+            float height = wireHeight - ground + 0.05f;
+            EditorKit.Part("WireStick", PrimitiveType.Cylinder, go.transform, new Vector3(at.x, ground + height / 2f, at.z),
+                new Vector3(0.05f, height / 2f, 0.05f), stickMat, false);
+        }
 
         var tick = go.AddComponent<AudioSource>();
         tick.spatialBlend = 1f;

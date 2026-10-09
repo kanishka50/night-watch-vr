@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-// One section of the electric fence on the north side. It blocks the elephants' path
+// One section of the electric fence (north and west sides). It blocks the elephants' path
 // (a carving NavMesh Obstacle). Touching it gives a shock, if the energiser is on. A fence breaker
 // pushing on it slowly breaks it: the post falls, the wires drop, and elephants can walk through
 // the gap. With the energiser off it is only wire, and any elephant pushes it down quickly.
@@ -16,6 +16,8 @@ public class FenceSection : MonoBehaviour
     public Transform post;
     [Tooltip("The wires that disappear when this section breaks.")]
     public GameObject wires;
+    [Tooltip("The side elephants come from (north line: +Z, west line: -X).")]
+    public Vector3 outside = Vector3.forward;
 
     public bool IsBroken { get; private set; }
 
@@ -31,8 +33,8 @@ public class FenceSection : MonoBehaviour
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
 
-    // Where an elephant coming from the north stands to face this section.
-    public Vector3 ApproachPoint => transform.position + new Vector3(0f, 0f, 2f);
+    // Where an elephant stands to face this section, 2 m out on the outside.
+    public Vector3 ApproachPoint => transform.position + outside.normalized * 2f;
 
     // A shock when an elephant touches the fence. Sound and a blue spark.
     public void Zap(Vector3 at)
@@ -58,6 +60,7 @@ public class FenceSection : MonoBehaviour
     void Break(Vector3 from)
     {
         IsBroken = true;
+        Debug.Log($"Night Watch: {name} broke (energiser {(FenceEnergiser.IsOn ? "on" : "off")}).");
         obstacle.enabled = false;
         if (wires != null) wires.SetActive(false);
         SoundBank.PlayAt(SoundBank.BranchCrack, transform.position, 1f);
@@ -66,6 +69,8 @@ public class FenceSection : MonoBehaviour
         // The post falls away from the elephant.
         if (post != null)
         {
+            // The village model's posts have no collider: one box round them, so they land on the ground.
+            if (post.GetComponent<Collider>() == null) post.gameObject.AddComponent<BoxCollider>();
             var body = post.gameObject.AddComponent<Rigidbody>();
             body.mass = 20f;
             var push = (transform.position - from);
@@ -76,6 +81,9 @@ public class FenceSection : MonoBehaviour
             ? "The fence is broken! An elephant is coming through."
             : "The fence was not switched on. An elephant pushed straight through it!");
     }
+
+    [ContextMenu("Test: break this section")]
+    void TestBreak() => Break(transform.position + outside);
 
     public static FenceSection Nearest(Vector3 point)
     {

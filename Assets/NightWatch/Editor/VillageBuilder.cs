@@ -14,7 +14,7 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 //    south), so our game's objects stand on it. It is the ground teleport area;
 //  - the tank (lake) and the flooded paddy plots as one flat water mesh (plots under our farm
 //    are drained, see FarmLayout);
-//  - houses, granaries, the shed, the temple, the well, haystacks and the wire fence as normal
+//  - houses, granaries, the shed, the temple, the well and haystacks as normal
 //    scene objects (marked Static);
 //  - every other placed thing (plants, trees, rice, rocks, garden fences, small props) as a
 //    PropSet drawn by InstancedProps, with the browser version's distance rules. None are drawn
@@ -39,8 +39,10 @@ public static class VillageBuilder
     static readonly HashSet<string> SceneObjects = new HashSet<string>
     {
         "hut_a", "hut_b", "hut_c", "hut_kitchen", "ambalama", "atuwa", "well", "stupa",
-        "worn_shed_pbr_game_ready", "haystack_1", "haystack_2", "wire_fence",
+        "worn_shed_pbr_game_ready", "haystack_1", "haystack_2",
     };
+
+    public const string FenceModel = "wire_fence";
 
     // Drawing rules, from the browser version (js/props.js) and tuned for the laptop.
     // cull: not drawn past this distance (m); lod: past this distance the model is swapped for the
@@ -395,6 +397,9 @@ public static class VillageBuilder
 
         foreach (var g in level.groups)
         {
+            // The farm's electric fence is built from this model by ElephantSetup (FarmLayout.FenceLines);
+            // the village's own runs are left out (their south fence is not wanted).
+            if (g.name == FenceModel) continue;
             var model = LoadModel(g.name);
             if (model == null) continue;
             var poses = Poses(g.items, ground);
@@ -499,7 +504,7 @@ public static class VillageBuilder
                   $"({cleared} copies left out of the farm's open places and crop plots).");
     }
 
-    static GameObject LoadModel(string name)
+    public static GameObject LoadModel(string name)
     {
         var model = AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/Models/{name}.glb");
         if (model == null) Debug.LogWarning($"Night Watch: no model {name}.glb in {Folder}/Models");

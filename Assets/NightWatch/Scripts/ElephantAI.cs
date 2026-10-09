@@ -442,6 +442,8 @@ public class ElephantAI : MonoBehaviour
         if (next == State.Agitated && CurrentState != State.Agitated)
             stateBeforeAgitated = (CurrentState == State.AtFence || CurrentState == State.Raiding) ? CurrentState : State.Approach;
 
+        // For testing: each change of state shows in the Console.
+        if (next != CurrentState) Debug.Log($"Night Watch: {name}: {CurrentState} > {next}");
         CurrentState = next;
         stateTimer = 0f;
         needsResume = false;

@@ -134,6 +134,14 @@ public class ArrivalManager : MonoBehaviour
         NoticeBoard.Message("A bull is coming from the village side.");
     }
 
+    // For testing: only the fence breaker from the north (the fence break and the gap).
+    public void SpawnFenceBreaker()
+    {
+        var members = new List<ElephantAI>();
+        SpawnGroup(new Group { name = "The fence breaker", side = Side.North, fenceBreaker = true }, members);
+        NoticeBoard.Message("A big bull is coming to the fence.");
+    }
+
     void Next()
     {
         current++;
