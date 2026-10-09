@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -144,20 +145,19 @@ public static class BlockoutBuilder
         }
     }
 
-    // The roof: eave beams and a ridge pole on the posts, and on each slope seven thick, soft rows
-    // of illuk grass thatch (the straw-like grass farmers cut to roof a pela), each row over the
-    // one below it, a little crooked, with a ragged fringe of straw ends hanging under it (longer
-    // at the eaves). A bundled straw roll, tied with coir, along the ridge.
+    // The roof: eave beams and a ridge pole on the posts, and on them one thick, rounded mass of
+    // illuk grass thatch (the straw-like grass farmers cut to roof a pela): about 25 to 35 cm deep,
+    // lumpy, with soft rounded eaves, gentle bumps where the bundles overlap, and straw underneath
+    // too (no gaps, nothing flat or wooden). On top, loose straw strands; at the eaves, straw ends
+    // hanging; along the ridge, a fat straw roll tied with coir.
     // The ridge runs east-west, so the slopes face north and south (the low eaves frame the view).
     static void BuildRoof(Transform parent, float half, float eave, Material pole, Material thatch, System.Func<float, float> jitter)
     {
         var roof = Group("Roof", parent);
-        const float rise = 0.85f, overhang = 0.6f, rowWidth = 0.55f, rowStep = 0.33f, rowThickness = 0.12f;
-        const int rows = 7;
+        // Steep and full, like a haystack: the thatch swells out in the middle of each slope.
+        const float rise = 1.2f, overhang = 0.6f;
         float ridgeY = eave + rise;
         float length = HutSize + 0.9f;
-        var fringe = StrawFringeMaterial(length);
-        var shell = StrawShellMaterial();
 
         foreach (var z in new[] { -half, half })
             Pole("EaveBeam", roof, new Vector3(-half - 0.25f, eave, z), new Vector3(half + 0.25f, eave, z), 0.11f, pole);
@@ -170,42 +170,229 @@ public static class BlockoutBuilder
         }
         Pole("RidgePole", roof, new Vector3(-half - 0.3f, ridgeY, 0f), new Vector3(half + 0.3f, ridgeY, 0f), 0.11f, pole);
 
+        var mass = new GameObject("Thatch");
+        mass.transform.SetParent(roof, false);
+        mass.AddComponent<MeshFilter>().sharedMesh = ThatchMesh(ridgeY, half, rise, overhang, length, out float top);
+        var renderer = mass.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = thatch;
+
+        // Loose straw on top and straw ends at the eaves, following the slopes.
+        var shell = StrawShellMaterial();
+        var fringe = StrawFringeMaterial(length);
         float angle = Mathf.Atan2(rise, half);
+        float slope = (half + overhang) / Mathf.Cos(angle);
         foreach (var side in new[] { -1f, 1f })
         {
-            // Down the slope, and out of the roof surface.
             var down = new Vector3(0f, -Mathf.Sin(angle), side * Mathf.Cos(angle));
             var outward = new Vector3(0f, Mathf.Cos(angle), side * Mathf.Sin(angle));
-            var tilt = Quaternion.LookRotation(down, outward);
-            float slope = (half + overhang) / Mathf.Cos(angle);
-            for (int i = 0; i < rows; i++)
+            var card = Quaternion.LookRotation(outward, -down);
+            for (int band = 0; band < 6; band++)
             {
-                float along = Mathf.Min(rowWidth / 2f + i * rowStep, slope - rowWidth / 2f);
-                // Upper rows lie on top of lower ones.
-                var at = new Vector3(jitter(0.08f), ridgeY + 0.08f, 0f) + down * along + outward * (0.05f * (rows - i));
-                float rowLength = length + jitter(0.12f);
-                var row = Box("ThatchRow", roof, at, new Vector3(rowLength, rowThickness, rowWidth), thatch);
-                row.transform.localRotation = tilt * Quaternion.Euler(jitter(2f), jitter(1.5f), jitter(1.5f));
-
-                // Loose straw on top: two see-through layers of strands, so the row looks hairy
-                // like the haystacks, not flat.
-                var card = Quaternion.LookRotation(outward, -down);
+                float s = 0.35f + band * (slope - 0.6f) / 5f;
                 for (int layer = 1; layer <= 2; layer++)
-                    StrawCard("LooseStraw", roof, at + outward * (rowThickness / 2f + 0.02f * layer) + down * 0.03f * layer, card,
-                        new Vector3(rowLength, rowWidth + 0.06f, 1f), shell);
+                    StrawCard("LooseStraw", roof, ThatchCentre(ridgeY, angle, side, s) + outward * (ThatchDepth(s, slope) / 2f + ThatchSwell(s, slope) + 0.05f + 0.025f * layer),
+                        card, new Vector3(length - 1.4f, 0.6f, 1f), shell);
+            }
+            StrawCard("StrawEnds", roof, ThatchCentre(ridgeY, angle, side, slope) + down * 0.2f - outward * 0.05f, card,
+                new Vector3(length - 1.2f, 0.36f, 1f), fringe);
+        }
 
-                // Straw ends hanging from the row's lower edge, longest at the eaves.
-                float hang = i == rows - 1 ? 0.32f : 0.14f;
-                var edge = at + down * (rowWidth / 2f + hang / 2f - 0.02f) - outward * (rowThickness * 0.3f);
-                StrawCard("StrawEnds", roof, edge, card, new Vector3(rowLength, hang, 1f), fringe);
+        // The ridge: a fat roll of straw on the top of the thatch, tied every 0.7 m.
+        float roll = length / 2f - 0.7f;   // the ends round down, so the roll stops short of them
+        Pole("RidgeRoll", roof, new Vector3(-roll, top - 0.06f, 0f), new Vector3(roll, top - 0.06f, 0f), 0.44f, thatch);
+        var tie = Mat("RoofTie", new Color(0.30f, 0.22f, 0.14f));
+        for (float x = -roll + 0.35f; x < roll; x += 0.7f)
+            Pole("RidgeTie", roof, new Vector3(x - 0.02f, top - 0.06f, 0f), new Vector3(x + 0.02f, top - 0.06f, 0f), 0.46f, tie);
+    }
+
+    // The middle of the thatch's thickness, s metres down a slope from the ridge (y, z; x = 0).
+    static Vector3 ThatchCentre(float ridgeY, float angle, float side, float s)
+    {
+        float depth = ThatchDepth(s, 9f);
+        return new Vector3(0f, ridgeY + 0.08f + depth / 2f - s * Mathf.Sin(angle), side * s * Mathf.Cos(angle));
+    }
+
+    // Thick at the ridge, a little thinner at the eaves.
+    static float ThatchDepth(float s, float slope) => Mathf.Lerp(0.46f, 0.26f, Mathf.Clamp01(s / slope));
+
+    // The fullness: the thatch swells out about 20 cm in the middle of each slope (none at the
+    // ridge or the eave), so the roof looks rounded and filled, not flat.
+    static float ThatchSwell(float s, float slope) => 0.2f * Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Clamp01(s / slope)), 0.8f);
+
+    const string ThatchMeshPath = "Assets/NightWatch/Meshes/PelaThatch.asset";
+
+    // The thatch body: a two-slope band of straw, rounded at the eaves, lumpy on top (bundles and
+    // a little randomness), extruded along the ridge (x) and closed at both ends. UVs in metres for
+    // the thatch photo. top = the height of its upper surface at the ridge.
+    static Mesh ThatchMesh(float ridgeY, float half, float rise, float overhang, float length, out float top)
+    {
+        float angle = Mathf.Atan2(rise, half);
+        float sin = Mathf.Sin(angle), cos = Mathf.Cos(angle);
+        float slope = (half + overhang) / cos;
+        const int perSide = 22;      // points down each slope
+        const int tip = 6;           // points round each rounded eave
+        const float step = 0.2f;     // between cross-sections along the ridge
+        int rings = Mathf.CeilToInt(length / step) + 1;
+
+        // The cross-section, south eave to north eave: (side, distance down the slope).
+        var profile = new List<(float side, float s)>();
+        for (int i = perSide - 1; i >= 0; i--) profile.Add((-1f, slope * i / (perSide - 1)));
+        for (int i = 1; i < perSide; i++) profile.Add((1f, slope * i / (perSide - 1)));
+        int count = profile.Count;
+
+        Vector3 Out(float side) => new Vector3(0f, cos, side * sin);
+        Vector3 Down(float side) => new Vector3(0f, -sin, side * cos);
+        Vector3 Centre(float x, float side, float s)
+        {
+            var c = ThatchCentre(ridgeY, angle, side, s);
+            c.y += ThatchDepth(s, slope) / 2f - ThatchDepth(s, 9f) / 2f;
+            c.x = x;
+            return c;
+        }
+        // Lumps: a bump at each overlapping bundle row, plus soft randomness; none at the eave edge.
+        float Bump(float x, float side, float s)
+        {
+            float rows = 0.035f * (0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * s / 0.42f));
+            float random = (Mathf.PerlinNoise(x * 1.7f + side * 13f, s * 2.3f) - 0.5f) * 0.08f;
+            return (rows + random) * Mathf.Clamp01((slope - s) / 0.3f) + ThatchSwell(s, slope);
+        }
+        // The eave edge is a little ragged.
+        float Reach(float x, float side) => slope + (Mathf.PerlinNoise(x * 4f, side * 7f) - 0.5f) * 0.12f;
+
+        var verts = new List<Vector3>();
+        var uvs = new List<Vector2>();
+        var tris = new List<int>();
+
+        // A grid of points (rings x columns) as one smooth surface; each triangle is turned to face
+        // the wanted side.
+        void Surface(Vector3[,] grid, Vector3[,] want, System.Func<int, int, Vector2> uv)
+        {
+            int rows = grid.GetLength(0), cols = grid.GetLength(1);
+            int start = verts.Count;
+            for (int r = 0; r < rows; r++)
+                for (int k = 0; k < cols; k++)
+                {
+                    verts.Add(grid[r, k]);
+                    uvs.Add(uv(r, k));
+                }
+            for (int r = 0; r + 1 < rows; r++)
+                for (int k = 0; k + 1 < cols; k++)
+                {
+                    int a = start + r * cols + k, b = a + 1, c = a + cols, d = c + 1;
+                    Triangle(a, b, d, want[r, k]);
+                    Triangle(a, d, c, want[r, k]);
+                }
+        }
+        void Triangle(int a, int b, int c, Vector3 want)
+        {
+            var n = Vector3.Cross(verts[b] - verts[a], verts[c] - verts[a]);
+            if (Vector3.Dot(n, want) < 0f) tris.AddRange(new[] { a, c, b });
+            else tris.AddRange(new[] { a, b, c });
+        }
+
+        float X(int r) => Mathf.Min(-length / 2f + r * step, length / 2f);
+        float S(int k, float x) => k == 0 || k == count - 1 ? Reach(x, profile[k].side) : profile[k].s;
+
+        var upper = new Vector3[rings, count];
+        var lower = new Vector3[rings, count];
+        var upWant = new Vector3[rings, count];
+        var lowWant = new Vector3[rings, count];
+        for (int r = 0; r < rings; r++)
+            for (int k = 0; k < count; k++)
+            {
+                float x = X(r);
+                var (side, _) = profile[k];
+                float s = S(k, x);
+                var c = Centre(x, side, s);
+                float depth = ThatchDepth(s, slope);
+                upper[r, k] = c + Out(side) * (depth / 2f + Bump(x, side, s));
+                lower[r, k] = c - Out(side) * (depth / 2f);
+                upWant[r, k] = Out(side);
+                lowWant[r, k] = -Out(side);
+            }
+        Surface(upper, upWant, (r, k) => new Vector2(X(r), profile[k].side * profile[k].s));
+        Surface(lower, lowWant, (r, k) => new Vector2(X(r), profile[k].side * profile[k].s + 3f));
+
+        // The rounded eaves: half circles from the upper surface round to the lower one.
+        foreach (int k in new[] { 0, count - 1 })
+        {
+            float side = profile[k].side;
+            var arc = new Vector3[rings, tip];
+            var arcWant = new Vector3[rings, tip];
+            for (int r = 0; r < rings; r++)
+            {
+                float x = X(r), s = S(k, x);
+                var c = Centre(x, side, s);
+                float radius = ThatchDepth(s, slope) / 2f;
+                for (int j = 0; j < tip; j++)
+                {
+                    float t = Mathf.PI * j / (tip - 1);
+                    var dir = Out(side) * Mathf.Cos(t) + Down(side) * Mathf.Sin(t);
+                    arc[r, j] = c + dir * radius;
+                    arcWant[r, j] = dir;
+                }
+            }
+            Surface(arc, arcWant, (r, j) => new Vector2(X(r), 5f + j * 0.06f));
+        }
+
+        // The two ends: the space between the upper and lower surfaces, closed.
+        foreach (int r in new[] { 0, rings - 1 })
+        {
+            var want = new Vector3(r == 0 ? -1f : 1f, 0f, 0f);
+            var end = new Vector3[2, count];
+            var endWant = new Vector3[2, count];
+            for (int k = 0; k < count; k++)
+            {
+                end[0, k] = upper[r, k];
+                end[1, k] = lower[r, k];
+                endWant[0, k] = endWant[1, k] = want;
+            }
+            Surface(end, endWant, (row, k) => new Vector2(end[row, k].z, end[row, k].y));
+            foreach (int k in new[] { 0, count - 1 })
+            {
+                float side = profile[k].side, x = X(r), s = S(k, x);
+                var c = Centre(x, side, s);
+                float radius = ThatchDepth(s, slope) / 2f;
+                int centre = verts.Count;
+                verts.Add(c);
+                uvs.Add(new Vector2(c.z, c.y));
+                for (int j = 0; j < tip; j++)
+                {
+                    float t = Mathf.PI * j / (tip - 1);
+                    var p = c + (Out(side) * Mathf.Cos(t) + Down(side) * Mathf.Sin(t)) * radius;
+                    verts.Add(p);
+                    uvs.Add(new Vector2(p.z, p.y));
+                }
+                for (int j = 0; j + 1 < tip; j++) Triangle(centre, centre + 1 + j, centre + 2 + j, want);
             }
         }
 
-        // The ridge: a fat roll of straw, tied every 0.7 m.
-        Pole("RidgeRoll", roof, new Vector3(-length / 2f, ridgeY + 0.16f, 0f), new Vector3(length / 2f, ridgeY + 0.16f, 0f), 0.34f, thatch);
-        var tie = Mat("RoofTie", new Color(0.30f, 0.22f, 0.14f));
-        for (float x = -length / 2f + 0.35f; x < length / 2f; x += 0.7f)
-            Pole("RidgeTie", roof, new Vector3(x - 0.02f, ridgeY + 0.16f, 0f), new Vector3(x + 0.02f, ridgeY + 0.16f, 0f), 0.36f, tie);
+        top = upper[rings / 2, perSide - 1].y;
+
+        // Rounded ends, like a loaf: over the last 0.8 m at each end the whole thatch curves down
+        // toward the eave and in a little, closing smaller.
+        float eaveY = Centre(0f, 1f, slope).y;
+        for (int v = 0; v < verts.Count; v++)
+        {
+            var p = verts[v];
+            float t = Mathf.Clamp01((Mathf.Abs(p.x) - (length / 2f - 0.8f)) / 0.8f);
+            float f = 0.55f + 0.45f * Mathf.Sqrt(1f - t * t);
+            p.y = eaveY + (p.y - eaveY) * f;
+            p.z *= 0.8f + 0.2f * f;
+            verts[v] = p;
+        }
+
+        var mesh = new Mesh { name = "PelaThatch" };
+        mesh.SetVertices(verts);
+        mesh.SetUVs(0, uvs);
+        mesh.SetTriangles(tris, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+        mesh.RecalculateBounds();
+        if (!AssetDatabase.IsValidFolder("Assets/NightWatch/Meshes")) AssetDatabase.CreateFolder("Assets/NightWatch", "Meshes");
+        AssetDatabase.DeleteAsset(ThatchMeshPath);
+        AssetDatabase.CreateAsset(mesh, ThatchMeshPath);
+        return mesh;
     }
 
     // A flat card (a quad with no collider) for straw pictures.
