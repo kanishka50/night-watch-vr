@@ -201,6 +201,7 @@ public static class NeighbourSetup
         call.screen = screen.GetComponent<Renderer>();
         call.highlightRenderers = new[] { body.GetComponent<Renderer>() };
         call.highlightColor = new Color(1f, 1f, 0.2f);
-        EditorKit.Label("Phone: call your neighbour", hutProps.transform, position + new Vector3(0.1f, 0.3f, 0f));
+        HutPropsSetup.PointLabel("Phone: call your neighbour", hutProps.transform, position + new Vector3(0.1f, 0.25f, 0f),
+            phone.GetComponent<XRSimpleInteractable>());
     }
 }

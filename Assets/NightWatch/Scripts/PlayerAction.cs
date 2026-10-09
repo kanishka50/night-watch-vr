@@ -23,7 +23,7 @@ public class PlayerAction : MonoBehaviour
 
     protected XRGrabInteractable grab;
     protected Rigidbody body;
-    Renderer shape;
+    MeshRenderer[] shapes;
     MaterialPropertyBlock highlight;
     Vector3 startPosition;
     Quaternion startRotation;
@@ -36,7 +36,8 @@ public class PlayerAction : MonoBehaviour
     {
         grab = GetComponent<XRGrabInteractable>();
         body = GetComponent<Rigidbody>();
-        shape = GetComponentInChildren<Renderer>();
+        // Every shape of the tool lights up (not the flame particles).
+        shapes = GetComponentsInChildren<MeshRenderer>(true);
         startPosition = transform.position;
         startRotation = transform.rotation;
     }
@@ -115,14 +116,13 @@ public class PlayerAction : MonoBehaviour
 
     void SetHighlight(bool on)
     {
-        if (shape == null) return;
-        if (!on)
+        if (shapes == null) return;
+        if (on && highlight == null)
         {
-            shape.SetPropertyBlock(null);
-            return;
+            highlight = new MaterialPropertyBlock();
+            highlight.SetColor("_BaseColor", highlightColor);
         }
-        if (highlight == null) highlight = new MaterialPropertyBlock();
-        highlight.SetColor("_BaseColor", highlightColor);
-        shape.SetPropertyBlock(highlight);
+        foreach (var shape in shapes)
+            if (shape != null) shape.SetPropertyBlock(on ? highlight : null);
     }
 }

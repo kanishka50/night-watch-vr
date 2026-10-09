@@ -41,6 +41,10 @@ public static class HutPropsSetup
 
     // ---------------- Tools ----------------
 
+    // The tools are built from several shapes in real colours, styled on what Sri Lankan
+    // farmers keep in a pela. Each keeps one collider on its main shape, so it grabs and falls as
+    // before; the extra shapes (bands, rims, fuses, string) have none. Their name labels show
+    // only while a pointer is on them (HoverLabel).
     public static void BuildTools()
     {
         var root = EditorKit.Group("HutProps", null);
@@ -50,31 +54,47 @@ public static class HutPropsSetup
         table.isStatic = true;
 
         BuildFirePot(root, new Vector3(TableX, TableTop, -0.85f));
-        EditorKit.Label("Fire pot", root, new Vector3(TableX - 0.1f, TableTop + 0.55f, -0.85f));
+        // No pointer target: it shows while a torch or cracker is in the hand (light it here).
+        PointLabel("Fire pot", root, new Vector3(TableX - 0.1f, TableTop + 0.6f, -0.85f)).showWhileFireToolHeld = true;
 
-        BuildTorch(root, new Vector3(TableX - 0.1f, TableTop + 0.04f, -0.5f));
-        BuildTorch(root, new Vector3(TableX + 0.1f, TableTop + 0.04f, -0.5f));
-        EditorKit.Label("Fire torches", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, -0.5f));
+        var torch1 = BuildTorch(root, new Vector3(TableX - 0.1f, TableTop + 0.04f, -0.5f));
+        var torch2 = BuildTorch(root, new Vector3(TableX + 0.1f, TableTop + 0.04f, -0.5f));
+        PointLabel("Fire torches", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, -0.5f), torch1, torch2);
 
         // Eight crackers in two rows of four.
+        var crackers = new XRBaseInteractable[8];
         for (int i = 0; i < 8; i++)
-            BuildCracker(root, new Vector3(TableX - 0.2f + (i % 4) * 0.13f, TableTop + 0.07f, -0.2f + (i / 4) * 0.15f));
-        EditorKit.Label("Firecrackers", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, -0.08f));
+            crackers[i] = BuildCracker(root, new Vector3(TableX - 0.2f + (i % 4) * 0.13f, TableTop + 0.07f, -0.2f + (i / 4) * 0.15f));
+        PointLabel("Firecrackers", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, -0.08f), crackers);
 
-        BuildTins(root, new Vector3(TableX, TableTop + 0.08f, 0.35f));
-        EditorKit.Label("Tin cans", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, 0.35f));
+        var tins = BuildTins(root, new Vector3(TableX, TableTop + 0.08f, 0.35f));
+        PointLabel("Tin cans", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, 0.35f), tins);
 
-        BuildFlashlight(root, new Vector3(TableX, TableTop + 0.04f, 0.75f));
-        EditorKit.Label("Flashlight", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, 0.75f));
+        var flashlight = BuildFlashlight(root, new Vector3(TableX, TableTop + 0.04f, 0.75f));
+        PointLabel("Flashlight", root, new Vector3(TableX - 0.1f, TableTop + 0.3f, 0.75f), flashlight);
 
         // The wrong choice sits apart, in a basket in the south-west corner.
         var corner = new Vector3(-1.05f, FloorTop, -1.05f);
         EditorKit.Part("Basket", PrimitiveType.Cylinder, root, corner + new Vector3(0f, 0.05f, 0f),
             new Vector3(0.4f, 0.05f, 0.4f), EditorKit.Mat("Basket", new Color(0.55f, 0.42f, 0.25f)));
-        BuildHakka(root, corner + new Vector3(0f, 0.2f, 0f));
-        EditorKit.Label("Hakka patas", root, corner + new Vector3(0.1f, 0.5f, 0.1f));
+        var hakka = BuildHakka(root, corner + new Vector3(0f, 0.2f, 0f));
+        PointLabel("Hakka patas", root, corner + new Vector3(0.1f, 0.45f, 0.1f), hakka);
 
         BuildLadderHandles(root);
+    }
+
+    // Was 0.6 (always shown, too big in the face); now small, and only shown when pointed at.
+    public const float LabelSize = 0.3f;
+
+    // A small name label that shows only while one of the targets is pointed at.
+    public static HoverLabel PointLabel(string text, Transform root, Vector3 position, params XRBaseInteractable[] targets)
+    {
+        EditorKit.Label(text, root, position);
+        var label = root.Find("Label_" + text).GetComponent<TextMeshPro>();
+        label.fontSizeMax = LabelSize;
+        var hover = label.gameObject.AddComponent<HoverLabel>();
+        hover.targets = targets;
+        return hover;
     }
 
     static GameObject Tool(string name, Transform root, Vector3 position, float mass)
@@ -91,18 +111,48 @@ public static class HutPropsSetup
         return go;
     }
 
+    // A tool material: colour (when it has no photo texture), shine and metal.
+    static Material ToolMat(string name, Color color, float smooth, float metal = 0f)
+    {
+        var mat = EditorKit.Mat(name, color);
+        if (mat.GetTexture("_BaseMap") == null) mat.SetColor("_BaseColor", color);
+        mat.SetFloat("_Smoothness", smooth);
+        mat.SetFloat("_Metallic", metal);
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    // A decoration shape (no collider).
+    static GameObject Trim(string name, PrimitiveType type, Transform parent, Vector3 at, Vector3 size, Material mat,
+        Vector3 turn = default)
+    {
+        var part = EditorKit.Part(name, type, parent, at, size, mat, false);
+        part.transform.localRotation = Quaternion.Euler(turn);
+        return part;
+    }
+
+    // A clay fire pot (the kind a watchman keeps embers in): a narrow foot, a round belly,
+    // a neck and a lip, with glowing embers on top and the flames rising from them.
     static void BuildFirePot(Transform root, Vector3 position)
     {
         var pot = new GameObject("FirePot");
         pot.transform.SetParent(root, false);
         pot.transform.position = position;
-        EditorKit.Part("Pot", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.08f, 0f),
-            new Vector3(0.3f, 0.08f, 0.3f), EditorKit.Mat("Clay", new Color(0.55f, 0.30f, 0.18f)));
-        FireEffect.Build(pot.transform, new Vector3(0f, 0.14f, 0f), 0.3f, false);
+        var clay = ToolMat("ClayPot", new Color(0.62f, 0.33f, 0.20f), 0.15f);
+        var clayDark = ToolMat("ClayPotRim", new Color(0.45f, 0.24f, 0.15f), 0.1f);
+        EditorKit.Part("Foot", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.025f, 0f), new Vector3(0.2f, 0.025f, 0.2f), clay);
+        EditorKit.Part("Belly", PrimitiveType.Sphere, pot.transform, new Vector3(0f, 0.13f, 0f), new Vector3(0.34f, 0.22f, 0.34f), clay);
+        Trim("Neck", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.235f, 0f), new Vector3(0.24f, 0.02f, 0.24f), clay);
+        Trim("Lip", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.255f, 0f), new Vector3(0.28f, 0.015f, 0.28f), clayDark);
+        var embers = ToolMat("Embers", new Color(0.35f, 0.08f, 0.02f), 0.1f);
+        embers.EnableKeyword("_EMISSION");
+        embers.SetColor("_EmissionColor", new Color(1f, 0.35f, 0.08f) * 2f);
+        Trim("Embers", PrimitiveType.Cylinder, pot.transform, new Vector3(0f, 0.262f, 0f), new Vector3(0.22f, 0.006f, 0.22f), embers);
+        FireEffect.Build(pot.transform, new Vector3(0f, 0.27f, 0f), 0.5f, false);
 
         var lightGo = new GameObject("FireLight");
         lightGo.transform.SetParent(pot.transform, false);
-        lightGo.transform.localPosition = new Vector3(0f, 0.45f, 0f);
+        lightGo.transform.localPosition = new Vector3(0f, 0.6f, 0f);
         var light = lightGo.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = new Color(1f, 0.6f, 0.3f);
@@ -112,8 +162,8 @@ public static class HutPropsSetup
         // The flame zone: touch a torch or cracker here to light it.
         var zone = pot.AddComponent<SphereCollider>();
         zone.isTrigger = true;
-        zone.center = new Vector3(0f, 0.3f, 0f);
-        zone.radius = 0.25f;
+        zone.center = new Vector3(0f, 0.4f, 0f);
+        zone.radius = 0.28f;
 
         var crackle = pot.AddComponent<AudioSource>();
         crackle.spatialBlend = 1f;
@@ -126,18 +176,28 @@ public static class HutPropsSetup
         fire.crackle = crackle;
     }
 
-    static void BuildTorch(Transform root, Vector3 position)
+    // A fire torch (pandama): a bamboo pole with node rings, its head a wad of cloth bound with
+    // wire, blackened at the top where it burns.
+    static XRBaseInteractable BuildTorch(Transform root, Vector3 position)
     {
         var torch = Tool("FireTorch", root, position, 0.6f);
-        EditorKit.Part("Stick", PrimitiveType.Cylinder, torch.transform, Vector3.zero, new Vector3(0.05f, 0.35f, 0.05f),
-            EditorKit.Mat("TorchStick", new Color(0.40f, 0.28f, 0.15f)));
-        EditorKit.Part("Head", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0.33f, 0f), new Vector3(0.08f, 0.05f, 0.08f),
-            EditorKit.Mat("TorchHead", new Color(0.15f, 0.12f, 0.10f)));
+        var bamboo = ToolMat("Bamboo", new Color(0.72f, 0.62f, 0.36f), 0.3f);
+        var node = ToolMat("BambooNode", new Color(0.50f, 0.42f, 0.24f), 0.2f);
+        EditorKit.Part("Stick", PrimitiveType.Cylinder, torch.transform, Vector3.zero, new Vector3(0.045f, 0.36f, 0.045f), bamboo);
+        foreach (float y in new[] { -0.25f, -0.05f, 0.15f })
+            Trim("Node", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, y, 0f), new Vector3(0.052f, 0.006f, 0.052f), node);
+        EditorKit.Part("Head", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0.36f, 0f), new Vector3(0.085f, 0.07f, 0.085f),
+            ToolMat("TorchCloth", new Color(0.30f, 0.24f, 0.18f), 0.05f));
+        var wire = ToolMat("Wire", new Color(0.45f, 0.45f, 0.47f), 0.5f, 0.8f);
+        foreach (float y in new[] { 0.31f, 0.41f })
+            Trim("Wire", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, y, 0f), new Vector3(0.09f, 0.005f, 0.09f), wire);
+        Trim("Char", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0.432f, 0f), new Vector3(0.075f, 0.004f, 0.075f),
+            ToolMat("Char", new Color(0.05f, 0.04f, 0.04f), 0.05f));
 
         var flame = new GameObject("Flame");
         flame.transform.SetParent(torch.transform, false);
-        flame.transform.localPosition = new Vector3(0f, 0.45f, 0f);
-        FireEffect.Build(flame.transform, new Vector3(0f, -0.1f, 0f), 0.22f, false);
+        flame.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+        FireEffect.Build(flame.transform, new Vector3(0f, -0.07f, 0f), 0.35f, false);
         var light = flame.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = new Color(1f, 0.65f, 0.3f);
@@ -155,13 +215,23 @@ public static class HutPropsSetup
 
         // Lies flat on the table.
         torch.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        return torch.GetComponent<XRBaseInteractable>();
     }
 
-    static void BuildCracker(Transform root, Vector3 position)
+    // A firecracker (ali wedi): a red paper tube with a gold band, clay plugs at both ends and
+    // a short green fuse.
+    static XRBaseInteractable BuildCracker(Transform root, Vector3 position)
     {
         var cracker = Tool("Firecracker", root, position, 0.2f);
-        EditorKit.Part("Body", PrimitiveType.Cylinder, cracker.transform, Vector3.zero, new Vector3(0.05f, 0.06f, 0.05f),
-            EditorKit.Mat("Cracker", new Color(0.75f, 0.12f, 0.10f)));
+        EditorKit.Part("Body", PrimitiveType.Cylinder, cracker.transform, Vector3.zero, new Vector3(0.045f, 0.065f, 0.045f),
+            ToolMat("CrackerPaper", new Color(0.80f, 0.10f, 0.08f), 0.15f));
+        Trim("Band", PrimitiveType.Cylinder, cracker.transform, Vector3.zero, new Vector3(0.047f, 0.012f, 0.047f),
+            ToolMat("CrackerBand", new Color(0.85f, 0.65f, 0.15f), 0.5f, 0.4f));
+        var plug = ToolMat("CrackerPlug", new Color(0.28f, 0.20f, 0.13f), 0.05f);
+        Trim("PlugTop", PrimitiveType.Cylinder, cracker.transform, new Vector3(0f, 0.066f, 0f), new Vector3(0.04f, 0.004f, 0.04f), plug);
+        Trim("PlugBottom", PrimitiveType.Cylinder, cracker.transform, new Vector3(0f, -0.066f, 0f), new Vector3(0.04f, 0.004f, 0.04f), plug);
+        Trim("FuseCord", PrimitiveType.Cylinder, cracker.transform, new Vector3(0f, 0.08f, 0f), new Vector3(0.006f, 0.012f, 0.006f),
+            ToolMat("Fuse", new Color(0.15f, 0.45f, 0.15f), 0.2f));
 
         var fuse = new GameObject("Fuse");
         fuse.transform.SetParent(cracker.transform, false);
@@ -182,25 +252,52 @@ public static class HutPropsSetup
         var fc = cracker.AddComponent<Firecracker>();
         fc.fuseLight = light;
         fc.fuseSound = sound;
+        return cracker.GetComponent<XRBaseInteractable>();
     }
 
-    static void BuildTins(Transform root, Vector3 position)
+    // Two old tins tied together with coir string, a rope handle on top (banged together to
+    // make noise). Rims, and faded label bands.
+    static XRBaseInteractable BuildTins(Transform root, Vector3 position)
     {
         var tins = Tool("TinCans", root, position, 0.4f);
-        EditorKit.Part("Can", PrimitiveType.Cylinder, tins.transform, Vector3.zero, new Vector3(0.1f, 0.07f, 0.1f),
-            EditorKit.Mat("Tin", new Color(0.60f, 0.60f, 0.65f)));
-        EditorKit.Part("Can2", PrimitiveType.Cylinder, tins.transform, new Vector3(0.09f, 0f, 0f), new Vector3(0.1f, 0.07f, 0.1f),
-            EditorKit.Mat("Tin", new Color(0.60f, 0.60f, 0.65f)));
+        var tin = ToolMat("TinCan", new Color(0.72f, 0.72f, 0.75f), 0.55f, 0.8f);
+        var label = ToolMat("TinLabel", new Color(0.62f, 0.22f, 0.16f), 0.2f);
+        var coir = ToolMat("Coir", new Color(0.55f, 0.40f, 0.22f), 0.05f);
+        foreach (float x in new[] { 0f, 0.09f })
+        {
+            EditorKit.Part(x == 0f ? "Can" : "Can2", PrimitiveType.Cylinder, tins.transform, new Vector3(x, 0f, 0f),
+                new Vector3(0.1f, 0.07f, 0.1f), tin);
+            Trim("Label", PrimitiveType.Cylinder, tins.transform, new Vector3(x, 0f, 0f), new Vector3(0.102f, 0.035f, 0.102f), label);
+            Trim("RimTop", PrimitiveType.Cylinder, tins.transform, new Vector3(x, 0.07f, 0f), new Vector3(0.104f, 0.004f, 0.104f), tin);
+            Trim("RimBottom", PrimitiveType.Cylinder, tins.transform, new Vector3(x, -0.07f, 0f), new Vector3(0.104f, 0.004f, 0.104f), tin);
+            Trim("String", PrimitiveType.Cube, tins.transform, new Vector3(x, 0.105f, 0f), new Vector3(0.006f, 0.07f, 0.006f), coir);
+        }
+        Trim("Handle", PrimitiveType.Cube, tins.transform, new Vector3(0.045f, 0.14f, 0f), new Vector3(0.096f, 0.006f, 0.006f), coir);
         tins.AddComponent<NoiseMaker>();
+        return tins.GetComponent<XRBaseInteractable>();
     }
 
-    static void BuildFlashlight(Transform root, Vector3 position)
+    static XRBaseInteractable BuildFlashlight(Transform root, Vector3 position)
     {
         var torch = Tool("Flashlight", root, position, 0.3f);
         // The body lies along the forward (Z) axis, so the beam points where the hand points.
-        var bodyShape = EditorKit.Part("Body", PrimitiveType.Cylinder, torch.transform, Vector3.zero, new Vector3(0.05f, 0.1f, 0.05f),
-            EditorKit.Mat("FlashlightBody", new Color(0.15f, 0.15f, 0.17f)));
-        bodyShape.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        // A dark metal tube with rubber grip rings, a wider head, a bright bezel and a glass lens.
+        var along = new Vector3(90f, 0f, 0f);
+        var metal = ToolMat("TorchBody", new Color(0.12f, 0.12f, 0.13f), 0.45f, 0.6f);
+        var chrome = ToolMat("Chrome", new Color(0.80f, 0.80f, 0.82f), 0.85f, 1f);
+        var bodyShape = EditorKit.Part("Body", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, -0.02f),
+            new Vector3(0.042f, 0.08f, 0.042f), metal);
+        bodyShape.transform.localRotation = Quaternion.Euler(along);
+        var rubber = ToolMat("Rubber", new Color(0.04f, 0.04f, 0.04f), 0.15f);
+        foreach (float z in new[] { -0.08f, -0.06f, -0.04f })
+            Trim("Grip", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, z), new Vector3(0.045f, 0.004f, 0.045f), rubber, along);
+        Trim("Head", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, 0.085f), new Vector3(0.06f, 0.025f, 0.06f), metal, along);
+        Trim("Bezel", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, 0.111f), new Vector3(0.064f, 0.004f, 0.064f), chrome, along);
+        Trim("Lens", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, 0.114f), new Vector3(0.05f, 0.002f, 0.05f),
+            ToolMat("Lens", new Color(0.90f, 0.92f, 0.85f), 0.95f), along);
+        Trim("Tail", PrimitiveType.Cylinder, torch.transform, new Vector3(0f, 0f, -0.104f), new Vector3(0.044f, 0.006f, 0.044f), chrome, along);
+        Trim("Switch", PrimitiveType.Cube, torch.transform, new Vector3(0f, 0.022f, 0f), new Vector3(0.012f, 0.008f, 0.02f),
+            ToolMat("Switch", new Color(0.80f, 0.30f, 0.10f), 0.3f));
 
         var beamGo = new GameObject("Beam");
         beamGo.transform.SetParent(torch.transform, false);
@@ -216,37 +313,47 @@ public static class HutPropsSetup
 
         var fl = torch.AddComponent<Flashlight>();
         fl.beam = beam;
+        return torch.GetComponent<XRBaseInteractable>();
     }
 
-    static void BuildHakka(Transform root, Vector3 position)
+    // Hakka patas (the illegal "jaw bomb" hidden in food): a ball wrapped in cloth, tied round
+    // with twine, a knot on top.
+    static XRBaseInteractable BuildHakka(Transform root, Vector3 position)
     {
         var hakka = Tool("HakkaPatas", root, position, 0.2f);
         EditorKit.Part("Ball", PrimitiveType.Sphere, hakka.transform, Vector3.zero, new Vector3(0.12f, 0.12f, 0.12f),
-            EditorKit.Mat("HakkaPatas", new Color(0.40f, 0.20f, 0.10f)));
+            ToolMat("HakkaCloth", new Color(0.70f, 0.58f, 0.42f), 0.05f));
+        var twine = ToolMat("Twine", new Color(0.80f, 0.72f, 0.55f), 0.1f);
+        Trim("Twine", PrimitiveType.Cylinder, hakka.transform, Vector3.zero, new Vector3(0.123f, 0.004f, 0.123f), twine);
+        Trim("Twine2", PrimitiveType.Cylinder, hakka.transform, Vector3.zero, new Vector3(0.123f, 0.004f, 0.123f), twine, new Vector3(90f, 0f, 0f));
+        Trim("Knot", PrimitiveType.Sphere, hakka.transform, new Vector3(0f, 0.06f, 0f), new Vector3(0.03f, 0.03f, 0.03f), twine);
+        Trim("Tuft", PrimitiveType.Cylinder, hakka.transform, new Vector3(0f, 0.08f, 0f), new Vector3(0.008f, 0.015f, 0.008f), twine);
         hakka.AddComponent<HakkaPatas>();
+        return hakka.GetComponent<XRBaseInteractable>();
     }
 
     static void BuildLadderHandles(Transform root)
     {
-        var rope = EditorKit.Mat("Rope", new Color(0.75f, 0.65f, 0.40f));
+        // A thin bamboo rail at the top and bottom of the ladder (was a thick rope-coloured bar).
+        var rope = ToolMat("BambooRail", new Color(0.70f, 0.60f, 0.34f), 0.25f);
         var half = BlockoutBuilder.HutSize / 2f;
 
         var groundSpot = EditorKit.Empty("GroundSpot", root, FarmLayout.OnGround(new Vector3(0f, 0f, -half - 2f)));
         var hutSpot = EditorKit.Empty("HutSpot", root, new Vector3(0f, FloorTop, 0.3f));
 
         var top = EditorKit.Part("LadderTop", PrimitiveType.Cube, root, new Vector3(0f, FloorTop + 0.9f, -half + 0.05f),
-            new Vector3(0.7f, 0.08f, 0.08f), rope);
+            new Vector3(0.7f, 0.045f, 0.045f), rope);
         WidenHandle(top);
         top.AddComponent<XRSimpleInteractable>();
         var down = top.AddComponent<LadderClimb>();
         down.goesDown = true;
         down.highlightColor = HandleHighlight;
         down.destination = groundSpot;
-        EditorKit.Label("Climb down", root, new Vector3(0f, FloorTop + 1.1f, -half + 0.05f));
-        down.label = root.Find("Label_Climb down").GetComponent<TextMeshPro>();
+        down.label = PointLabel("Climb down", root, new Vector3(0f, FloorTop + 1.02f, -half + 0.05f),
+            top.GetComponent<XRSimpleInteractable>()).GetComponent<TextMeshPro>();
 
         var bottom = EditorKit.Part("LadderBottom", PrimitiveType.Cube, root, new Vector3(0f, 1.2f, -half - 0.35f),
-            new Vector3(0.7f, 0.08f, 0.08f), rope);
+            new Vector3(0.7f, 0.045f, 0.045f), rope);
         WidenHandle(bottom);
         bottom.AddComponent<XRSimpleInteractable>();
         var up = bottom.AddComponent<LadderClimb>();
@@ -254,13 +361,14 @@ public static class HutPropsSetup
         up.highlightColor = HandleHighlight;
         up.destination = hutSpot;
         // Faces south, toward a player standing on the ground.
-        EditorKit.Text("Label_Climb up", root, new Vector3(0f, 1.45f, -half - 0.4f), Quaternion.Euler(0f, 180f, 0f),
-            new Vector2(0.6f, 0.12f), "Climb up", 0.6f, TextAlignmentOptions.Center);
+        var upLabel = EditorKit.Text("Label_Climb up", root, new Vector3(0f, 1.33f, -half - 0.4f), Quaternion.Euler(0f, 180f, 0f),
+            new Vector2(0.6f, 0.12f), "Climb up", LabelSize, TextAlignmentOptions.Center);
+        upLabel.gameObject.AddComponent<HoverLabel>().targets = new XRBaseInteractable[] { bottom.GetComponent<XRSimpleInteractable>() };
     }
 
     // A thin bar is easy to miss: the pointer's cone still picks it, but the thin ray that colours
     // the line goes past it and hits a rung, so the line stays white. A bigger invisible hit box
-    // (0.8 x 0.35 x 0.3 m) fixes that. A stronger yellow shows the highlight on the rope colour.
+    // (0.8 x 0.35 x 0.3 m) fixes that. A stronger yellow shows the highlight on the bamboo colour.
     static void WidenHandle(GameObject handle)
     {
         var box = handle.GetComponent<BoxCollider>();
