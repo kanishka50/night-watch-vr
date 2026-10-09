@@ -79,6 +79,8 @@ public static class CattleSetup
             hit.size = new Vector3(0.7f, box.size.y * 0.9f, Mathf.Max(box.size.x, box.size.z) * 0.9f);
             var rb = root.gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;
+            // Point to learn: a little bigger than the body.
+            LearnSetup.Spot(root, "cattle", box.center, root.rotation, new Vector3(1.1f, box.size.y * 1.1f, Mathf.Max(box.size.x, box.size.z) * 1.15f));
         }
 
         var animator = body.GetComponentInChildren<Animator>(true);

@@ -125,6 +125,7 @@ public static class VillageExtras
         foreach (var s in Scarecrows) BuildScarecrow(root, s);
         AddColliders(root, village);
         VillageLife.Build(root);
+        AddLearnSpots(root);
     }
 
     static void BuildKamatha(Transform root)
@@ -204,6 +205,22 @@ public static class VillageExtras
             EditorKit.Part("Eye", PrimitiveType.Sphere, go, new Vector3(x, 1.66f, 0.13f), new Vector3(0.05f, 0.05f, 0.02f), lime, false);
         EditorKit.Part("Mouth", PrimitiveType.Cube, go, new Vector3(0f, 1.56f, 0.135f), new Vector3(0.1f, 0.015f, 0.01f), lime, false);
         head.transform.localRotation = Quaternion.identity;
+    }
+
+    // Point to learn (LearnSetup): the tank, the kamatha, the agro-well, the dagaba and the
+    // scarecrows. The canal, cattle and egrets get theirs where they are built.
+    static void AddLearnSpots(Transform root)
+    {
+        var spots = EditorKit.Group("LearnSpots", root);
+        // The tank's water (world.json "tank": centre -60, -55 in village space, half axes 47.5 and
+        // 32.5, turned 0.35 rad): a flat box a little inside its outline, at the water's level.
+        var tank = VillageBuilder.ToUnity(-60f, 0.45f, -55f);
+        LearnSetup.Spot(spots, "wewa", tank, Quaternion.Euler(0f, 0.35f * Mathf.Rad2Deg, 0f), new Vector3(70f, 0.6f, 48f));
+        LearnSetup.Spot(spots, "kamatha", FarmLayout.OnGround(Kamatha) + Vector3.up * 0.9f, Quaternion.identity, new Vector3(7.5f, 2f, 7.5f));
+        LearnSetup.Spot(spots, "agrowell", FarmLayout.OnGround(AgroWell) + Vector3.up * 0.8f, 2.2f);
+        LearnSetup.Spot(spots, "dagaba", FarmLayout.OnGround(Dagaba) + Vector3.up * 3f, 5f);
+        foreach (var s in Scarecrows)
+            LearnSetup.Spot(spots, "pambaya", FarmLayout.OnGround(s) + Vector3.up * 1.1f, Quaternion.identity, new Vector3(1.3f, 2.2f, 1.3f));
     }
 
     static Transform Hinge(string name, Transform parent, Vector3 local)

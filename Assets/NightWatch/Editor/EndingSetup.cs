@@ -62,7 +62,7 @@ public static class EndingSetup
 
     // A saved copy of the font material with a black outline. Setting outlineWidth on the text
     // in the editor makes Unity copy the material into the scene (a red error on every build).
-    static Material OutlineMaterial(Material font)
+    public static Material OutlineMaterial(Material font)
     {
         string path = $"{EditorKit.MaterialFolder}/HintOutline.mat";
         var mat = AssetDatabase.LoadAssetAtPath<Material>(path);

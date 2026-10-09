@@ -63,6 +63,7 @@ public static class GameSetup
         NeighbourSetup.Build(game);
         EndingSetup.Build();
         EndingSetup.BuildHint();
+        LearnSetup.BuildLine();
         StartScreenSetup.Build(game);
         StoryIntroSetup.Build(game);
         FilmDirectorSetup.Build(game);

@@ -87,6 +87,7 @@ public static class VillageLife
             egret.rightWing = Pivot("RightWing", bird, new Vector3(0.07f, 0.56f, 0.04f));
             Shape("Wing", PrimitiveType.Cube, egret.leftWing, new Vector3(-0.38f, 0f, -0.06f), new Vector3(0.76f, 0.015f, 0.3f), white);
             Shape("Wing", PrimitiveType.Cube, egret.rightWing, new Vector3(0.38f, 0f, -0.06f), new Vector3(0.76f, 0.015f, 0.3f), white);
+            LearnSetup.Spot(bird, "kokka", at + Vector3.up * 0.5f, 0.6f);
             // They leave one after another at the end of the afternoon.
             egret.leaveAt = 0.205f + i * 0.005f;
         }

@@ -164,6 +164,13 @@ public static class CanalBuilder
         BuildIntake(canal, stone, wood);
         BuildBridge(canal, rubble);
 
+        // Point to learn: the canal along its length.
+        for (float s = 2f; s < Total - 0.5f; s += 3f)
+        {
+            var (p, _) = PointAt(s);
+            LearnSetup.Spot(canal, "ela", new Vector3(p.x, Level(s) + 0.3f, p.y), 1.3f);
+        }
+
         // The field end: a splash where it spills into the plot, and the sound of it.
         var end = points[points.Count - 1];
         var endAt = new Vector3(end.x, PlotLevel + 0.01f, end.y);
@@ -370,6 +377,7 @@ public static class CanalBuilder
         fallGo.transform.localPosition = Vector3.zero;
         fallGo.transform.localRotation = Quaternion.identity;
 
+        LearnSetup.Spot(outlet, "outlet", outlet.TransformPoint(new Vector3(0f, 0.8f, 0.2f)), outlet.rotation, new Vector3(3.3f, 1.8f, 1.6f));
         var splashAt = outlet.TransformPoint(new Vector3(0f, level - bed + 0.02f, 0.45f));
         WaterSplash.Build(canal, "OutletSplash", splashAt, 1f);
         AddSound(canal, "OutletTrickle", splashAt, 0.45f);
@@ -407,6 +415,7 @@ public static class CanalBuilder
             var plank = Block("WalkPlank", intake, (a + b) / 2f, new Vector3(0.24f, 0.05f, Vector3.Distance(a, b) + 0.2f), wood, false);
             plank.transform.localRotation = Quaternion.LookRotation(b - a);
         }
+        LearnSetup.Spot(intake, "sorowwa", intake.position + Vector3.up * 1f, intake.rotation, new Vector3(2.4f, 2.6f, 2.4f));
         if (water < 0.2f) Debug.LogWarning($"Night Watch: the sluice intake stands in only {water:F2} m of water.");
     }
 
