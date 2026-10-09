@@ -2,7 +2,7 @@
 
 Every asset, font and piece of code by other people used in Night Watch. Everything else
 (scripts, editor tools, coded shapes, the water and sky shaders, the low-poly clouds, the water
-ripple picture and all sounds, made in code) was made by the team.
+ripple picture and all other sounds, made in code) was made by the team.
 
 The same list, shorter, is on the credits board in the game (results screen, right of the
 results; `DebriefPanel.creditsText`). Keep the two the same.
@@ -22,6 +22,7 @@ results; `DebriefPanel.creditsText`). Keep the two the same.
 | Animated Human (the neighbour; repainted with our own palette, head cloth added) | Quaternius | https://opengameart.org/content/animated-human-low-poly | CC0 1.0 | `Assets/NightWatch/Characters/Neighbour/` |
 | Ultimate Animated Animal Pack: Cow and Bull (the two village cattle at the kamatha; glb from Poly Pizza, https://poly.pizza/m/26zM1outCr and https://poly.pizza/m/a8PIIYwF7r) | Quaternius | https://quaternius.com/packs/ultimateanimatedanimals.html | CC0 1.0 | `Assets/NightWatch/Characters/Cattle/VillageCow.glb`, `VillageBull.glb` |
 | Cloudy Skyboxes, panoramas 05, 07, 12, 17, 23 (the sky: day, sunset, night, late dusk, dawn) | Screaming Brain Studios | https://opengameart.org/content/cloudy-skyboxes-0 | CC0 1.0 | `Assets/NightWatch/Sky/` |
+| Elephant trumpet and roar: two short cuts (0 to 1 s and 4 to 5.75 s, level matched) from "Elephant sound", a field recording of an elephant in a zoo | ikbenraar (Freesound) | https://freesound.org/people/ikbenraar/sounds/819668/ | CC0 1.0 | `Assets/NightWatch/Resources/Sounds/ElephantTrumpet.wav`, `ElephantRoar.wav` |
 | Cinzel font (film titles and captions) | The Cinzel Project Authors | https://github.com/NDISCOVER/Cinzel | SIL Open Font License 1.1 | `Assets/NightWatch/Fonts/` |
 | Textures: bark_brown_01, bark_brown_02, brown_mud_02, brown_mud_dry, clay_plaster, dirt_floor, hessian_230, sparse_grass, thatch_roof_angled, weathered_planks (1k) | Poly Haven | https://polyhaven.com/textures | CC0 1.0 | `Assets/NightWatch/Textures/` |
 | Textures: Rock Surface (canal bank stones, slab bridge) | Amal Kumar, Poly Haven | https://polyhaven.com/a/rock_surface | CC0 1.0 | `Assets/NightWatch/Textures/rock_surface_*` |

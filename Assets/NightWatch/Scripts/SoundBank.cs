@@ -1,8 +1,9 @@
 using UnityEngine;
 
-// All the game's sounds, made in code by simple sound synthesis (no downloaded files).
-// Each clip is made the first time it is needed, then reused.
-// These are placeholders: recorded sounds (with credit in CREDITS.md) can replace them later.
+// All the game's sounds, made in code by simple sound synthesis, except the elephant's trumpet
+// and roar: real recordings in Resources/Sounds (CC0, credited in CREDITS.md). If a recording is
+// missing, the code-made sound is used instead.
+// Each clip is made (or loaded) the first time it is needed, then reused.
 public static class SoundBank
 {
     const int Rate = 22050;
@@ -12,7 +13,19 @@ public static class SoundBank
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
     public static AudioClip Rumble => rumble != null ? rumble : rumble = Make("Rumble", 2.5f, MakeRumble);
-    public static AudioClip Trumpet => trumpet != null ? trumpet : trumpet = Make("Trumpet", 1.4f, MakeTrumpet);
+    // A real elephant trumpet (when it gets angry, when it charges, when scared off).
+    public static AudioClip Trumpet => Recording("ElephantTrumpet", ref realTrumpet)
+        ?? (trumpet != null ? trumpet : trumpet = Make("Trumpet", 1.4f, MakeTrumpet));
+    // A real elephant roar: the moment it hits the hut or the player.
+    public static AudioClip ElephantRoar => Recording("ElephantRoar", ref roar) ?? Rumble;
+
+    static AudioClip realTrumpet, roar;
+
+    static AudioClip Recording(string name, ref AudioClip cache)
+    {
+        if (cache == null) cache = Resources.Load<AudioClip>("Sounds/" + name);
+        return cache != null ? cache : null;
+    }
     public static AudioClip BranchCrack => crack != null ? crack : crack = Make("BranchCrack", 0.4f, MakeCrack);
     public static AudioClip Bang => bang != null ? bang : bang = Make("Bang", 1.2f, MakeBang);
     public static AudioClip TinBang => tin != null ? tin : tin = Make("TinBang", 0.6f, MakeTin);
