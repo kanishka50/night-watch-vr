@@ -14,7 +14,7 @@ using UnityEngine;
 public static class CattleSetup
 {
     const string Folder = "Assets/NightWatch/Characters/Cattle";
-    const string ControllerPath = Folder + "/CattleAnimator.controller";
+    const string ControllerPath = Folder + "/CattleAnimator.controller";   // a name pattern: one controller per model
     // Which file each animal uses and how tall it stands (head and horns, metres): Sri Lankan
     // village cattle are small (about 1.1 to 1.25 m at the shoulder).
     static readonly (string file, float height)[] Animals = { ("VillageCow", 1.3f), ("VillageBull", 1.4f) };
