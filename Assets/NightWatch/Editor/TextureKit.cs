@@ -46,6 +46,12 @@ public static class TextureKit
         // grey stone for the bank stones and the slab bridge. Wet near water, so a little shiny.
         { "SluiceStone", new Look("japanese_stone_wall", 1.9f, new Color(0.78f, 0.76f, 0.72f), 0.15f) },
         { "CanalStone", new Look("rock_surface", 0.9f, new Color(0.82f, 0.82f, 0.8f), 0.2f) },
+        // Boards and buttons (BoardStyle): dark old wood round the ola-leaf pages, and wooden
+        // planks for START, RESTART and QUIT (QUIT and the warning frame stained red-brown).
+        { "BoardFrame", new Look("weathered_planks", 1f, new Color(0.55f, 0.40f, 0.28f), 0.05f) },
+        { "BoardFrameRed", new Look("weathered_planks", 1f, new Color(0.75f, 0.28f, 0.18f), 0.05f) },
+        { "ButtonWood", new Look("weathered_planks", 0.8f, new Color(0.62f, 0.44f, 0.27f), 0.08f) },
+        { "ButtonWoodRed", new Look("weathered_planks", 0.8f, new Color(0.72f, 0.30f, 0.20f), 0.08f) },
     };
 
     // Puts the texture on the material (called every time a tool asks for the material).

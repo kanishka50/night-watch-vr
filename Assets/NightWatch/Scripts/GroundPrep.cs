@@ -99,7 +99,7 @@ public class GroundPrep : MonoBehaviour
     static string Line(int number, bool done, string text)
     {
         return done
-            ? $"<color=#9CFF8A>{number}.  {text}   <b>DONE</b></color>"
+            ? $"<color=#2F6B1E>{number}.  {text}   <b>DONE</b></color>"
             : $"{number}.  {text}";
     }
 

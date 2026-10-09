@@ -175,19 +175,13 @@ public static class EditorKit
         return go;
     }
 
-    // Button colours: dark and unlit, so white text on them is easy to read in any light
-    // (the old light green and red-brown under cream text could not be read).
-    public static Material ButtonMat(string name, Color color) => Mat(name, color, true);
+    // Buttons in the village style (BoardStyle): a wooden plank (red-brown for QUIT) with gold
+    // letters. The colour arguments only choose plain or red.
+    public static Material ButtonMat(string name, Color color) => BoardStyle.ButtonMaterial(color == ButtonRed);
     public static readonly Color ButtonGreen = new Color(0.06f, 0.30f, 0.12f);
     public static readonly Color ButtonRed = new Color(0.40f, 0.07f, 0.05f);
 
-    // White button text with a black outline.
-    public static void ButtonLabel(TextMeshPro label)
-    {
-        label.color = Color.white;
-        label.fontStyle = FontStyles.Bold;
-        label.fontSharedMaterial = EndingSetup.OutlineMaterial(label.fontSharedMaterial);
-    }
+    public static void ButtonLabel(TextMeshPro label) => BoardStyle.ButtonText(label);
 
     // A flat coloured board behind text. Faces the same way as Text().
     public static GameObject Board(string name, Transform parent, Vector3 center, Quaternion rotation, Vector2 size, Color color)

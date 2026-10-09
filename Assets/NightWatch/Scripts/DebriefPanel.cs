@@ -18,22 +18,24 @@ public class DebriefPanel : MonoBehaviour
     // licences is CREDITS.md in the project folder; keep the two the same.
     [TextArea(3, 20)]
     public string creditsText =
-        "<b>Credits</b>\n" +
+        "<size=130%><color=#7A2C10><b>Credits</b></color></size>\n" +
         "Night Watch, INTE 42312 Virtual and Augmented Reality group project.\n\n" +
-        "<b>3D models, CC BY 4.0</b>\n" +
+        "<color=#7A2C10><b>3D models, CC BY 4.0</b></color>\n" +
         "Elephant: \"Low poly Realistic Elephant 3d model free\" by iRahulRajput (Sketchfab). Rigged and animated for this project.\n" +
         "Electric fence: \"Wire Fence\" by Pixel-bit (Sketchfab).\n" +
         "Shed: \"Worn Shed PBR Game-Ready\" by donnichols (Sketchfab).\n\n" +
-        "<b>Free assets, CC0</b>\n" +
+        "<color=#7A2C10><b>Free assets, CC0</b></color>\n" +
         "Village models and textures: Poly Haven (Amal Kumar, Rob Tuytel, Rico Cilliers, Greg Zaal, " +
         "Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Aron Łyczek, Jenelle van Heerden, Kless Gyzen, " +
         "Sebastian Platen, Kuutti Siitonen, James Ray Cock, Miroslav Turura, eye-candy.xyz).\n" +
         "Neighbour, cow and bull: Quaternius.\n" +
         "Sky: Cloudy Skyboxes by Screaming Brain Studios.\n\n" +
-        "<b>Font</b>\n" +
+        "<color=#7A2C10><b>Font</b></color>\n" +
         "Cinzel by The Cinzel Project Authors, SIL Open Font License 1.1.\n\n" +
         "Built with Unity, XR Interaction Toolkit, OpenXR and AI Navigation. Sounds made in code by the team.\n" +
         "Full list with links: CREDITS.md";
+
+    const string Good = "#2F6B1E", Warn = "#A0461A";
 
     void Awake()
     {
@@ -52,7 +54,8 @@ public class DebriefPanel : MonoBehaviour
     {
         var game = GameManager.Instance;
         var sb = new StringBuilder();
-        string colour = ending == GameManager.Ending.EveryoneSafe ? "#9CFF8A" : "#FFB36B";
+        // Inks for the ola-leaf page (BoardStyle): dark green for good, burnt orange for warnings.
+        string colour = ending == GameManager.Ending.EveryoneSafe ? Good : Warn;
         sb.AppendLine($"<size=150%><color={colour}><b>{game.ResultTitle}</b></color></size>");
         sb.AppendLine(game.ResultLine);
         sb.AppendLine();
@@ -83,13 +86,13 @@ public class DebriefPanel : MonoBehaviour
         const int MaxGood = 5;
         if (good.Count > 0)
         {
-            sb.AppendLine("<color=#9CFF8A><b>Good choices</b></color>");
+            sb.AppendLine($"<color={Good}><b>Good choices</b></color>");
             for (int i = 0; i < good.Count && i < MaxGood; i++) sb.AppendLine("-  " + good[i]);
             if (good.Count > MaxGood) sb.AppendLine($"-  and {good.Count - MaxGood} more");
             sb.AppendLine();
         }
 
-        sb.AppendLine("<color=#FFB36B><b>Next time</b></color>");
+        sb.AppendLine($"<color={Warn}><b>Next time</b></color>");
         if (tips.Count == 0) sb.AppendLine("-  Nothing to change. Well done!");
         foreach (var tip in tips) sb.AppendLine("-  " + tip);
         sb.AppendLine();

@@ -174,10 +174,8 @@ public static class GroundPrepSetup
         go.transform.SetParent(root, false);
         var rotation = Quaternion.identity;
 
-        EditorKit.Board("Background", go.transform, center, rotation, new Vector2(1.5f, 0.95f), new Color(0.07f, 0.08f, 0.10f));
-        // A wooden back, so the text does not show mirrored from the hut.
-        EditorKit.Part("Back", PrimitiveType.Cube, go.transform, center + Vector3.forward * 0.04f, new Vector3(1.56f, 1f, 0.03f),
-            EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
+        // An ola-leaf page in a wooden frame (BoardStyle; its wooden back hides the text from the hut).
+        BoardStyle.Board("Background", go.transform, center, rotation, new Vector2(1.5f, 0.95f));
         float ground = center.y - 1.5f;
         EditorKit.Part("Post", PrimitiveType.Cube, go.transform, new Vector3(center.x, ground + (1.5f - 0.47f) / 2f, center.z + 0.05f),
             new Vector3(0.08f, 1.5f - 0.47f, 0.08f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
@@ -187,9 +185,8 @@ public static class GroundPrepSetup
         EditorKit.BodyWall("Solid", go.transform, new Vector3(center.x, (ground + top) / 2f, center.z + 0.03f), rotation,
             new Vector3(1.56f, top - ground, 0.15f));
 
-        var tasks = EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1f);
-        var alert = EditorKit.Text("Alert", go.transform, center - Vector3.up * 0.38f, rotation, new Vector2(1.4f, 0.14f), "", 0.8f);
-        alert.color = new Color(1f, 0.85f, 0.3f);
+        var tasks = BoardStyle.BodyText(EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1f));
+        var alert = BoardStyle.BodyText(EditorKit.Text("Alert", go.transform, center - Vector3.up * 0.38f, rotation, new Vector2(1.4f, 0.14f), "", 0.8f), true);
         return new Board { tasks = tasks, alert = alert };
     }
 }

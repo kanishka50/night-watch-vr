@@ -407,7 +407,6 @@ public static class HutPropsSetup
     public static void BuildScreens(Transform game)
     {
         var screens = EditorKit.Group("Screens", game);
-        var dark = new Color(0.07f, 0.08f, 0.10f);
 
         // Notice board: a slanted reading desk inside the west rail, fully below the rail top,
         // tilted up toward the player. Read it by looking down; it never blocks the view of the field.
@@ -415,23 +414,18 @@ public static class HutPropsSetup
         var boardCenter = new Vector3(-1.2f, FloorTop + 0.6f, 0.3f);
         var board = new GameObject("NoticeBoard");
         board.transform.SetParent(screens, false);
-        EditorKit.Board("Background", board.transform, boardCenter, boardRot, new Vector2(0.9f, 0.62f), dark);
-        // A wooden desk plate under the board and a stand from the floor up to it, so it does not
-        // float (the old stand was 0.25 m short).
+        // An ola-leaf page in a wooden frame (BoardStyle), on a stand from the floor up to it.
+        BoardStyle.Board("Background", board.transform, boardCenter, boardRot, new Vector2(0.9f, 0.62f));
         var wood = EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f));
-        var plate = EditorKit.Part("Desk", PrimitiveType.Cube, board.transform, boardCenter + boardRot * Vector3.forward * 0.04f,
-            new Vector3(0.96f, 0.68f, 0.03f), wood, false);
-        plate.transform.rotation = boardRot;
         EditorKit.Part("Stand", PrimitiveType.Cube, board.transform, new Vector3(-1.2f, FloorTop + 0.27f, 0.3f),
             new Vector3(0.1f, 0.54f, 0.5f), wood);
         // The desk and stand are solid: the player cannot walk through them.
         EditorKit.BodyWall("Solid", board.transform, new Vector3(-1.2f, FloorTop + 0.45f, 0.3f), Quaternion.identity,
             new Vector3(0.5f, 0.9f, 0.9f));
         var up = boardRot * Vector3.up;
-        var body = EditorKit.Text("Body", board.transform, boardCenter + up * 0.06f, boardRot, new Vector2(0.84f, 0.46f), "", 0.5f);
-        var alert = EditorKit.Text("Alert", board.transform, boardCenter - up * 0.21f, boardRot, new Vector2(0.84f, 0.07f), "", 0.4f);
-        alert.color = new Color(1f, 0.85f, 0.3f);
-        var status = EditorKit.Text("Status", board.transform, boardCenter - up * 0.28f, boardRot, new Vector2(0.84f, 0.05f), "", 0.3f);
+        var body = BoardStyle.BodyText(EditorKit.Text("Body", board.transform, boardCenter + up * 0.06f, boardRot, new Vector2(0.8f, 0.44f), "", 0.5f));
+        var alert = BoardStyle.BodyText(EditorKit.Text("Alert", board.transform, boardCenter - up * 0.2f, boardRot, new Vector2(0.8f, 0.07f), "", 0.4f), true);
+        var status = BoardStyle.BodyText(EditorKit.Text("Status", board.transform, boardCenter - up * 0.26f, boardRot, new Vector2(0.8f, 0.05f), "", 0.3f));
         var nb = board.AddComponent<NoticeBoard>();
         nb.body = body;
         nb.alert = alert;
@@ -450,9 +444,10 @@ public static class HutPropsSetup
         warningRoot.transform.SetParent(screens, false);
         var warningPanel = new GameObject("Panel");
         warningPanel.transform.SetParent(warningRoot.transform, false);
-        EditorKit.Board("Background", warningPanel.transform, Vector3.zero, Quaternion.identity, new Vector2(1f, 0.6f), new Color(0.35f, 0.05f, 0.05f));
-        var warningText = EditorKit.Text("Text", warningPanel.transform, Vector3.zero, Quaternion.identity, new Vector2(0.9f, 0.5f), "", 0.6f,
-            TextAlignmentOptions.Center);
+        // The same page with a red-brown frame: a warning.
+        BoardStyle.Board("Background", warningPanel.transform, Vector3.zero, Quaternion.identity, new Vector2(1f, 0.6f), true);
+        var warningText = BoardStyle.BodyText(EditorKit.Text("Text", warningPanel.transform, Vector3.zero, Quaternion.identity, new Vector2(0.88f, 0.5f), "", 0.6f,
+            TextAlignmentOptions.Center));
         var wp = warningRoot.AddComponent<WarningPanel>();
         wp.panel = warningPanel;
         wp.text = warningText;
@@ -463,17 +458,17 @@ public static class HutPropsSetup
         var debriefPanel = new GameObject("Panel");
         debriefPanel.transform.SetParent(debriefRoot.transform, false);
         var center = new Vector3(0f, 4.4f, 7f);
-        EditorKit.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f), dark);
+        BoardStyle.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f));
         // The results fill the board above the buttons.
-        var results = EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, 0.35f, 0f), Quaternion.identity,
-            new Vector2(5.8f, 2.7f), "", 1.4f);
+        var results = BoardStyle.BodyText(EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, 0.35f, 0f), Quaternion.identity,
+            new Vector2(5.7f, 2.6f), "", 1.4f));
         // The credits on their own board to the right, turned toward the hut: every third-party
         // asset with its author and licence did not fit beside the results.
         var creditsAt = center + new Vector3(5f, 0f, -1.2f);
         var creditsTurn = Quaternion.Euler(0f, 35f, 0f);
-        EditorKit.Board("CreditsBackground", debriefPanel.transform, creditsAt, creditsTurn, new Vector2(3.6f, 3.6f), dark);
-        var credits = EditorKit.Text("Credits", debriefPanel.transform, creditsAt, creditsTurn,
-            new Vector2(3.3f, 3.3f), "", 1f);
+        BoardStyle.Board("CreditsBackground", debriefPanel.transform, creditsAt, creditsTurn, new Vector2(3.6f, 3.6f));
+        var credits = BoardStyle.BodyText(EditorKit.Text("Credits", debriefPanel.transform, creditsAt, creditsTurn,
+            new Vector2(3.2f, 3.2f), "", 1f));
 
         // Restart: a green button at the bottom of the results board. Reachable with the pointer
         // from the hut or from the ground (the hut may have collapsed).
