@@ -8,8 +8,8 @@ using UnityEngine;
 //    Hiding the jump keeps players from feeling sick (course week 5: comfort). It replaced the
 //    round tunnel vignette, which closed to a small circle and looked odd.
 //  - KnockDown: the view tips over and drops, as if the player fell. If fatal, it then fades out.
-//  - Wound edge: a red edge round the view that stays while the player is hurt, stronger and
-//    pulsing as health drops.
+//  - Wound edge: a red edge round the view when the player is hit, fading back to normal in
+//    about 4 s. Only when badly hurt (one more hit could kill) a thin, faint edge stays, pulsing.
 public class ScreenFeedback : MonoBehaviour
 {
     public static ScreenFeedback Instance { get; private set; }
@@ -22,6 +22,11 @@ public class ScreenFeedback : MonoBehaviour
     MaterialPropertyBlock block;
     MaterialPropertyBlock woundBlock;
     float woundAlpha;
+    float hitGlow;
+    float lastHealth = 100f;
+
+    [Tooltip("At or below this health a faint red edge stays as a warning.")]
+    public float lowHealth = 40f;
     Color flashColor = Color.red;
     float flashAlpha;
     float fadeAlpha;
@@ -178,7 +183,7 @@ public class ScreenFeedback : MonoBehaviour
         offset.localPosition = startPos;
     }
 
-    // The lower the health, the stronger the red edge, with a slow pulse.
+    // A hit: a strong red edge that fades in about 4 s. Badly hurt: a faint pulsing edge stays.
     void UpdateWound()
     {
         if (woundOverlay == null) return;
@@ -200,19 +205,24 @@ public class ScreenFeedback : MonoBehaviour
 
         var game = GameManager.Instance;
         float health = game != null ? game.peopleSafe : 100f;
-        float target = health < 100f ? Mathf.Lerp(0.25f, 0.8f, 1f - health / 100f) : 0f;
+        if (health < lastHealth) hitGlow = 0.7f;
+        lastHealth = health;
+        hitGlow = Mathf.MoveTowards(hitGlow, 0f, Time.deltaTime * 0.7f / 4f);
+        float warning = health <= lowHealth ? 0.22f : 0f;
+        float target = Mathf.Max(hitGlow, warning);
         // The red edge is for the danger of the night. It fades at dawn and is gone at the end.
         var phase = game != null ? game.CurrentPhase : GameManager.Phase.Night;
         if (phase == GameManager.Phase.Dawn || phase == GameManager.Phase.Debrief) target = 0f;
         if (phase == GameManager.Phase.Debrief) woundAlpha = 0f;   // gone at once, and stays gone
-        woundAlpha = Mathf.MoveTowards(woundAlpha, target, Time.deltaTime * 0.5f);
-        float pulse = 0.85f + 0.15f * Mathf.Sin(Time.time * 3f);
+        // Comes in fast with a hit, goes out slowly.
+        woundAlpha = Mathf.MoveTowards(woundAlpha, target, Time.deltaTime * (target > woundAlpha ? 3f : 0.5f));
+        float pulse = hitGlow > warning ? 1f : 0.8f + 0.2f * Mathf.Sin(Time.time * 3f);
         woundBlock.SetColor("_BaseColor", new Color(0.7f, 0f, 0f, woundAlpha * pulse));
         woundOverlay.SetPropertyBlock(woundBlock);
         woundOverlay.enabled = woundAlpha > 0.01f;
     }
 
-    // A square picture: see-through in the middle, solid toward the edges.
+    // A square picture: see-through over most of the middle, solid only near the edges.
     static Texture2D EdgeTexture()
     {
         const int size = 128;
@@ -223,7 +233,7 @@ public class ScreenFeedback : MonoBehaviour
             float dx = (x + 0.5f) / size * 2f - 1f;
             float dy = (y + 0.5f) / size * 2f - 1f;
             float d = Mathf.Sqrt(dx * dx + dy * dy);
-            float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.45f, 1.05f, d));
+            float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.7f, 1.2f, d));
             tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
         }
         tex.Apply();
