@@ -401,7 +401,11 @@ public class ElephantAI : MonoBehaviour
         }
 
         // A deterred elephant stops eating.
-        if (flinchTimer <= 0f && plot.Contains(transform.position)) plot.Eat(dt * eatRateMultiplier, Mouth);
+        if (flinchTimer <= 0f && plot.Contains(transform.position))
+        {
+            plot.Eat(dt * eatRateMultiplier, Mouth);
+            if (body != null) body.Eat(0.3f);   // the Eat clip while it stands and eats
+        }
 
         // Left alone for too long: it gets bold and goes for the stored rice in the hut.
         if (stateTimer > boldAfterSeconds && Time.time - lastDeterredTime > boldAfterSeconds)
@@ -580,7 +584,11 @@ public class ElephantAI : MonoBehaviour
                 if (CurrentState == State.Raiding && leader.flinchTimer <= 0f)
                 {
                     var here = CropPlot.At(transform.position);
-                    if (here != null) here.Eat(dt * eatRateMultiplier, Mouth);
+                    if (here != null)
+                    {
+                        here.Eat(dt * eatRateMultiplier, Mouth);
+                        if (body != null) body.Eat(0.3f);
+                    }
                 }
                 break;
         }
@@ -702,11 +710,14 @@ public class ElephantAI : MonoBehaviour
         BurstFlash.At(head, new Color(1f, 0.7f, 0.4f), 12f, 15f, 0.4f);
         Effects.Dust(head, new Color(0.12f, 0.12f, 0.12f, 0.85f), 1.3f);
         Play(SoundBank.Trumpet, 1f);
-        if (body != null) body.Rear();
+        // The Die clip rears and staggers by itself; an older model rears (Attack), then tips over.
+        bool dieClip = body != null && body.HasDieClip;
+        if (dieClip) body.FallOver();
+        else if (body != null) body.Rear();
         StartCoroutine(SlowMotion());
         yield return new WaitForSeconds(0.9f);
 
-        if (body != null) body.FallOver();
+        if (body != null && !dieClip) body.FallOver();
         foreach (var other in Herd()) other.Mourn(this);
         yield return new WaitForSeconds(2.8f);
 

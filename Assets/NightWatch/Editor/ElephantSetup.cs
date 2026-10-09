@@ -185,8 +185,10 @@ public static class ElephantSetup
             state.motion = clip;
             if (clip.name == "Idle") machine.defaultState = state;
         }
-        if (machine.states.Length < 4)
-            Debug.LogWarning($"Night Watch: {modelPath} gave {machine.states.Length} animation clips, expected Idle, Walk, Run, Attack.");
+        if (machine.states.Length < 6)
+            Debug.LogWarning($"Night Watch: {modelPath} gave {machine.states.Length} animation clips, expected Idle, Walk, Run, Attack, Eat, Die.");
+        else
+            Debug.Log($"Night Watch: elephant animations: {string.Join(", ", System.Linq.Enumerable.Select(machine.states, s => s.state.name))}.");
         EditorUtility.SetDirty(controller);
         return controller;
     }
@@ -230,8 +232,8 @@ public static class ElephantSetup
         return EditorKit.Empty(name, parent, position);
     }
 
-    // A hidden elephant to copy: the village's elephant.glb (the same model as aliya.zip; 4 clips:
-    // Idle, Walk, Run, Attack; the tusks are a separate material). The model is 0.8 m tall in
+    // A hidden elephant to copy: elephant.glb (elephant_animated.glb from the teammate's
+    // elephant.zip; 6 clips: Idle, Walk, Run, Attack, Eat, Die; the tusks are a separate material). The model is 0.8 m tall in
     // its file; ModelScale makes an adult's back about 3.3 m high and 4.8 m long, a big Sri
     // Lankan elephant (the largest Asian elephants), a little bigger than average so it reads well
     // from the hut. Arrivals are copies of it (a calf is a 0.55 copy). Tried 3.5 (too small next

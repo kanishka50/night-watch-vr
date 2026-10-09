@@ -1,13 +1,14 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-// How the elephant's body moves. With the real model (an Animator with Idle, Walk, Run and
-// Attack, from the village's elephant.glb) the clip follows what the AI does:
+// How the elephant's body moves. With the real model (an Animator with Idle, Walk, Run, Attack,
+// Eat and Die, from elephant.glb) the clip follows what the AI does:
 //  - Walk or Run by speed, played faster or slower so the feet do not slide
-//  - Idle when standing (at the fence, eating, stopped by a deterrent)
+//  - Eat while it stands eating the crop (or the hakka patas bait)
+//  - Idle when standing (at the fence, stopped by a deterrent)
 //  - Attack when it rears (the moment of a blast) and while it pushes the fence
-//  - FallOver (hakka patas): staggers, front legs buckle, rolls onto its side, then still
-//    (no death clip yet, so the whole model is tipped over in code)
+//  - FallOver (hakka patas): the Die clip (rears, staggers, kneels, rolls onto its side), held
+//    on its last frame. A model with no Die clip is tipped over in code instead.
 // Without a model (old stand-in shapes) the ears, trunk and body are moved in code instead.
 // Tusks can be hidden: most Asian elephant cows (and most Sri Lankan bulls) have no tusks.
 public class ElephantBody : MonoBehaviour
@@ -47,6 +48,13 @@ public class ElephantBody : MonoBehaviour
     // 0.6 to 1.4 m into the ground.
     static readonly Vector3 RollPivot = new Vector3(-0.9f, 0f, 0f);
 
+    // The model's own clips (the older model had no Eat and no Die).
+    bool hasEat, hasDie;
+    // Two bones in the middle of the body: the hit box follows them while the Die clip plays.
+    Transform hips, chest;
+
+    public bool HasDieClip => animator != null && hasDie;
+
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -54,6 +62,16 @@ public class ElephantBody : MonoBehaviour
         hitbox = GetComponent<CapsuleCollider>();
         if (hitbox != null) hitboxStart = hitbox.center;
         if (skin != null) withTusks = skin.sharedMaterials;
+        if (animator != null)
+        {
+            hasEat = animator.HasState(0, Animator.StringToHash("Eat"));
+            hasDie = animator.HasState(0, Animator.StringToHash("Die"));
+            foreach (var bone in animator.GetComponentsInChildren<Transform>(true))
+            {
+                if (bone.name == "hips") hips = bone;
+                else if (bone.name == "chest") chest = bone;
+            }
+        }
     }
 
     // Tusks shown or hidden (the tusk part of the mesh gets no material, so it is not drawn).
@@ -82,6 +100,10 @@ public class ElephantBody : MonoBehaviour
     {
         fallen = true;
         fallTime = 0f;
+        if (!HasDieClip) return;
+        animator.speed = 1f;
+        animator.CrossFadeInFixedTime("Die", 0.2f);
+        playing = "Die";
     }
 
     void Update()
@@ -92,6 +114,11 @@ public class ElephantBody : MonoBehaviour
         eatTimer -= dt;
         rearTimer -= dt;
 
+        if (fallen && HasDieClip)
+        {
+            UpdateDie(dt);
+            return;
+        }
         if (fallen)
         {
             UpdateFall(dt);
@@ -145,7 +172,31 @@ public class ElephantBody : MonoBehaviour
         if (rearTimer > 0f || pushing) Play("Attack", 1f);
         else if (speed > runFrom * size) Play("Run", Mathf.Clamp(speed / (runClipSpeed * size), 0.6f, 1.5f));
         else if (speed > 0.15f) Play("Walk", Mathf.Clamp(speed / (walkClipSpeed * size), 0.5f, 1.6f));
+        else if (eatTimer > 0f && hasEat) PlayLooped("Eat");
         else Play("Idle", 1f);
+    }
+
+    // Plays a clip that must repeat, even if the file marks it as play-once.
+    void PlayLooped(string state)
+    {
+        Play(state, 1f);
+        var now = animator.GetCurrentAnimatorStateInfo(0);
+        if (now.IsName(state) && !now.loop && now.normalizedTime >= 1f) animator.Play(state, 0, 0f);
+    }
+
+    // The Die clip plays once and holds its last frame. The hit box follows the body down, so the
+    // player bumps into the body where it lies.
+    void UpdateDie(float dt)
+    {
+        fallTime += dt;
+        var now = animator.GetCurrentAnimatorStateInfo(0);
+        if (now.IsName("Die") && now.normalizedTime >= 0.98f) animator.speed = 0f;
+        if (hitbox != null && hips != null && chest != null)
+        {
+            var centre = transform.InverseTransformPoint((hips.position + chest.position) * 0.5f);
+            centre.y = Mathf.Max(centre.y, hitbox.radius * 0.9f);
+            hitbox.center = centre;
+        }
     }
 
     void Play(string state, float speed)

@@ -555,6 +555,8 @@ public class FilmDirector : MonoBehaviour
             if (a.attackAt >= 0f && t >= a.attackAt && t < a.attackAt + 1.6f) Play(c, "Attack", 1f);
             else if (moving && a.run) Play(c, "Run", Mathf.Clamp(speed / (4.6f * a.size), 0.6f, 1.5f));
             else if (moving) Play(c, "Walk", Mathf.Clamp(speed / (1.7f * a.size), 0.5f, 1.6f));
+            // An eating elephant standing in the rice plays Eat (the model's own clip).
+            else if (a.eat && CropPlot.At(position) != null) Play(c, "Eat", 1f);
             else Play(c, "Idle", 1f);
 
             // In the rice: the feet flatten it, and an eating elephant eats in front of it.
