@@ -31,7 +31,76 @@ public static class SkySetup
         }
         cycle.clouds = clouds;
         cycle.skyReflection = probe;
+        SetUpPictureSky(cycle, clouds);
         EditorUtility.SetDirty(cycle);
+    }
+
+    // ---------------- the picture sky ----------------
+    // Five painted panoramas from Screaming Brain Studios' "Cloudy Skyboxes" (CC0, OpenGameArt):
+    // pack numbers 05 day, 07 sunset, 17 late dusk, 12 night (a low moon), 23 dawn. Where the sun
+    // or moon is across each picture, and its horizon and top colours, were measured from the
+    // images (the average of the rows just above the horizon, and of the top rows).
+    const string PictureFolder = "Assets/NightWatch/Sky";
+    const string PictureMaterialPath = "Assets/NightWatch/Materials/PictureSky.mat";
+
+    static void SetUpPictureSky(DayNightCycle cycle, Renderer clouds)
+    {
+        var shader = Shader.Find("NightWatch/PictureSky");
+        cycle.daySky = Picture("SkyDay", 0.755f, false, new Color(0.777f, 0.892f, 0.972f), new Color(0.341f, 0.469f, 0.677f));
+        cycle.sunsetSky = Picture("SkySunset", 0.745f, false, new Color(0.799f, 0.736f, 0.855f), new Color(0.412f, 0.412f, 0.559f));
+        cycle.lateDuskSky = Picture("SkyLateDusk", 0.748f, false, new Color(0.658f, 0.431f, 0.431f), new Color(0.311f, 0.242f, 0.328f));
+        cycle.nightSky = Picture("SkyNight", 0.750f, true, new Color(0.380f, 0.348f, 0.428f), new Color(0.174f, 0.164f, 0.239f));
+        cycle.dawnSky = Picture("SkyDawn", 0.769f, false, new Color(0.735f, 0.570f, 0.616f), new Color(0.514f, 0.364f, 0.410f));
+        if (shader == null || cycle.nightSky.picture == null)
+        {
+            Debug.LogWarning("Night Watch: the picture sky is missing (shader NightWatch/PictureSky or Assets/NightWatch/Sky); keeping the painted sky.");
+            return;
+        }
+
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(PictureMaterialPath);
+        if (mat == null)
+        {
+            mat = new Material(shader);
+            AssetDatabase.CreateAsset(mat, PictureMaterialPath);
+        }
+        mat.shader = shader;
+        // The night look while editing.
+        mat.SetTexture("_SkyA", cycle.nightSky.picture);
+        mat.SetTexture("_SkyB", cycle.nightSky.picture);
+        mat.SetFloat("_Blend", 0f);
+        mat.SetFloat("_Exposure", 0.6f);
+        mat.SetFloat("_Stars", 1f);
+        mat.SetColor("_GroundColor", new Color(0.03f, 0.04f, 0.08f));
+        EditorUtility.SetDirty(mat);
+        RenderSettings.skybox = mat;
+
+        // The pictures have their own clouds.
+        if (clouds != null) clouds.gameObject.SetActive(false);
+    }
+
+    static DayNightCycle.SkyPicture Picture(string file, float lightAcross, bool isMoon, Color horizon, Color zenith)
+    {
+        string path = $"{PictureFolder}/{file}.png";
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer != null && (importer.mipmapEnabled || importer.wrapModeV != TextureWrapMode.Clamp || importer.maxTextureSize != 2048))
+        {
+            // Read straight (no mipmaps, so the panorama's wrap seam stays clean), wrapping round
+            // the horizon, not over the top.
+            importer.mipmapEnabled = false;
+            importer.wrapModeU = TextureWrapMode.Repeat;
+            importer.wrapModeV = TextureWrapMode.Clamp;
+            importer.maxTextureSize = 2048;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ;
+            importer.SaveAndReimport();
+        }
+        return new DayNightCycle.SkyPicture
+        {
+            picture = AssetDatabase.LoadAssetAtPath<Texture2D>(path),
+            lightAcross = lightAcross,
+            isMoon = isMoon,
+            horizon = horizon,
+            zenith = zenith,
+        };
     }
 
     static Renderer BuildClouds(Transform root)
