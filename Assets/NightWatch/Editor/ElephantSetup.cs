@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEngine;
@@ -26,14 +25,20 @@ public static class ElephantSetup
         BuildFence(root);
     }
 
-    // The field: three plots of ripening paddy in the village's paddy field, beside the hut
+    // The field: three plots of ripe paddy in the village's paddy field, beside the hut
     // (FarmLayout.CropPlots). The village's own bunds (niyara) and drained ground are round them.
-    //  - rice plants in rows, one mesh per plot (one draw call, light enough for this laptop)
-    // Each plot shrinks and turns brown as it is eaten (CropPlot).
+    // Each plot is planted with the village's rice_gold model on the village's own clump spots
+    // (VillageBuilder.CropRice; about 195 per plot), drawn by a CropDrawer. Eaten clumps lie flat
+    // and turn brown, nearest to the elephant first (CropPlot).
     static void BuildCropPlots(Transform root)
     {
         var parent = EditorKit.Group("CropPlots", root);
-        var plantMat = PlantMaterial();
+        var model = VillageBuilder.LoadModel(VillageBuilder.CropModel);
+        if (model == null) return;
+        var parts = VillageBuilder.Parts(model, VillageBuilder.CropModel);
+        var trampled = new Material[parts.Length];
+        for (int i = 0; i < parts.Length; i++)
+            trampled[i] = VillageBuilder.TintedCopy(parts[i].material, $"{VillageBuilder.CropModel}_trampled_{i}", TrampledTint);
 
         foreach (var (name, area) in FarmLayout.CropPlots)
         {
@@ -44,83 +49,22 @@ public static class ElephantSetup
             trigger.center = new Vector3(0f, 0.5f, 0f);
             trigger.size = new Vector3(area.width, 1f, area.height);
 
-            // The plants grow from y = 0, so the crop shrinks downward from the top.
-            // They keep off the bunds, which are about 1 m wide.
             var crop = new GameObject("Crop");
             crop.transform.SetParent(plot, false);
-            crop.AddComponent<MeshFilter>().sharedMesh = PlantMesh(name, plot.position, area.width - 2f * BundMargin, area.height - 2f * BundMargin);
-            crop.AddComponent<MeshRenderer>().sharedMaterial = plantMat;
+            var drawer = crop.AddComponent<CropDrawer>();
+            drawer.parts = parts;
+            drawer.trampledMaterials = trampled;
+            drawer.poses = VillageBuilder.CropRice.TryGetValue(name, out var list) ? list.ToArray() : new float[0];
+            if (drawer.Count == 0)
+                Debug.LogWarning($"Night Watch: no village rice found in {name}. Build the village first (Build Full Game does).");
 
             var cp = plot.gameObject.AddComponent<CropPlot>();
-            cp.crop = crop.transform;
-            cp.pivotAtBase = true;
-            cp.fullColor = new Color(0.50f, 0.60f, 0.22f);
+            cp.drawer = drawer;
         }
     }
 
-    const float BundMargin = 0.7f;
-    const float RowSpacing = 0.45f;
-    const float PlantSpacing = 0.35f;
-    const string MeshFolder = "Assets/NightWatch/Meshes";
-
-    // Rows of rice plants. Each plant is two crossed upright quads. All normals point up, so the
-    // plants are lit evenly from both sides like a soft field, not as dark flat cards.
-    // None in the farm's open places (the yard and the paths, FarmLayout).
-    static Mesh PlantMesh(string name, Vector3 plotCenter, float width, float length)
-    {
-        var vertices = new List<Vector3>();
-        var normals = new List<Vector3>();
-        var triangles = new List<int>();
-        var oldState = Random.state;
-        Random.InitState(name.GetHashCode());
-
-        for (float x = -width / 2f; x <= width / 2f; x += RowSpacing)
-        for (float z = -length / 2f; z <= length / 2f; z += PlantSpacing)
-        {
-            var p = new Vector3(x + Random.Range(-0.05f, 0.05f), 0f, z + Random.Range(-0.08f, 0.08f));
-            if (FarmLayout.IsOpen(plotCenter + p)) continue;
-
-            float height = Random.Range(0.6f, 0.8f);
-            float half = Random.Range(0.12f, 0.16f);
-            float turn = Random.Range(0f, 90f);
-            var lean = new Vector3(Random.Range(-0.08f, 0.08f), 0f, Random.Range(-0.08f, 0.08f));
-            for (int k = 0; k < 2; k++)
-            {
-                var side = Quaternion.Euler(0f, turn + k * 90f, 0f) * Vector3.right * half;
-                int start = vertices.Count;
-                vertices.Add(p - side);
-                vertices.Add(p + side);
-                vertices.Add(p + side * 1.4f + Vector3.up * height + lean);
-                vertices.Add(p - side * 1.4f + Vector3.up * height + lean);
-                for (int n = 0; n < 4; n++) normals.Add(Vector3.up);
-                triangles.AddRange(new[] { start, start + 2, start + 1, start, start + 3, start + 2 });
-            }
-        }
-        Random.state = oldState;
-
-        var mesh = new Mesh { name = "Paddy_" + name };
-        mesh.SetVertices(vertices);
-        mesh.SetNormals(normals);
-        mesh.SetTriangles(triangles, 0);
-        mesh.RecalculateBounds();
-
-        // Saved as an asset so the scene keeps it after closing.
-        if (!AssetDatabase.IsValidFolder(MeshFolder)) AssetDatabase.CreateFolder("Assets/NightWatch", "Meshes");
-        string path = $"{MeshFolder}/Paddy_{name}.asset";
-        AssetDatabase.DeleteAsset(path);
-        AssetDatabase.CreateAsset(mesh, path);
-        return mesh;
-    }
-
-    // Seen from both sides (each plant card is a single quad).
-    static Material PlantMaterial()
-    {
-        var mat = EditorKit.Mat("PaddyPlant", new Color(0.50f, 0.60f, 0.22f));
-        mat.SetFloat("_Cull", 0f);
-        mat.doubleSidedGI = true;
-        EditorUtility.SetDirty(mat);
-        return mat;
-    }
+    // Trampled rice: the gold straw darkened to muddy brown.
+    static readonly Color TrampledTint = new Color(0.55f, 0.42f, 0.28f);
 
     // The electric fence on the north and west sides (FarmLayout.FenceLines), made of the village's
     // wire_fence sections. The model runs along its own z, about 3.5 m long: one part is the wires,

@@ -124,6 +124,9 @@ public class ElephantAI : MonoBehaviour
     // One knock-down at a time, shared by all elephants (the player needs time to get up).
     static float nextContactTime;
     public const float HutKeepOut = 3f;   // radius of the hut's NavMesh obstacle
+
+    // Where the trunk reaches the crop: the head is about 2.4 m in front of the centre (less for a calf).
+    Vector3 Mouth => transform.position + transform.forward * (2.4f * transform.localScale.z);
     ElephantAI mournTarget;
     float mournUntil;
     bool mournArrived;
@@ -376,7 +379,7 @@ public class ElephantAI : MonoBehaviour
         }
 
         // A deterred elephant stops eating.
-        if (flinchTimer <= 0f && plot.Contains(transform.position)) plot.Eat(dt * eatRateMultiplier);
+        if (flinchTimer <= 0f && plot.Contains(transform.position)) plot.Eat(dt * eatRateMultiplier, Mouth);
 
         // Left alone for too long: it gets bold and goes for the stored rice in the hut.
         if (stateTimer > boldAfterSeconds && Time.time - lastDeterredTime > boldAfterSeconds)
@@ -555,7 +558,7 @@ public class ElephantAI : MonoBehaviour
                 if (CurrentState == State.Raiding && leader.flinchTimer <= 0f)
                 {
                     var here = CropPlot.At(transform.position);
-                    if (here != null) here.Eat(dt * eatRateMultiplier);
+                    if (here != null) here.Eat(dt * eatRateMultiplier, Mouth);
                 }
                 break;
         }

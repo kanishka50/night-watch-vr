@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// One part of the paddy field. Elephants standing in it eat it, and the crop visibly
-// shrinks and turns brown. The average of all plots is the "crop saved" score.
+// One crop plot of the paddy field. Elephants standing in it eat it. Like real elephants they
+// eat and trample a patch: the rice clumps nearest to the elephant lie flat and turn brown
+// (CropDrawer), so from the hut you can see where they fed. The average of all plots is the
+// "crop saved" score.
 [RequireComponent(typeof(BoxCollider))]
 public class CropPlot : MonoBehaviour
 {
@@ -11,18 +13,10 @@ public class CropPlot : MonoBehaviour
     [Range(0f, 100f)] public float health = 100f;
     [Tooltip("Crop lost per second by one adult elephant eating here.")]
     public float eatPerSecond = 0.35f;
-    [Tooltip("The green crop shape that shrinks as it is eaten.")]
-    public Transform crop;
-    [Tooltip("On for a crop that grows up from its pivot (the plant mesh), off for a box centred on it.")]
-    public bool pivotAtBase;
-    public Color fullColor = new Color(0.36f, 0.55f, 0.20f);
-    public Color eatenColor = new Color(0.35f, 0.27f, 0.16f);
+    [Tooltip("Draws the rice clumps; eaten clumps lie flat and brown.")]
+    public CropDrawer drawer;
 
     BoxCollider area;
-    Renderer cropRenderer;
-    MaterialPropertyBlock block;
-    Vector3 fullScale;
-    Vector3 fullPosition;
 
     public static float AverageHealth
     {
@@ -39,25 +33,23 @@ public class CropPlot : MonoBehaviour
     {
         area = GetComponent<BoxCollider>();
         area.isTrigger = true;
-        if (crop != null)
-        {
-            cropRenderer = crop.GetComponent<Renderer>();
-            fullScale = crop.localScale;
-            fullPosition = crop.localPosition;
-        }
-        block = new MaterialPropertyBlock();
-        UpdateLook();
     }
 
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
 
-    public void Eat(float seconds)
+    // An elephant eating for this many seconds, its mouth at this point.
+    public void Eat(float seconds, Vector3 mouth)
     {
         if (health <= 0f) return;
         health = Mathf.Max(0f, health - eatPerSecond * seconds);
-        UpdateLook();
+        if (drawer == null) return;
+        int target = Mathf.RoundToInt((1f - health / 100f) * drawer.Count);
+        while (drawer.TrampledCount < target && drawer.TrampleNearest(mouth)) { }
     }
+
+    [ContextMenu("Test: an elephant eats 25% at a random spot")]
+    void TestEat() => Eat(25f / eatPerSecond, RandomPoint());
 
     // True if the point is inside this plot (height ignored).
     public bool Contains(Vector3 point)
@@ -95,21 +87,5 @@ public class CropPlot : MonoBehaviour
             }
         }
         return best;
-    }
-
-    void UpdateLook()
-    {
-        if (crop == null) return;
-        float k = health / 100f;
-        var s = fullScale;
-        s.y = Mathf.Max(0.02f, fullScale.y * k);
-        crop.localScale = s;
-        // Keep the bottom on the ground while the crop gets shorter.
-        if (!pivotAtBase) crop.localPosition = fullPosition - new Vector3(0f, (fullScale.y - s.y) / 2f, 0f);
-        if (cropRenderer != null)
-        {
-            block.SetColor("_BaseColor", Color.Lerp(eatenColor, fullColor, k));
-            cropRenderer.SetPropertyBlock(block);
-        }
     }
 }

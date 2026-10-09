@@ -44,6 +44,11 @@ public static class VillageBuilder
 
     public const string FenceModel = "wire_fence";
 
+    // The village's rice clump spots inside each crop plot (FarmLayout.CropPlots), filled by Build.
+    // The crop plots are planted on them with this model (ElephantSetup); the village does not draw them.
+    public const string CropModel = "rice_gold";
+    public static readonly Dictionary<string, List<float>> CropRice = new Dictionary<string, List<float>>();
+
     // Drawing rules, from the browser version (js/props.js) and tuned for the laptop.
     // cull: not drawn past this distance (m); lod: past this distance the model is swapped for the
     // proxy model at proxyScale; thin: past this distance only 1 copy in thinKeep is drawn, made
@@ -183,6 +188,7 @@ public static class VillageBuilder
     {
         var level = JsonUtility.FromJson<Level>(File.ReadAllText(Folder + "/World/level.json"));
         var ground = LoadGround(level);
+        CropRice.Clear();
 
         EditorKit.Remove(RootName);
         var root = new GameObject(RootName).transform;
@@ -427,6 +433,7 @@ public static class VillageBuilder
                 continue;
             }
 
+            if (g.name.StartsWith("rice_")) KeepCropRice(poses);
             var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
             // Heavy trees (the ones with a cheap far stand-in) are drawn in full near the player.
             poses = ClearFarm(poses, rule.proxy != null ? FarmLayout.NoHeavyTrees : 0f, ref cleared);
@@ -534,6 +541,22 @@ public static class VillageBuilder
         return poses;
     }
 
+    // Rice clumps (green or gold) standing in a crop plot, not on its paths.
+    static void KeepCropRice(float[] poses)
+    {
+        for (int o = 0; o < poses.Length; o += PropSet.PoseSize)
+        {
+            var p = new Vector3(poses[o], 0f, poses[o + 2]);
+            if (FarmLayout.IsOpen(p)) continue;
+            foreach (var (name, area) in FarmLayout.CropPlots)
+            {
+                if (!area.Contains(new Vector2(p.x, p.z))) continue;
+                if (!CropRice.TryGetValue(name, out var list)) CropRice[name] = list = new List<float>();
+                for (int s = 0; s < PropSet.PoseSize; s++) list.Add(poses[o + s]);
+            }
+        }
+    }
+
     // Leaves out the copies that stand in the farm's open places and crop plots, and any closer to
     // the hut than keepAway (m).
     static float[] ClearFarm(float[] poses, float keepAway, ref int cleared)
@@ -557,7 +580,7 @@ public static class VillageBuilder
     }
 
     // Every mesh part of a model, with its material copied so GPU instancing can be switched on.
-    static PropSet.Part[] Parts(GameObject model, string name)
+    public static PropSet.Part[] Parts(GameObject model, string name)
     {
         var parts = new List<PropSet.Part>();
         foreach (var r in model.GetComponentsInChildren<MeshRenderer>(true))
@@ -580,6 +603,16 @@ public static class VillageBuilder
             }
         }
         return parts.ToArray();
+    }
+
+    // A tinted copy of a village material (glTF materials use baseColorFactor, ours _BaseColor).
+    public static Material TintedCopy(Material source, string name, Color tint)
+    {
+        var mat = InstancedCopy(source, name);
+        string property = mat.HasProperty("baseColorFactor") ? "baseColorFactor" : "_BaseColor";
+        if (mat.HasProperty(property)) mat.SetColor(property, source.GetColor(property) * tint);
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     static Material InstancedCopy(Material source, string name)
