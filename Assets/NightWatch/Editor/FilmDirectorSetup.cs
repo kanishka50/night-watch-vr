@@ -52,7 +52,7 @@ public static class FilmDirectorSetup
         new FilmDirector.Shot
         {
             name = "2 The stupa", seconds = 8f, orbit = true,
-            center = new Vector3(106.5f, 3f, 53.5f), radius = 20f, height = 24f, fromAngle = 190f, toAngle = 250f,
+            center = new Vector3(VillageExtras.Dagaba.x, 3f, VillageExtras.Dagaba.z), radius = 20f, height = 24f, fromAngle = 190f, toAngle = 250f,
             timeOfDay = LateAfternoon, fog = ClearFog, caption = "The village temple (dagaba)",
         },
         Card("3 Card", "The rice is ripe.\nA family's whole year grows in this field."),

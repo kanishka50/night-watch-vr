@@ -203,6 +203,7 @@ public static class VillageBuilder
         BuildWater(root, ground, level);
         BuildPlacements(root, ground, level);
         BuildColliders(root, ground, level);
+        VillageExtras.Build(root);
         AssetDatabase.SaveAssets();
     }
 
@@ -233,6 +234,7 @@ public static class VillageBuilder
         var corner = ToUnity(-level.half, 0f, level.half);
 
         var raw = new float[res, res];
+        float dagabaGround = ground.Levelled(VillageExtras.Dagaba.x + HutX, HutZ - VillageExtras.Dagaba.z);
         float lo = float.MaxValue, hi = float.MinValue;
         for (int j = 0; j < res; j++)
         for (int i = 0; i < res; i++)
@@ -240,6 +242,9 @@ public static class VillageBuilder
             float x = corner.x + i * size / (res - 1) + HutX;      // back to village x
             float z = HutZ - (corner.z + j * size / (res - 1));    // back to village z
             float y = ground.Levelled(x, z);
+            // A flat, round place for the dagaba (VillageExtras), blending into the land round it.
+            float fromDagaba = Vector2.Distance(new Vector2(x - HutX, HutZ - z), new Vector2(VillageExtras.Dagaba.x, VillageExtras.Dagaba.z));
+            if (fromDagaba < 11f) y = Mathf.Lerp(dagabaGround, y, Smooth(6f, 11f, fromDagaba));
             raw[j, i] = y;
             lo = Mathf.Min(lo, y);
             hi = Mathf.Max(hi, y);
@@ -293,6 +298,8 @@ public static class VillageBuilder
             float sum = w.x + w.y + w.z + w.w;
             if (sum < 1e-4f) { w = new Vector4(1f, 0f, 0f, 0f); sum = 1f; }
             w /= sum;
+            // The footpath to the dagaba: trodden bare earth.
+            if (FarmLayout.OnFootPath(new Vector2(x - HutX, HutZ - z))) w = Vector4.Lerp(w, new Vector4(0f, 1f, 0f, 0f), 0.85f);
             // Open grass is not one flat colour: big soft patches of drier grass (the forest floor
             // layer) and smaller worn ones (bare dirt). Only the grass share moves, so the paddy plots,
             // bunds and paths keep their own mix. Same 4 layers, so it costs nothing to draw.
@@ -428,6 +435,7 @@ public static class VillageBuilder
             var model = LoadModel(g.name);
             if (model == null) continue;
             var poses = Poses(g.items, ground);
+            if (SceneObjects.Contains(g.name)) poses = VillageExtras.Adjust(g.name, poses);
             int count = poses.Length / PropSet.PoseSize;
 
             if (SceneObjects.Contains(g.name))
@@ -461,6 +469,8 @@ public static class VillageBuilder
             var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
             // Heavy trees (the ones with a cheap far stand-in) are drawn in full near the player.
             poses = ClearFarm(poses, rule.proxy != null ? FarmLayout.NoHeavyTrees : 0f, ref cleared);
+            // Our moved and added copies (VillageExtras), after the clearing so they stay.
+            poses = VillageExtras.Adjust(g.name, poses);
             count = poses.Length / PropSet.PoseSize;
             if (count == 0) continue;
             float size = ModelSize(model) * MaxScale(poses);

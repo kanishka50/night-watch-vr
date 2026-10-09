@@ -78,11 +78,13 @@ public static class FarmLayout
     static (Vector2 centre, float radius)[] Circles()
     {
         var yard = NeighbourHouse + Quaternion.Euler(0f, NeighbourHouseYaw, 0f) * new Vector3(0f, 0f, -5.5f);
-        var list = new (Vector2, float)[Bonfires.Length + 2];
+        var list = new (Vector2, float)[Bonfires.Length + 3];
         list[0] = (Vector2.zero, YardRadius);
         list[1] = (new Vector2(yard.x, yard.z), NeighbourYardRadius);
+        // The threshing floor's plot: harvested and dry (VillageExtras).
+        list[2] = (new Vector2(VillageExtras.Kamatha.x, VillageExtras.Kamatha.z), 4.3f);
         for (int i = 0; i < Bonfires.Length; i++)
-            list[i + 2] = (new Vector2(Bonfires[i].position.x, Bonfires[i].position.z), BonfireRadius);
+            list[i + 3] = (new Vector2(Bonfires[i].position.x, Bonfires[i].position.z), BonfireRadius);
         return list;
     }
 
@@ -97,6 +99,17 @@ public static class FarmLayout
                 if (DistanceToSegment(q, path[i], path[i + 1]) < PathHalfWidth) return true;
         foreach (var line in FenceLines)
             if (DistanceToSegment(q, line.from, line.to) < FenceStripHalfWidth) return true;
+        foreach (var (centre, radius) in VillageExtras.Clearings())
+            if ((q - centre).sqrMagnitude < radius * radius) return true;
+        return OnFootPath(q);
+    }
+
+    // On the footpath from the hut to the dagaba (VillageExtras).
+    public static bool OnFootPath(Vector2 q)
+    {
+        var path = VillageExtras.FootPath;
+        for (int i = 0; i + 1 < path.Length; i++)
+            if (DistanceToSegment(q, path[i], path[i + 1]) < VillageExtras.FootPathHalfWidth) return true;
         return false;
     }
 
