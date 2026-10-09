@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 // Stops the player walking through solid things: houses, hut posts and rails, the table, the
@@ -10,6 +11,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 // along it, the same way PlayAreaLimit keeps the head over the hut floor.
 // If the head still ends up inside something (an elephant walks into the player, or a teleport
 // lands against a wall), the view goes black until the player steps out (ScreenFeedback.SetInside).
+// On the ground it also carries a NavMesh obstacle under the head, so walking elephants steer
+// round the player instead of through them (a charge still reaches and knocks the player down).
 public class BodyBlocker : MonoBehaviour
 {
     [Tooltip("The VR camera (the player's head).")]
@@ -30,6 +33,7 @@ public class BodyBlocker : MonoBehaviour
     Vector3 lastHead, lastRig;
     bool hasLast;
     int mask;
+    NavMeshObstacle obstacle;
 
     void Awake()
     {
@@ -37,6 +41,16 @@ public class BodyBlocker : MonoBehaviour
         // but the body does not. The learn spots there are triggers, which never block.
         mask = Physics.DefaultRaycastLayers | (1 << 2);
         if (head == null && Camera.main != null) head = Camera.main.transform;
+
+        var go = new GameObject("BodyObstacle");
+        go.transform.SetParent(transform, false);
+        obstacle = go.AddComponent<NavMeshObstacle>();
+        obstacle.shape = NavMeshObstacleShape.Capsule;
+        obstacle.radius = 0.35f;
+        obstacle.height = 1.8f;
+        obstacle.center = new Vector3(0f, 0.9f, 0f);
+        obstacle.carving = false;
+        obstacle.enabled = false;
     }
 
     void Start()
@@ -69,6 +83,12 @@ public class BodyBlocker : MonoBehaviour
         if (!busy && !jumped) Block();
 
         ScreenFeedback.SetInside(!busy && HeadInside());
+
+        // The obstacle stands under the head (the head can be metres from the rig's centre).
+        obstacle.enabled = PlayerState.OnGround;
+        if (obstacle.enabled)
+            obstacle.transform.position = new Vector3(head.position.x, transform.position.y, head.position.z);
+
         lastHead = head.position;
         lastRig = transform.position;
         hasLast = true;

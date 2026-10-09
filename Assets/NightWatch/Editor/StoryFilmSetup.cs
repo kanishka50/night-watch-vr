@@ -64,6 +64,10 @@ public static class StoryFilmSetup
         EditorKit.Board("Cloth", screen, center, facing,
             new Vector2(PictureWidth + 2f * ClothMargin, PictureHeight + 2f * ClothMargin), Cloth);
         film.picture = Picture(screen, center, facing);
+        // The cloth is solid from the ground to its top edge: nobody walks through or under it.
+        float clothTop = PictureCenterHeight + PictureHeight * 0.5f + ClothMargin;
+        EditorKit.BodyWall("Solid", screen, screen.position + Vector3.up * (clothTop * 0.5f), facing,
+            new Vector3(PictureWidth + 2f * ClothMargin + 0.2f, clothTop, 0.2f));
 
         var bamboo = EditorKit.Mat("Bamboo", Bamboo);
         float poleX = PictureWidth * 0.5f + ClothMargin + 0.08f;

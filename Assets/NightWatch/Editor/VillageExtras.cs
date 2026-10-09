@@ -97,6 +97,8 @@ public static class VillageExtras
 
         if (Moves.TryGetValue(model, out var to))
         {
+            // Its old collision shape is left out (no invisible trunk where the tree was).
+            VillageBuilder.LeaveOutCollider(new Vector2(poses[0], poses[2]));
             var ground = FarmLayout.OnGround(to);
             list[0] = to.x;
             list[1] = ground.y + lift;
@@ -250,5 +252,14 @@ public static class VillageExtras
         Round("ShadeTreeTrunk", ShadeTree, 0.5f, 4f);
         foreach (var p in KamathaProps)
             if (p.model.StartsWith("haystack")) Round("Haystack", KamathaPoint(p.x, p.z), 1.1f, 2.5f);
+        // Our added palms and bananas, the moved jacaranda and the scarecrows had no collision
+        // shape: the player and the elephants walked through them.
+        foreach (var c in Copies)
+        {
+            if (c.model.StartsWith("palm")) Round("PalmTrunk", c.at, 0.3f, 4f);
+            else if (c.model.StartsWith("banana")) Round("BananaClump", c.at, 0.4f, 3f);
+        }
+        Round("JacarandaTrunk", Moves["jacaranda_tree"], 0.5f, 4f);
+        foreach (var s in Scarecrows) Round("Scarecrow", s, 0.25f, 2f);
     }
 }

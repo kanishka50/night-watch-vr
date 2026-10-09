@@ -161,6 +161,19 @@ public static class EditorKit
         return tmp;
     }
 
+    // An invisible solid box that only stops the player's body (BodyBlocker), for boards and
+    // screens that are flat pictures with no collider. On the Ignore Raycast layer, so pointers and
+    // the teleport ray pass through it as before. center is in world space.
+    public static GameObject BodyWall(string name, Transform parent, Vector3 center, Quaternion rotation, Vector3 size)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.SetPositionAndRotation(center, rotation);
+        go.layer = 2;   // Ignore Raycast
+        go.AddComponent<BoxCollider>().size = size;
+        return go;
+    }
+
     // A flat coloured board behind text. Faces the same way as Text().
     public static GameObject Board(string name, Transform parent, Vector3 center, Quaternion rotation, Vector2 size, Color color)
     {

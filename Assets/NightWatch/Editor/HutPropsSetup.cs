@@ -418,6 +418,9 @@ public static class HutPropsSetup
         // A wooden stand under the desk, so it does not float.
         EditorKit.Part("Stand", PrimitiveType.Cube, board.transform, new Vector3(-1.25f, FloorTop + 0.2f, 0.3f),
             new Vector3(0.1f, 0.4f, 0.5f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)));
+        // The desk and stand are solid: the player cannot walk through them.
+        EditorKit.BodyWall("Solid", board.transform, new Vector3(-1.2f, FloorTop + 0.45f, 0.3f), Quaternion.identity,
+            new Vector3(0.5f, 0.9f, 0.9f));
         var up = boardRot * Vector3.up;
         var body = EditorKit.Text("Body", board.transform, boardCenter + up * 0.06f, boardRot, new Vector2(0.84f, 0.46f), "", 0.5f);
         var alert = EditorKit.Text("Alert", board.transform, boardCenter - up * 0.21f, boardRot, new Vector2(0.84f, 0.07f), "", 0.4f);

@@ -79,6 +79,14 @@ public static class CattleSetup
             hit.size = new Vector3(0.7f, box.size.y * 0.9f, Mathf.Max(box.size.x, box.size.z) * 0.9f);
             var rb = root.gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;
+            // Elephants steer round the animal where it is now (no carving: it moves). The walk
+            // map leaves the animal out, so its start spot is not a fixed hole.
+            var avoid = root.gameObject.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            avoid.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            avoid.center = hit.center;
+            avoid.size = hit.size;
+            avoid.carving = false;
+            root.gameObject.AddComponent<Unity.AI.Navigation.NavMeshModifier>().ignoreFromBuild = true;
             // Point to learn: a little bigger than the body.
             LearnSetup.Spot(root, "cattle", box.center, root.rotation, new Vector3(1.1f, box.size.y * 1.1f, Mathf.Max(box.size.x, box.size.z) * 1.15f));
         }

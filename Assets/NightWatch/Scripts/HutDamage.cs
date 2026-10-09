@@ -78,6 +78,17 @@ public class HutDamage : MonoBehaviour
         if (part == null) return;
 
         part.SetParent(null, true);
+        // The climb targets are solid boxes round the ladder (so the pointer finds them): the
+        // falling ladder must not be caught inside them.
+        if (partName == "Ladder")
+            foreach (var targetName in new[] { "LadderTop", "LadderBottom" })
+            {
+                var target = GameObject.Find(targetName);
+                if (target == null) continue;
+                foreach (var a in target.GetComponents<Collider>())
+                    foreach (var b in part.GetComponentsInChildren<Collider>())
+                        Physics.IgnoreCollision(a, b);
+            }
         var body = part.gameObject.AddComponent<Rigidbody>();
         body.mass = 10f;
         // Falls outward, toward the elephant's side, and down to the ground.

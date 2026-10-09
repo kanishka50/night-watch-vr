@@ -40,11 +40,19 @@ public class ElephantBody : MonoBehaviour
     float fallTime;
     NavMeshAgent agent;
     Vector3 bodyStart;
+    CapsuleCollider hitbox;
+    Vector3 hitboxStart;
+    // The fall rolls the body round its left side at the ground (half the body's width out), so
+    // it ends lying on its side on top of the ground. It used to roll round the feet and sink
+    // 0.6 to 1.4 m into the ground.
+    static readonly Vector3 RollPivot = new Vector3(-0.9f, 0f, 0f);
 
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         if (bodyRoot != null) bodyStart = bodyRoot.localPosition;
+        hitbox = GetComponent<CapsuleCollider>();
+        if (hitbox != null) hitboxStart = hitbox.center;
         if (skin != null) withTusks = skin.sharedMaterials;
     }
 
@@ -169,8 +177,7 @@ public class ElephantBody : MonoBehaviour
         float side = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.3f, 2.8f, f));
         roll += 85f * side;
         pitch = Mathf.Lerp(pitch, 5f, side);
-        drop = Mathf.Lerp(drop, 0.75f, side);
-        slide = 0.8f * side;
+        drop = Mathf.Lerp(drop, 0f, side);
 
         // After that: a few slow breaths that fade away.
         float breath = 0f;
@@ -180,11 +187,15 @@ public class ElephantBody : MonoBehaviour
             breath = 0.04f * fade * Mathf.Sin((f - 2.8f) * 2.2f);
         }
 
+        var turn = Quaternion.Euler(pitch, 0f, roll);
+        var lift = new Vector3(slide, -drop + breath, 0f);
         if (bodyRoot != null)
         {
-            bodyRoot.localRotation = Quaternion.Euler(pitch, 0f, roll);
-            bodyRoot.localPosition = bodyStart + new Vector3(slide, -drop + breath, 0f);
+            bodyRoot.localRotation = turn;
+            bodyRoot.localPosition = RollPivot + turn * (bodyStart - RollPivot) + lift;
         }
+        // The hit box lies down with the body, so the player bumps into the body where it lies.
+        if (hitbox != null) hitbox.center = RollPivot + turn * (hitboxStart - RollPivot) + lift;
         // Ears flat, trunk limp.
         SetEars(Mathf.Lerp(5f, -10f, side));
         if (trunk != null) trunk.localRotation = Quaternion.Euler(Mathf.Lerp(0f, 40f, side), 0f, 0f);

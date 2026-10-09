@@ -714,6 +714,9 @@ public static class VillageBuilder
     // Copies left out of the farm (ClearFarm); their collision shapes are left out too.
     static readonly List<Vector2> RemovedSpots = new List<Vector2>();
 
+    // A copy moved somewhere else (VillageExtras.Adjust): its round shape at the old spot is left out.
+    public static void LeaveOutCollider(Vector2 at) => RemovedSpots.Add(at);
+
     // Only near the farm: the walk map (ElephantSetup) covers x -75..65, z -75..55.
     static readonly Rect ColliderArea = Rect.MinMaxRect(-78f, -78f, 68f, 58f);
     const float ColliderHeight = 4f;

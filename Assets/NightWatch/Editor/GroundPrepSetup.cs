@@ -182,6 +182,11 @@ public static class GroundPrepSetup
         EditorKit.Part("Post", PrimitiveType.Cube, go.transform, new Vector3(center.x, ground + (1.5f - 0.47f) / 2f, center.z + 0.05f),
             new Vector3(0.08f, 1.5f - 0.47f, 0.08f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
 
+        // The board and post are solid, from the ground to the board's top edge.
+        float top = center.y + 0.5f;
+        EditorKit.BodyWall("Solid", go.transform, new Vector3(center.x, (ground + top) / 2f, center.z + 0.03f), rotation,
+            new Vector3(1.56f, top - ground, 0.15f));
+
         var tasks = EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1f);
         var alert = EditorKit.Text("Alert", go.transform, center - Vector3.up * 0.38f, rotation, new Vector2(1.4f, 0.14f), "", 0.8f);
         alert.color = new Color(1f, 0.85f, 0.3f);

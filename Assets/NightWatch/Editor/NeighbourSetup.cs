@@ -64,6 +64,12 @@ public static class NeighbourSetup
         EditorKit.Part("RiceSack", PrimitiveType.Cube, sacks, new Vector3(0f, 0.7f, 0f), new Vector3(0.6f, 0.4f, 0.45f), jute);
 
         var figure = BuildFigure(root, doorPoint.position, out var lampPivot, out var lamp, out var animator);
+        // A body the player cannot walk through (moved by NeighbourHouse, so a kinematic body).
+        var person = figure.gameObject.AddComponent<CapsuleCollider>();
+        person.center = new Vector3(0f, 0.85f, 0f);
+        person.radius = 0.25f;
+        person.height = 1.7f;
+        figure.gameObject.AddComponent<Rigidbody>().isKinematic = true;
 
         var house = root.gameObject.AddComponent<NeighbourHouse>();
         house.door = hinge;

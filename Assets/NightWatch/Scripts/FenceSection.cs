@@ -22,12 +22,15 @@ public class FenceSection : MonoBehaviour
     public bool IsBroken { get; private set; }
 
     NavMeshObstacle obstacle;
+    Collider solid;
     float sparkTimer;
 
     void Awake()
     {
         obstacle = GetComponent<NavMeshObstacle>();
         obstacle.carving = true;
+        // The box that stops the player and thrown things (ElephantSetup.BuildFence).
+        solid = GetComponent<BoxCollider>();
     }
 
     void OnEnable() => All.Add(this);
@@ -64,6 +67,7 @@ public class FenceSection : MonoBehaviour
         IsBroken = true;
         Debug.Log($"Night Watch: {name} broke (energiser {(FenceEnergiser.IsOn ? "on" : "off")}).");
         obstacle.enabled = false;
+        if (solid != null) solid.enabled = false;
         if (wires != null) wires.SetActive(false);
         SoundBank.PlayAt(SoundBank.BranchCrack, transform.position, 1f);
         SoundBank.PlayAt(SoundBank.Zap, transform.position, 1f);

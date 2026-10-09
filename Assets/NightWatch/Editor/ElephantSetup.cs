@@ -98,6 +98,11 @@ public static class ElephantSetup
                 obstacle.center = new Vector3(0f, 1.25f, 0f);
                 obstacle.size = new Vector3(0.6f, 2.5f, length);
                 obstacle.carving = true;
+                // Solid for the player and for thrown things until it breaks (FenceSection.Break).
+                // The walk map leaves it out (the Field is ignored); the obstacle above blocks elephants.
+                var solid = section.gameObject.AddComponent<BoxCollider>();
+                solid.center = new Vector3(0f, 1f, 0f);
+                solid.size = new Vector3(0.3f, 2f, length);
 
                 var go = (GameObject)PrefabUtility.InstantiatePrefab(model, section);
                 go.transform.localPosition = model.transform.localPosition;
