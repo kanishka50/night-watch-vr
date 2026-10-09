@@ -32,6 +32,15 @@ public class PlayAreaLimit : MonoBehaviour
     {
         if (head == null) return;
 
+        // In the hut, but the feet are far below its floor (the player fell or was pushed under
+        // it): the box would keep them trapped between the stilts, so they are on the ground now.
+        if (!IsMoving && transform.position.y < areaCenter.y - 2f)
+        {
+            Debug.Log("Night Watch: the player was below the hut floor while in the hut; now on the ground.");
+            SetOnGround(true);
+            return;
+        }
+
         Vector3 offset = head.position - areaCenter;
         float halfX = areaSize.x / 2f;
         float halfZ = areaSize.y / 2f;

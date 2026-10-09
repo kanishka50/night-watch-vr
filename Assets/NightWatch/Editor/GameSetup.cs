@@ -175,6 +175,20 @@ public static class EditorKit
         return go;
     }
 
+    // Button colours: dark and unlit, so white text on them is easy to read in any light
+    // (the old light green and red-brown under cream text could not be read).
+    public static Material ButtonMat(string name, Color color) => Mat(name, color, true);
+    public static readonly Color ButtonGreen = new Color(0.06f, 0.30f, 0.12f);
+    public static readonly Color ButtonRed = new Color(0.40f, 0.07f, 0.05f);
+
+    // White button text with a black outline.
+    public static void ButtonLabel(TextMeshPro label)
+    {
+        label.color = Color.white;
+        label.fontStyle = FontStyles.Bold;
+        label.fontSharedMaterial = EndingSetup.OutlineMaterial(label.fontSharedMaterial);
+    }
+
     // A flat coloured board behind text. Faces the same way as Text().
     public static GameObject Board(string name, Transform parent, Vector3 center, Quaternion rotation, Vector2 size, Color color)
     {
@@ -184,7 +198,17 @@ public static class EditorKit
         go.transform.SetParent(parent, false);
         go.transform.SetPositionAndRotation(center + rotation * Vector3.forward * 0.02f, rotation);
         go.transform.localScale = new Vector3(size.x, size.y, 1f);
-        go.GetComponent<Renderer>().sharedMaterial = Mat("Board_" + ColorUtility.ToHtmlStringRGB(color), color, true);
+        var mat = Mat("Board_" + ColorUtility.ToHtmlStringRGB(color), color, true);
+        go.GetComponent<Renderer>().sharedMaterial = mat;
+
+        // A quad is seen from the front only, but text is seen from both sides: from behind, the
+        // text floated in the air with no board. This back face hides it.
+        var back = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        back.name = "Back";
+        Object.DestroyImmediate(back.GetComponent<Collider>());
+        back.transform.SetParent(go.transform, false);
+        back.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        back.GetComponent<Renderer>().sharedMaterial = mat;
         return go;
     }
 

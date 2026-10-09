@@ -34,15 +34,15 @@ public static class StartScreenSetup
         // The START button below the text.
         var buttonPos = center + new Vector3(0f, -0.42f, -0.06f);
         var button = EditorKit.Part("StartButton", PrimitiveType.Cube, panel, buttonPos, new Vector3(0.5f, 0.14f, 0.08f),
-            EditorKit.Mat("Button", new Color(0.2f, 0.6f, 0.25f)));
+            EditorKit.ButtonMat("ButtonStart", EditorKit.ButtonGreen));
         // A bigger hit box than the button, so the pointer finds it easily.
         var box = button.GetComponent<BoxCollider>();
         box.size = new Vector3(1.2f, 2f, 2f);
         button.AddComponent<XRSimpleInteractable>();
         var press = button.AddComponent<StartButton>();
         press.highlightColor = new Color(1f, 1f, 0.2f);
-        EditorKit.Text("Label", panel, buttonPos + new Vector3(0f, 0f, -0.05f), rotation, new Vector2(0.45f, 0.12f),
-            "START", 1.2f, TextAlignmentOptions.Center);
+        EditorKit.ButtonLabel(EditorKit.Text("Label", panel, buttonPos + new Vector3(0f, 0f, -0.05f), rotation, new Vector2(0.45f, 0.12f),
+            "START", 1.2f, TextAlignmentOptions.Center));
 
         var screen = root.gameObject.AddComponent<StartScreen>();
         screen.panel = panel.gameObject;

@@ -416,9 +416,14 @@ public static class HutPropsSetup
         var board = new GameObject("NoticeBoard");
         board.transform.SetParent(screens, false);
         EditorKit.Board("Background", board.transform, boardCenter, boardRot, new Vector2(0.9f, 0.62f), dark);
-        // A wooden stand under the desk, so it does not float.
-        EditorKit.Part("Stand", PrimitiveType.Cube, board.transform, new Vector3(-1.25f, FloorTop + 0.2f, 0.3f),
-            new Vector3(0.1f, 0.4f, 0.5f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)));
+        // A wooden desk plate under the board and a stand from the floor up to it, so it does not
+        // float (the old stand was 0.25 m short).
+        var wood = EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f));
+        var plate = EditorKit.Part("Desk", PrimitiveType.Cube, board.transform, boardCenter + boardRot * Vector3.forward * 0.04f,
+            new Vector3(0.96f, 0.68f, 0.03f), wood, false);
+        plate.transform.rotation = boardRot;
+        EditorKit.Part("Stand", PrimitiveType.Cube, board.transform, new Vector3(-1.2f, FloorTop + 0.27f, 0.3f),
+            new Vector3(0.1f, 0.54f, 0.5f), wood);
         // The desk and stand are solid: the player cannot walk through them.
         EditorKit.BodyWall("Solid", board.transform, new Vector3(-1.2f, FloorTop + 0.45f, 0.3f), Quaternion.identity,
             new Vector3(0.5f, 0.9f, 0.9f));
@@ -459,8 +464,9 @@ public static class HutPropsSetup
         debriefPanel.transform.SetParent(debriefRoot.transform, false);
         var center = new Vector3(0f, 4.4f, 7f);
         EditorKit.Board("Background", debriefPanel.transform, center, Quaternion.identity, new Vector2(6.2f, 3.6f), dark);
-        var results = EditorKit.Text("Results", debriefPanel.transform, center, Quaternion.identity,
-            new Vector2(5.8f, 3.3f), "", 1.4f);
+        // The results fill the board above the buttons.
+        var results = EditorKit.Text("Results", debriefPanel.transform, center + new Vector3(0f, 0.35f, 0f), Quaternion.identity,
+            new Vector2(5.8f, 2.7f), "", 1.4f);
         // The credits on their own board to the right, turned toward the hut: every third-party
         // asset with its author and licence did not fit beside the results.
         var creditsAt = center + new Vector3(5f, 0f, -1.2f);
@@ -469,26 +475,28 @@ public static class HutPropsSetup
         var credits = EditorKit.Text("Credits", debriefPanel.transform, creditsAt, creditsTurn,
             new Vector2(3.3f, 3.3f), "", 1f);
 
-        // Restart: a green block under the results panel. Reachable with the pointer from the
-        // hut or from the ground (the hut may have collapsed).
-        var restartPosition = new Vector3(-0.6f, 2.3f, 6.9f);
+        // Restart: a green button at the bottom of the results board. Reachable with the pointer
+        // from the hut or from the ground (the hut may have collapsed).
+        // At 3 m high, in front of the board's lower edge: seen from the hut over the north rail
+        // (at 2.3 m the rail hid them).
+        var restartPosition = new Vector3(-0.65f, 3f, 6.85f);
         var restart = EditorKit.Empty("Restart", debriefRoot.transform, restartPosition).gameObject;
-        EditorKit.Part("Button", PrimitiveType.Cube, restart.transform, Vector3.zero, new Vector3(0.9f, 0.3f, 0.1f),
-            EditorKit.Mat("Button", new Color(0.2f, 0.6f, 0.25f)));
+        EditorKit.Part("Button", PrimitiveType.Cube, restart.transform, Vector3.zero, new Vector3(1f, 0.35f, 0.1f),
+            EditorKit.ButtonMat("ButtonRestart", EditorKit.ButtonGreen));
         restart.AddComponent<XRSimpleInteractable>();
         restart.AddComponent<RestartButton>();
-        EditorKit.Text("Label", restart.transform, restartPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
-            new Vector2(0.8f, 0.25f), "RESTART", 1.5f, TextAlignmentOptions.Center);
+        EditorKit.ButtonLabel(EditorKit.Text("Label", restart.transform, restartPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
+            new Vector2(0.9f, 0.3f), "RESTART", 1.8f, TextAlignmentOptions.Center));
 
         // Quit: closes the game (the Windows build is full screen). Esc does the same.
-        var quitPosition = new Vector3(0.6f, 2.3f, 6.9f);
+        var quitPosition = new Vector3(0.65f, 3f, 6.85f);
         var quit = EditorKit.Empty("Quit", debriefRoot.transform, quitPosition).gameObject;
-        EditorKit.Part("Button", PrimitiveType.Cube, quit.transform, Vector3.zero, new Vector3(0.9f, 0.3f, 0.1f),
-            EditorKit.Mat("QuitButton", new Color(0.55f, 0.2f, 0.15f)));
+        EditorKit.Part("Button", PrimitiveType.Cube, quit.transform, Vector3.zero, new Vector3(1f, 0.35f, 0.1f),
+            EditorKit.ButtonMat("ButtonQuit", EditorKit.ButtonRed));
         quit.AddComponent<XRSimpleInteractable>();
         quit.AddComponent<QuitButton>();
-        EditorKit.Text("Label", quit.transform, quitPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
-            new Vector2(0.8f, 0.25f), "QUIT", 1.5f, TextAlignmentOptions.Center);
+        EditorKit.ButtonLabel(EditorKit.Text("Label", quit.transform, quitPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
+            new Vector2(0.9f, 0.3f), "QUIT", 1.8f, TextAlignmentOptions.Center));
 
         var dp = debriefRoot.AddComponent<DebriefPanel>();
         dp.panel = debriefPanel;
@@ -623,7 +631,8 @@ public static class HutPropsSetup
         var hut = GameObject.Find("WatchHut");
         if (hut != null) gm.hut = hut.transform;
         // Where the player stands to read the results if the hut is gone: south of it, facing north.
-        gm.debriefSpot = EditorKit.Empty("DebriefSpot", game, FarmLayout.OnGround(new Vector3(0f, 0f, -4f)));
+        // 2.6 m south of the hut centre: the buttons are under 10 m away (the pointer's reach; at 4 m they were not).
+        gm.debriefSpot = EditorKit.Empty("DebriefSpot", game, FarmLayout.OnGround(new Vector3(0f, 0f, -2.6f)));
 
         // When the hut collapses, the things inside it disappear with it.
         var damage = hut != null ? hut.GetComponent<HutDamage>() : null;
