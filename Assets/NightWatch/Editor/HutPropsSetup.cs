@@ -178,7 +178,7 @@ public static class HutPropsSetup
         // softer with distance (it was full volume anywhere within 1 m, so loud up close).
         crackle.minDistance = 0.5f;
         crackle.maxDistance = 15f;
-        crackle.volume = 0.12f;
+        crackle.volume = 0.1f;
 
         var fire = pot.AddComponent<FirePot>();
         fire.fireLight = light;
