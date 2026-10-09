@@ -16,7 +16,7 @@ public static class SoundBank
     public static AudioClip BranchCrack => crack != null ? crack : crack = Make("BranchCrack", 0.4f, MakeCrack);
     public static AudioClip Bang => bang != null ? bang : bang = Make("Bang", 1.2f, MakeBang);
     public static AudioClip TinBang => tin != null ? tin : tin = Make("TinBang", 0.6f, MakeTin);
-    public static AudioClip FireCrackle => crackle != null ? crackle : crackle = Make("FireCrackle", 4f, MakeCrackle);
+    public static AudioClip FireCrackle => crackle != null ? crackle : crackle = Make("FireCrackle", 2f, MakeCrackle);
     public static AudioClip Crickets => crickets != null ? crickets : crickets = Make("Crickets", 3f, MakeCrickets);
     public static AudioClip Zap => zap != null ? zap : zap = Make("Zap", 0.6f, MakeZap);
     public static AudioClip Tick => tick != null ? tick : tick = Make("Tick", 0.12f, MakeTick);
@@ -166,49 +166,20 @@ public static class SoundBank
         Normalise(d, 0.7f);
     }
 
-    // A warm wood fire: a soft roar that flickers, small dry crackles (short ticks between about
-    // 300 Hz and 2 kHz, never a hiss) and now and then a deeper pop. Kept gentle and in the middle
-    // tones laptop speakers play well: it loops beside the player all night. The first version was
-    // hiss pops, 44% of it above 6 kHz, which hurt on laptop speakers (now 1.5%).
+    // Soft hiss with random pops: a fire.
     static void MakeCrackle(float[] d, System.Random r)
     {
-        float roar = 0f, roar2 = 0f, flicker = 1f, flickerTarget = 1f;
-        float tick = 0f, tickLow = 0f, tickBand = 0f;
-        float pop = 0f, popLow = 0f, popLow2 = 0f;
-        float smooth = 0f;
+        float low = 0f;
+        float pop = 0f;
         for (int i = 0; i < d.Length; i++)
         {
-            // The roar: noise kept between about 70 Hz and 500 Hz (a low-pass, minus a slower one),
-            // slowly flickering.
-            roar += 0.15f * (Noise(r) - roar);
-            roar2 += 0.02f * (roar - roar2);
-            float roarBand = roar - roar2;
-            if (r.NextDouble() < 4.0 / Rate) flickerTarget = 0.6f + 0.6f * (float)r.NextDouble();
-            flicker += 0.0005f * (flickerTarget - flicker);
-
-            // Crackles: about 7 a second, each about 3 ms, the hiss taken off the top and the
-            // rumble off the bottom.
-            if (r.NextDouble() < 7.0 / Rate) tick = 0.3f + 0.7f * (float)r.NextDouble();
-            tick *= 0.985f;
-            tickLow += 0.6f * (Noise(r) * tick - tickLow);
-            tickBand += 0.08f * (tickLow - tickBand);
-            float crackle = tickLow - tickBand;
-
-            // Pops: about one every 2 s, deeper (about 150 to 700 Hz) and a little longer.
-            if (r.NextDouble() < 0.5 / Rate) pop = 0.6f + 0.4f * (float)r.NextDouble();
-            pop *= 0.995f;
-            popLow += 0.2f * (Noise(r) * pop - popLow);
-            popLow2 += 0.04f * (popLow - popLow2);
-            float popBand = popLow - popLow2;
-
-            float v = RoarLevel * roarBand * flicker + CrackleLevel * crackle + PopLevel * popBand;
-            smooth += 0.6f * (v - smooth);   // a last gentle cut of the very top
-            d[i] = smooth;
+            low += 0.05f * (Noise(r) - low);
+            if (r.NextDouble() < 0.0015) pop = 0.6f + 0.4f * (float)r.NextDouble();
+            pop *= 0.985f;
+            d[i] = 0.25f * low + pop * Noise(r);
         }
-        Normalise(d, 0.38f);   // about as loud as the old fire, without its hiss
+        Normalise(d, 0.5f);
     }
-
-    const float RoarLevel = 2f, CrackleLevel = 2.5f, PopLevel = 4f;
 
     // Two crickets chirping in short pulses.
     static void MakeCrickets(float[] d, System.Random r)
