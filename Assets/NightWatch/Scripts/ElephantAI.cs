@@ -451,7 +451,7 @@ public class ElephantAI : MonoBehaviour
         bool reachedHut = !PlayerState.OnGround && FlatDistance(transform.position, HutCenter) < HutKeepOut + agent.radius + 0.5f;
         if (reachedPlayer || reachedHut)
         {
-            Play(SoundBank.ElephantRoar, 1f);   // the real roar as it hits
+            Play(SoundBank.Trumpet, 1f);   // it trumpets as it hits
             if (reachedPlayer)
                 GameManager.Instance?.PlayerTrampled();
             else

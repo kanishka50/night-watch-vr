@@ -388,17 +388,7 @@ public static class VillageLife
             window.fade = 0.03f;
             window.maxDistance = 60f;
         }
-
-        // The dog at the neighbour's front porch (the village side of the house).
-        var dog = EditorKit.Empty("VillageDog", group, FarmLayout.AtNeighbour(0f, 4.5f) + Vector3.up * 0.4f);
-        var voice = dog.gameObject.AddComponent<AudioSource>();
-        voice.playOnAwake = false;
-        voice.spatialBlend = 1f;
-        voice.rolloffMode = AudioRolloffMode.Logarithmic;
-        voice.minDistance = 4f;
-        voice.maxDistance = 80f;
-        voice.volume = 0.9f;
-        dog.gameObject.AddComponent<DogBark>();
+        // (No village dog: its barking was taken out, 10 Oct 2026.)
     }
 
     // ---------------- falling leaves ----------------

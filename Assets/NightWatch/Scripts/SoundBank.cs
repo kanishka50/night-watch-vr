@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // All the game's sounds, made in code by simple sound synthesis, except the elephant's trumpet
-// and roar and the cattle's moo: real recordings in Resources/Sounds (CC0, credited in CREDITS.md). If a recording is
+// (Tunetank) and the cattle's moo (CC0): recordings in Resources/Sounds, credited in CREDITS.md. If a recording is
 // missing, the code-made sound is used instead.
 // Each clip is made (or loaded) the first time it is needed, then reused.
 public static class SoundBank
@@ -13,13 +13,11 @@ public static class SoundBank
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
     public static AudioClip Rumble => rumble != null ? rumble : rumble = Make("Rumble", 2.5f, MakeRumble);
-    // A real elephant trumpet (when it gets angry, when it charges, when scared off).
+    // The elephant trumpet (Tunetank): when it gets angry, charges, hits, or is scared off.
     public static AudioClip Trumpet => Recording("ElephantTrumpet", ref realTrumpet)
         ?? (trumpet != null ? trumpet : trumpet = Make("Trumpet", 1.4f, MakeTrumpet));
-    // A real elephant roar: the moment it hits the hut or the player.
-    public static AudioClip ElephantRoar => Recording("ElephantRoar", ref roar) ?? Rumble;
 
-    static AudioClip realTrumpet, roar, realMoo;
+    static AudioClip realTrumpet, realMoo;
 
     static AudioClip Recording(string name, ref AudioClip cache)
     {

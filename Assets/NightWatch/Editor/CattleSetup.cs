@@ -104,7 +104,7 @@ public static class CattleSetup
         voice.rolloffMode = AudioRolloffMode.Logarithmic;
         voice.minDistance = 3f;
         voice.maxDistance = 50f;
-        voice.volume = 0.35f;   // half: a moo now and then, in the background
+        voice.volume = 0.2f;   // quiet: a moo now and then, in the background
 
         // The rope from the top of the post to the neck.
         var ropeGo = new GameObject("Rope");
