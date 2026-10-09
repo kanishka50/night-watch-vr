@@ -7,7 +7,7 @@ public static class SoundBank
 {
     const int Rate = 22050;
 
-    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker;
+    static AudioClip rumble, trumpet, crack, bang, tin, crackle, crickets, zap, heartbeat, tick, drum, birds, ring, cracker, trickle;
 
     public static AudioClip Heartbeat => heartbeat != null ? heartbeat : heartbeat = Make("Heartbeat", 0.9f, MakeHeartbeat);
 
@@ -24,6 +24,7 @@ public static class SoundBank
     public static AudioClip Birds => birds != null ? birds : birds = Make("Birds", 4f, MakeBirds);
     public static AudioClip Ring => ring != null ? ring : ring = Make("Ring", 1.2f, MakeRing);
     public static AudioClip Cracker => cracker != null ? cracker : cracker = Make("Cracker", 1.4f, MakeCracker);
+    public static AudioClip Trickle => trickle != null ? trickle : trickle = Make("Trickle", 3f, MakeTrickle);
 
     // Plays a clip once at a place in the world, as a 3D sound.
     public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f, float minDistance = 4f)
@@ -281,6 +282,40 @@ public static class SoundBank
             d[i] = (float)System.Math.Tanh(2.2f * (blast + body + crackle + echo));
         }
         Normalise(d, 0.98f);
+    }
+
+    // Running water (the canal): a soft hiss of mid tones and many tiny bubbles, each a short tone
+    // that rises in pitch as it fades. Bubbles that run past the end carry on at the start, and the
+    // hiss swells twice per loop, so the loop has no seam.
+    static void MakeTrickle(float[] d, System.Random r)
+    {
+        float len = d.Length / (float)Rate;
+        float low = 0f, deep = 0f;
+        for (int i = 0; i < d.Length; i++)
+        {
+            float t = i / (float)Rate;
+            low += 0.35f * (Noise(r) - low);    // keeps it under about 1.5 kHz
+            deep += 0.04f * (low - deep);       // the deep part, taken away again
+            float swell = 0.75f + 0.25f * Sin(2f / len, t);
+            d[i] = 0.3f * (low - deep) * swell;
+        }
+        int bubbles = Mathf.RoundToInt(40f * len);
+        for (int b = 0; b < bubbles; b++)
+        {
+            int start = (int)(r.NextDouble() * d.Length);
+            float f0 = 450f + (float)(r.NextDouble() * r.NextDouble()) * 1600f;
+            float fade = 0.006f + (float)r.NextDouble() * 0.02f;
+            float amp = 0.25f + 0.75f * (float)r.NextDouble();
+            int count = Mathf.CeilToInt(fade * 6f * Rate);
+            float phase = 0f;
+            for (int k = 0; k < count; k++)
+            {
+                float t = k / (float)Rate;
+                phase += 2f * Mathf.PI * f0 * (1f + 2.5f * t / (fade * 6f)) / Rate;
+                d[(start + k) % d.Length] += 0.5f * amp * Mathf.Exp(-t / fade) * Mathf.Sin(phase);
+            }
+        }
+        Normalise(d, 0.6f);
     }
 
     // A phone ringing: two quick tones, twice.

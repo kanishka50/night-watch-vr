@@ -360,6 +360,12 @@ public class DayNightCycle : MonoBehaviour
         if (probeId >= 0 && !skyReflection.IsFinishedRendering(probeId)) return;
         probeSky = now;
         probeId = skyReflection.RenderProbe();
+        // The water shader (NightWatch/Water) reads the sky from this probe's picture.
+        if (skyReflection.texture != null)
+        {
+            Shader.SetGlobalTexture("_NightWatchSkyCube", skyReflection.texture);
+            Shader.SetGlobalFloat("_NightWatchSkyCubeOn", 1f);
+        }
     }
 
     Look Sample(float p)

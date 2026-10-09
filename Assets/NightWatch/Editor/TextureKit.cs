@@ -42,6 +42,10 @@ public static class TextureKit
         // The pela's illuk grass thatch: the reed photo in the same bright golden straw as the
         // haystacks (VillageBuilder StrawColor), at a fine scale so the stems read from the ground.
         { "PelaThatch", new Look("thatch_roof_angled", 1.1f, new Color(2.3f, 2.05f, 1.35f), 0.03f) },
+        // The canal (CanalBuilder): dressed granite blocks for the sluice and its headwall, rough
+        // grey stone for the bank stones and the slab bridge. Wet near water, so a little shiny.
+        { "SluiceStone", new Look("japanese_stone_wall", 1.9f, new Color(0.78f, 0.76f, 0.72f), 0.15f) },
+        { "CanalStone", new Look("rock_surface", 0.9f, new Color(0.82f, 0.82f, 0.8f), 0.2f) },
     };
 
     // Puts the texture on the material (called every time a tool asks for the material).

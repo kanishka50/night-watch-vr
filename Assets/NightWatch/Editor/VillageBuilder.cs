@@ -12,7 +12,7 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 //  - the ground as a Unity Terrain (their height grid, their 4 ground textures mixed by their
 //    splat map); the paddy field is levelled to height 0 (their terraces stepped down to the
 //    south), so our game's objects stand on it. It is the ground teleport area;
-//  - the tank (lake) and the flooded paddy plots as one flat water mesh (plots under our farm
+//  - the tank (lake) and the flooded paddy plots as two flat water meshes (plots under our farm
 //    are drained, see FarmLayout);
 //  - houses, granaries, the shed, the temple, the well and haystacks as normal
 //    scene objects (marked Static);
@@ -245,6 +245,8 @@ public static class VillageBuilder
             // A flat, round place for the dagaba (VillageExtras), blending into the land round it.
             float fromDagaba = Vector2.Distance(new Vector2(x - HutX, HutZ - z), new Vector2(VillageExtras.Dagaba.x, VillageExtras.Dagaba.z));
             if (fromDagaba < 11f) y = Mathf.Lerp(dagabaGround, y, Smooth(6f, 11f, fromDagaba));
+            // The canal (ela) dug from the tank's bund down to the field.
+            y = CanalBuilder.Carve(x - HutX, HutZ - z, y);
             raw[j, i] = y;
             lo = Mathf.Min(lo, y);
             hi = Mathf.Max(hi, y);
@@ -351,15 +353,19 @@ public static class VillageBuilder
 
     // ------------------------------------------------------------------ water
 
-    // One flat mesh: the tank (an ellipse) and the flooded paddy plots (rectangles).
-    static readonly Color WaterColor = new Color(0.20f, 0.45f, 0.60f);
-
+    // Two flat meshes: the tank (an ellipse) and the flooded paddy plots (rectangles), each with
+    // its own water (WaterSetup: the shader NightWatch/Water). UVs are world x and z in metres,
+    // so the ripples are the same size everywhere and line up across plots.
     static void BuildWater(Transform root, Ground ground, Level level)
     {
-        var points = new List<Vector3>();
-        var tris = new List<int>();
+        var tank = new List<Vector3>();
+        var tankTris = new List<int>();
+        var plots = new List<Vector3>();
+        var plotTris = new List<int>();
         foreach (var w in level.water)
         {
+            var points = w.kind == "tank" ? tank : plots;
+            var tris = w.kind == "tank" ? tankTris : plotTris;
             if (w.kind == "tank")
             {
                 float y = w.y + ground.Shift(w.x, w.z);
@@ -390,32 +396,39 @@ public static class VillageBuilder
                 tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
             }
         }
+        AssetDatabase.DeleteAsset(Generated + "/Water.asset");   // the old single mesh
+        WaterPart(root, "Tank", tank, tankTris, WaterSetup.Tank());
+        WaterPart(root, "PlotWater", plots, plotTris, WaterSetup.Plots());
+    }
+
+    static void WaterPart(Transform root, string name, List<Vector3> points, List<int> tris, Material mat)
+    {
         // The z flip turns faces over: make every triangle face up.
         for (int k = 0; k < tris.Count; k += 3)
         {
             var n = Vector3.Cross(points[tris[k + 1]] - points[tris[k]], points[tris[k + 2]] - points[tris[k]]);
             if (n.y < 0f) { int t = tris[k + 1]; tris[k + 1] = tris[k + 2]; tris[k + 2] = t; }
         }
+        var uvs = new List<Vector2>();
+        foreach (var p in points) uvs.Add(new Vector2(p.x, p.z));
 
-        string meshPath = Generated + "/Water.asset";
+        string meshPath = $"{Generated}/{name}.asset";
         AssetDatabase.DeleteAsset(meshPath);
-        var mesh = new Mesh { name = "VillageWater" };
+        var mesh = new Mesh { name = name };
         mesh.SetVertices(points);
+        mesh.SetUVs(0, uvs);
         mesh.SetTriangles(tris, 0);
         mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
         mesh.RecalculateBounds();
         AssetDatabase.CreateAsset(mesh, meshPath);
 
-        // Lake blue (the old near-black water only mirrored the sunset sky and looked brown).
-        var mat = EditorKit.Mat("VillageWater", WaterColor);
-        mat.SetColor("_BaseColor", WaterColor);
-        mat.SetFloat("_Smoothness", 0.8f);
-        EditorUtility.SetDirty(mat);
-
-        var go = new GameObject("Water");
+        var go = new GameObject(name);
         go.transform.SetParent(root, false);
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
-        go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+        var renderer = go.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = mat;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         go.isStatic = true;
     }
 

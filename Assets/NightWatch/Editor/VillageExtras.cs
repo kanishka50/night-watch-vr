@@ -6,8 +6,8 @@ using UnityEngine;
 //  - the dagaba moved from the far north-east to the north-west, between the tank and the field,
 //    with the jacaranda moved beside it and coconut palms round it: seen from the hut against the
 //    sunset over the tank (about 55 m)
-//  - a footpath from the hut along the bund and on to the dagaba, and a small canal (ela) from
-//    the tank down to the field, as in a real tank village
+//  - a footpath from the hut along the bund and on to the dagaba, and a canal (ela) from the
+//    tank down to the field, as in a real tank village (CanalBuilder)
 //  - a threshing floor (kamatha) on a harvested plot: packed earth, a centre post, haystacks,
 //    baskets, a pot and a stool, and two village cattle tied beside it (they once trod the paddy)
 //  - a big shade tree on a bund island, an agro-well in the field (common in dry-zone paddy),
@@ -29,9 +29,6 @@ public static class VillageExtras
         new Vector2(0f, 0f), new Vector2(0f, 20.5f), new Vector2(-12f, 26f), new Vector2(-28f, 32f), new Vector2(-33f, 34.5f),
     };
     public const float FootPathHalfWidth = 0.7f;
-
-    // The canal runs north from the field's edge to the tank shore, beside the north elephant way.
-    const float CanalX = -6f, CanalFrom = 17.6f, CanalWidth = 1.0f;
 
     // Copies placed round the kamatha, in its frame (x east, z north of its middle).
     static readonly (string model, float x, float z, float yaw)[] KamathaProps =
@@ -76,6 +73,7 @@ public static class VillageExtras
         foreach (var p in KamathaProps) yield return (Flat(KamathaPoint(p.x, p.z)), 1.6f);
         foreach (var c in Cattle) yield return (Flat(KamathaPoint(c.x, c.z)), 1.6f);
         foreach (var s in Scarecrows) yield return (Flat(s), 0.6f);
+        foreach (var c in CanalBuilder.Clearings()) yield return c;
         foreach (var c in Copies) if (c.model.StartsWith("banana") || c.model.StartsWith("palm")) yield return (Flat(c.at), 1.5f);
         yield return (Flat(Moves["jacaranda_tree"]), 4f);
     }
@@ -106,6 +104,7 @@ public static class VillageExtras
         var extras = new List<(Vector3 at, float yaw)>();
         foreach (var c in Copies) if (c.model == model) extras.Add((c.at, c.yaw));
         foreach (var p in KamathaProps) if (p.model == model) extras.Add((KamathaPoint(p.x, p.z), p.yaw));
+        if (model == "reeds") extras.AddRange(CanalBuilder.Reeds());
         foreach (var (at, yaw) in extras)
         {
             var ground = FarmLayout.OnGround(at);
@@ -120,7 +119,7 @@ public static class VillageExtras
     {
         var root = EditorKit.Group("Extras", village);
         BuildKamatha(root);
-        BuildCanal(root);
+        CanalBuilder.Build(root);
         foreach (var s in Scarecrows) BuildScarecrow(root, s);
         AddColliders(root, village);
     }
@@ -151,52 +150,6 @@ public static class VillageExtras
                 new Vector3(0.1f, 0.55f, 0.1f), post);
             CattleSetup.Place(cattle, kamatha, spot, facing);
         }
-    }
-
-    // The canal: a strip of water between two low earth banks, from the field's north edge to the
-    // tank, following the ground. It ends at a small stone sluice (sorowwa) at the tank.
-    static void BuildCanal(Transform root)
-    {
-        var canal = EditorKit.Group("Canal", root);
-        var water = AssetDatabase.LoadAssetAtPath<Material>(EditorKit.MaterialFolder + "/VillageWater.mat");
-        var bank = EditorKit.Mat("CanalBank", new Color(0.42f, 0.33f, 0.24f));
-        bank.SetFloat("_Smoothness", 0.05f);
-        const float step = 2f;
-        float z = CanalFrom;
-        int pieces = 0;
-        while (!InTank(CanalX, z + step) && pieces < 40)
-        {
-            var a = FarmLayout.OnGround(new Vector3(CanalX, 0f, z));
-            var b = FarmLayout.OnGround(new Vector3(CanalX, 0f, z + step));
-            var mid = (a + b) / 2f;
-            var dir = b - a;
-            var turn = Quaternion.LookRotation(dir.normalized, Vector3.up);
-            var w = EditorKit.Part("Water", PrimitiveType.Cube, canal, mid + Vector3.up * 0.04f, new Vector3(CanalWidth, 0.02f, dir.magnitude + 0.05f),
-                water, false);
-            w.transform.rotation = turn;
-            foreach (float side in new[] { -1f, 1f })
-            {
-                var bk = EditorKit.Part("Bank", PrimitiveType.Cube, canal, mid + turn * new Vector3(side * (CanalWidth / 2f + 0.25f), 0.08f, 0f),
-                    new Vector3(0.5f, 0.16f, dir.magnitude + 0.05f), bank, false);
-                bk.transform.rotation = turn;
-            }
-            z += step;
-            pieces++;
-        }
-        var sluice = FarmLayout.OnGround(new Vector3(CanalX, 0f, z));
-        EditorKit.Part("Sluice", PrimitiveType.Cube, canal, sluice + Vector3.up * 0.35f, new Vector3(CanalWidth + 0.8f, 0.7f, 0.6f),
-            EditorKit.Mat("SluiceStone", new Color(0.55f, 0.53f, 0.50f)), true);
-    }
-
-    // The tank's outline (world.json "tank", in village space: centre -60, -55, half axes 38 and
-    // 26, turned 0.35 rad), tested at a Unity point.
-    static bool InTank(float ux, float uz)
-    {
-        float vx = ux + VillageBuilder.HutX, vz = VillageBuilder.HutZ - uz;
-        float dx = vx + 60f, dz = vz + 55f;
-        float c = Mathf.Cos(0.35f), s = Mathf.Sin(0.35f);
-        float a = (dx * c + dz * s) / 38f, b = (-dx * s + dz * c) / 26f;
-        return a * a + b * b < 0.97f;
     }
 
     // A scarecrow (pambaya): a pole and a cross stick, an old shirt and sarong, a clay-pot head

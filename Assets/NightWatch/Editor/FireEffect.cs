@@ -140,7 +140,7 @@ public static class FireEffect
     }
 
     // A soft white dot, see-through at the edges, saved as a PNG so the build keeps it.
-    static Texture2D SoftDot()
+    public static Texture2D SoftDot()
     {
         var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(TexturePath);
         if (tex != null) return tex;
