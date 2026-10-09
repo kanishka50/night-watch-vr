@@ -40,7 +40,7 @@ public class FireTorch : PlayerAction, IIgnitable
         flame.SetActive(false);
     }
 
-    protected override string Hint => "Fire torch: press T to light it at the fire pot. Point it at an elephant to stop it.";
+    protected override string Hint => "Fire torch: press Use (trigger / T) to light it at the fire pot. Point it at an elephant to stop it.";
 
     // Use (trigger) near the fire pot lights it. Touching the pot with the torch also works.
     protected override void OnUsed()

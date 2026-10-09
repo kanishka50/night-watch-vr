@@ -64,15 +64,11 @@ public static class LearnSetup
     {
         var cam = Camera.main;
         if (cam == null) return;
-        var old = cam.transform.Find("LearnLine");
-        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
-
-        var root = new GameObject("LearnLine");
-        Undo.RegisterCreatedObjectUndo(root, "Learn line");
-        root.transform.SetParent(cam.transform, false);
+        var root = EndingSetup.FollowPanel("LearnLine", cam.transform, new Vector3(0f, -0.3f, 0.9f));
         var text = EditorKit.Text("Text", root.transform, Vector3.zero, Quaternion.identity, new Vector2(0.6f, 0.08f), "", 0.26f,
             TMPro.TextAlignmentOptions.Center);
-        text.transform.localPosition = new Vector3(0f, -0.3f, 0.9f);
+        text.transform.localPosition = Vector3.zero;
+        text.transform.localRotation = Quaternion.identity;
         text.fontSharedMaterial = EndingSetup.OutlineMaterial(text.fontSharedMaterial);
         root.AddComponent<LearnPointer>().text = text;
     }

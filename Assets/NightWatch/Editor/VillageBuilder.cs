@@ -770,6 +770,31 @@ public static class VillageBuilder
             made++;
         }
         Debug.Log($"Night Watch: {made} village colliders near the farm ({skipped} left out: cleared copies and their wire fence).");
+        BuildBoundary(root);
+    }
+
+    // An invisible wall round the play area (the edge of ColliderArea): beyond it the village has
+    // no collision shapes, so nobody may walk or teleport there (the teleport ray stops on it).
+    // Tall, so a long teleport arc cannot pass over. Left out of the walk map.
+    static void BuildBoundary(Transform root)
+    {
+        var parent = EditorKit.Group("Boundary", root);
+        parent.gameObject.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+        const float height = 40f, thick = 1f;
+        var r = ColliderArea;
+        void Wall(string name, Vector3 centre, Vector3 size)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = centre;
+            go.isStatic = true;
+            go.AddComponent<BoxCollider>().size = size;
+        }
+        float y = height / 2f - 10f;
+        Wall("North", new Vector3(r.center.x, y, r.yMax), new Vector3(r.width + 2f * thick, height, thick));
+        Wall("South", new Vector3(r.center.x, y, r.yMin), new Vector3(r.width + 2f * thick, height, thick));
+        Wall("East", new Vector3(r.xMax, y, r.center.y), new Vector3(thick, height, r.height + 2f * thick));
+        Wall("West", new Vector3(r.xMin, y, r.center.y), new Vector3(thick, height, r.height + 2f * thick));
     }
 
     static bool InArea(Vector3 p) => ColliderArea.Contains(new Vector2(p.x, p.z));

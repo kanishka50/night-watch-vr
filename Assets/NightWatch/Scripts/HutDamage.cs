@@ -16,6 +16,10 @@ public class HutDamage : MonoBehaviour
     public ParticleSystem dustTemplate;
     [Tooltip("Things in the hut (table, tools, notice board) hidden once it has fallen.")]
     public GameObject[] hideOnCollapse;
+    [Tooltip("Things standing on the hut floor (table, fire pot, basket, notice desk): they shake and tilt with it, and fall with it.")]
+    public Transform[] followers;
+    Vector3[] followerPositions;
+    Quaternion[] followerRotations;
 
     Vector3 home;
     Quaternion targetRotation;
@@ -29,6 +33,26 @@ public class HutDamage : MonoBehaviour
         if (dustTemplate != null) Effects.DustTemplate = dustTemplate;
         home = transform.position;
         targetRotation = transform.rotation;
+
+        // Where each follower stands, in the hut's own space.
+        int n = followers != null ? followers.Length : 0;
+        followerPositions = new Vector3[n];
+        followerRotations = new Quaternion[n];
+        for (int i = 0; i < n; i++)
+        {
+            if (followers[i] == null) continue;
+            followerPositions[i] = transform.InverseTransformPoint(followers[i].position);
+            followerRotations[i] = Quaternion.Inverse(transform.rotation) * followers[i].rotation;
+        }
+    }
+
+    // Moves the followers with the hut (loose tools on the table move by physics).
+    void MoveFollowers()
+    {
+        if (followers == null) return;
+        for (int i = 0; i < followers.Length; i++)
+            if (followers[i] != null)
+                followers[i].SetPositionAndRotation(transform.TransformPoint(followerPositions[i]), transform.rotation * followerRotations[i]);
     }
 
     void Update()
@@ -46,6 +70,7 @@ public class HutDamage : MonoBehaviour
         {
             transform.position = home;
         }
+        MoveFollowers();
     }
 
     // A charge that did not bring the hut down. hits = how many hits so far.
@@ -137,6 +162,16 @@ public class HutDamage : MonoBehaviour
             roofBody.mass = 60f;
             roofBody.AddExplosionForce(collapseForce * 2f, from + Vector3.up * 1.5f, 10f, 0.5f, ForceMode.Impulse);
         }
+
+        // The table, fire pot, basket and desk fall too (each in one piece).
+        if (followers != null)
+            foreach (var f in followers)
+            {
+                if (f == null || f.GetComponent<Rigidbody>() != null) continue;
+                var fb = f.gameObject.AddComponent<Rigidbody>();
+                fb.mass = 10f;
+                fb.AddExplosionForce(collapseForce * 0.5f, from + Vector3.up * 1.5f, 10f, 0.5f, ForceMode.Impulse);
+            }
 
         foreach (var part in GetComponentsInChildren<Collider>())
         {

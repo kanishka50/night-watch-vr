@@ -11,7 +11,7 @@ public class NoiseMaker : PlayerAction
     float lastUse = float.NegativeInfinity;
     bool logged;
 
-    protected override string Hint => "Tin cans: press T to bang them. Best before elephants reach the field.";
+    protected override string Hint => "Tin cans: press Use (trigger / T) to bang them. Best before elephants reach the field.";
 
     protected override void OnUsed()
     {

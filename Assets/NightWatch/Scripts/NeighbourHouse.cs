@@ -137,7 +137,8 @@ public class NeighbourHouse : MonoBehaviour
         bull = elephant;
         bullCameTime = Time.time;
         atStoreTime = -1f;
-        if (State == Mood.Warned || State == Mood.Safe) return;   // the house is lit and shut
+        // Warned, or already going in after a call: the house is (or will be) lit and shut.
+        if (State == Mood.Warned || State == Mood.Safe || State == Mood.GoingIn) return;
 
         ActionLog.Record("Did not warn your neighbour", false,
             "Call your neighbour when elephants are out.");
@@ -311,7 +312,7 @@ public class NeighbourHouse : MonoBehaviour
         {
             lampPivot.SetParent(transform, true);
             var landing = figure.position + pushDirection * 2.5f + Vector3.Cross(Vector3.up, pushDirection) * 0.6f;
-            lampPivot.position = new Vector3(landing.x, 0.1f, landing.z);
+            lampPivot.position = new Vector3(landing.x, GroundY(landing) + 0.1f, landing.z);
             lampPivot.rotation = Quaternion.Euler(0f, 0f, 80f);
         }
         if (lamp != null) lamp.intensity = lampIntensity * 0.4f;
@@ -419,7 +420,9 @@ public class NeighbourHouse : MonoBehaviour
         Play(limp || speed <= walkSpeed * 1.5f ? "Walk" : "Run", limp ? 0.6f : 1f);
         target.y = figure.position.y;
         FaceTowards(target);
-        float baseY = figure.position.y;
+        // Keep the same height above the ground all the way (it used to keep one fixed height,
+        // so the figure floated or sank on slopes).
+        float lift = figure.position.y - GroundY(figure.position);
         float t = 0f;
         while (Flat(target - figure.position) > 0.05f)
         {
@@ -430,12 +433,12 @@ public class NeighbourHouse : MonoBehaviour
             // The animated farmer bobs by itself; the limp still dips a little.
             float bob = limp ? -(body != null ? 0.04f : 0.1f) * Mathf.Abs(Mathf.Sin(t * 3f))
                 : body != null ? 0f : 0.04f * Mathf.Abs(Mathf.Sin(t * 7f));
-            next.y = baseY + bob;
+            next.y = GroundY(next) + lift + bob;
             figure.position = next;
             if (!limp) SwingLamp(1f);
             yield return null;
         }
-        figure.position = new Vector3(target.x, baseY, target.z);
+        figure.position = new Vector3(target.x, GroundY(target) + lift, target.z);
         Play("Idle");
         walking = false;
     }
@@ -492,6 +495,13 @@ public class NeighbourHouse : MonoBehaviour
         windowBlock.SetColor("_BaseColor", on ? windowOnColor * 0.8f : new Color(0.08f, 0.07f, 0.06f));
         windowBlock.SetColor("_EmissionColor", on ? windowOnColor * 0.9f : Color.black);
         window.SetPropertyBlock(windowBlock);
+    }
+
+    // The village ground's height under a point.
+    static float GroundY(Vector3 p)
+    {
+        var terrain = Terrain.activeTerrain;
+        return terrain != null ? terrain.SampleHeight(p) + terrain.transform.position.y : p.y;
     }
 
     static float Flat(Vector3 v)

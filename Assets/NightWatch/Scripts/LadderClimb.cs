@@ -17,12 +17,12 @@ public class LadderClimb : PressTarget
     [Tooltip("The label over this handle. Top only: it changes while a tool is held.")]
     public TextMeshPro label;
     public string labelText = "Climb down";
-    public string holdingText = "Tools stay in the hut\nG: put it down first";
+    public string holdingText = "Tools stay in the hut\nLet go (grip / G) to put it down first";
 
     static bool loggedClimb;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetOnPlay() => loggedClimb = false;
+    public static void ResetOnPlay() => loggedClimb = false;
 
     bool showingHint;
 

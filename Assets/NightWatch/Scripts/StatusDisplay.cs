@@ -26,11 +26,10 @@ public class StatusDisplay : MonoBehaviour
         string elephants = $"{game.elephantsSafe:0}%";
         string crop = $"{game.CropSaved:0}%";
         int crackers = Firecracker.Unused.Count;
-        int near = ElephantAI.CountActive();
 
         text.text = compact
             ? $"{game.CurrentPhase}  Dawn in {clock}\nPeople {people}  Elephants {elephants}\nCrop {crop}  Crackers {crackers}"
-            : $"<b>{game.CurrentPhase}</b>   Dawn in {clock}   Elephants around: {near}\n" +
+            : $"<b>{game.CurrentPhase}</b>   Dawn in {clock}\n" +
               $"Health {people}   Elephants safe {elephants}   Crop saved {crop}   Crackers left {crackers}";
     }
 }

@@ -47,6 +47,11 @@ public class StoryFilm : MonoBehaviour
 
     bool skip;
     bool ended;
+    // The film plays once per launch: after Restart the next player goes straight to START.
+    static bool seen;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetOnPlay() => seen = false;
     readonly List<(AudioSource source, float until)> loops = new List<(AudioSource, float)>();
 
     void Awake()
@@ -56,7 +61,8 @@ public class StoryFilm : MonoBehaviour
 
     void Start()
     {
-        if (!play) return;
+        if (!play || seen) return;
+        seen = true;
         string path = Path.Combine(Application.streamingAssetsPath, fileName);
         if (!File.Exists(path))
         {

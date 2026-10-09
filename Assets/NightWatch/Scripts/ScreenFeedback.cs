@@ -7,7 +7,9 @@ using UnityEngine;
 //  - Blink: a short fade to black and back when the view jumps (teleport, ladder, story scenes).
 //    Hiding the jump keeps players from feeling sick (course week 5: comfort). It replaced the
 //    round tunnel vignette, which closed to a small circle and looked odd.
-//  - KnockDown: the view tips over and drops, as if the player fell. If fatal, it then fades out.
+//  - KnockDown: a red flash and the view goes dark, then clears (fatal: stays black). The camera
+//    itself never moves (course week 5: never move the view for the player; the old roll and drop
+//    could make people sick).
 //  - Inside: black while the head is inside a solid thing (BodyBlocker), so nobody sees through
 //    the inside of a wall or an elephant.
 //  - Wound edge: a red edge round the view when the player is hit, fading back to normal in
@@ -162,48 +164,24 @@ public class ScreenFeedback : MonoBehaviour
         Apply();
     }
 
-    // Tips the view sideways and down (the camera's parent, so head tracking still works).
+    // Knocked down: red flash, the view goes dark for a moment and clears (fatal: fully black).
     IEnumerator Fall(bool fatal)
     {
-        var cam = PlayerState.Head;
-        var offset = cam != null ? cam.parent : null;
-        if (offset == null) yield break;
-
         IsFalling = true;
-        var startRot = offset.localRotation;
-        var startPos = offset.localPosition;
-        var downRot = startRot * Quaternion.Euler(0f, 0f, 65f);
-        var downPos = startPos + new Vector3(0f, -1.1f, 0f);
-
         Flash(Color.red, 0.7f);
-        for (float t = 0f; t < 0.6f; t += Time.deltaTime)
-        {
-            float k = Mathf.SmoothStep(0f, 1f, t / 0.6f);
-            offset.localRotation = Quaternion.Slerp(startRot, downRot, k);
-            offset.localPosition = Vector3.Lerp(startPos, downPos, k);
-            yield return null;
-        }
-
+        StartFade(0.85f, 0.4f);
+        yield return new WaitForSeconds(0.6f);
         if (fatal)
         {
-            StartFade(1f, 2f);
-            yield return new WaitForSeconds(2.5f);
+            StartFade(1f, 1.6f);
+            yield return new WaitForSeconds(1.9f);
         }
         else
         {
             yield return new WaitForSeconds(1f);
+            StartFade(0f, 1.2f);
+            yield return new WaitForSeconds(1.2f);
         }
-
-        // Stand back up (after a fatal fall this happens behind the black screen).
-        for (float t = 0f; t < 1.2f; t += Time.deltaTime)
-        {
-            float k = Mathf.SmoothStep(0f, 1f, t / 1.2f);
-            offset.localRotation = Quaternion.Slerp(downRot, startRot, k);
-            offset.localPosition = Vector3.Lerp(downPos, startPos, k);
-            yield return null;
-        }
-        offset.localRotation = startRot;
-        offset.localPosition = startPos;
         IsFalling = false;
     }
 

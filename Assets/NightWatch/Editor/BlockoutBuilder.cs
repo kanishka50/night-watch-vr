@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.XR.CoreUtils;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -527,6 +528,17 @@ public static class BlockoutBuilder
             Debug.LogWarning("Night Watch: no 'XR Origin (XR Rig)' in the scene, player not moved.");
             return;
         }
+        // Tracking origin: Floor. A headset then measures the eye height from the real floor, so
+        // a tall and a short player each see from their own height (a standing experience). With
+        // no headset (the simulator) nothing changes: the camera stays at the rig's eye height.
+        var origin = rig.GetComponent<XROrigin>();
+        if (origin != null)
+        {
+            Undo.RecordObject(origin, "Tracking origin Floor");
+            origin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
+            PrefabUtility.RecordPrefabInstancePropertyModifications(origin);
+        }
+
         Undo.RecordObject(rig.transform, "Move player to the start");
         rig.transform.SetPositionAndRotation(FarmLayout.OnGround(GroundPrepSetup.StartPosition), Quaternion.identity);
 

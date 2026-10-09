@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit.UI;
 
 // Builds the ending card on the VR camera (called by Night Watch > Build Full Game): a title and
 // one short line, 1 m in front of the eyes, shown on the black screen at the end of the night.
@@ -49,15 +50,33 @@ public static class EndingSetup
     {
         var cam = Camera.main;
         if (cam == null) return;
-        var old = cam.transform.Find("ToolHint");
-        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
-
-        var root = new GameObject("ToolHint");
-        Undo.RegisterCreatedObjectUndo(root, "Tool hint");
-        root.transform.SetParent(cam.transform, false);
-        var text = Text("Text", root.transform, new Vector3(0f, -0.2f, 0.9f), new Vector2(0.55f, 0.09f), 0.3f);
+        var root = FollowPanel("ToolHint", cam.transform, new Vector3(0f, -0.2f, 0.9f));
+        var text = Text("Text", root.transform, Vector3.zero, new Vector2(0.55f, 0.09f), 0.3f);
         text.fontSharedMaterial = OutlineMaterial(text.fontSharedMaterial);
         root.AddComponent<HintDisplay>().text = text;
+    }
+
+    // A panel in the world that floats in front of the view and follows the head loosely (XRI
+    // LazyFollow: it catches up when the head turns or moves past a small limit). It replaced text
+    // fixed to the camera (brief section 5: spatial UI, not a flat overlay stuck to the face).
+    public static GameObject FollowPanel(string name, Transform cam, Vector3 offset)
+    {
+        var old = cam.Find(name);
+        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+        var loose = GameObject.Find(name);
+        if (loose != null) Undo.DestroyObjectImmediate(loose);
+
+        var root = new GameObject(name);
+        Undo.RegisterCreatedObjectUndo(root, name);
+        var game = GameObject.Find("Game");
+        if (game != null) root.transform.SetParent(game.transform, false);
+        root.transform.SetPositionAndRotation(cam.position + cam.TransformVector(offset), cam.rotation);
+        var follow = root.AddComponent<LazyFollow>();
+        follow.target = cam;
+        follow.targetOffset = offset;
+        follow.positionFollowMode = LazyFollow.PositionFollowMode.Follow;
+        follow.rotationFollowMode = LazyFollow.RotationFollowMode.LookAt;
+        return root;
     }
 
     // A saved copy of the font material with a black outline. Setting outlineWidth on the text

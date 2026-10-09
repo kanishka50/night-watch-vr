@@ -249,7 +249,7 @@ public class ElephantAI : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetOnPlay() => nextContactTime = 0f;
+    public static void ResetOnPlay() => nextContactTime = 0f;
 
     // A person on the ground who touches an elephant's body is knocked down, whatever the
     // elephant is doing. Elephants do not walk through people.
@@ -289,7 +289,7 @@ public class ElephantAI : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetToldAngry() => toldAngry = false;
+    public static void ResetToldAngry() => toldAngry = false;
 
     // ---------------- States ----------------
 

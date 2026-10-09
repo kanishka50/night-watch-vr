@@ -12,6 +12,7 @@ public class DebriefPanel : MonoBehaviour
     public TextMeshPro results;
     public TextMeshPro credits;
     public GameObject restartButton;
+    public GameObject quitButton;
 
     // Every third-party asset in the build (brief section 12). The full list with links and
     // licences is CREDITS.md in the project folder; keep the two the same.
@@ -38,6 +39,7 @@ public class DebriefPanel : MonoBehaviour
     {
         if (panel != null) panel.SetActive(false);
         if (restartButton != null) restartButton.SetActive(false);
+        if (quitButton != null) quitButton.SetActive(false);
     }
 
     void Start()
@@ -91,11 +93,12 @@ public class DebriefPanel : MonoBehaviour
         if (tips.Count == 0) sb.AppendLine("-  Nothing to change. Well done!");
         foreach (var tip in tips) sb.AppendLine("-  " + tip);
         sb.AppendLine();
-        sb.AppendLine("Point at RESTART and press G to play again.");
+        sb.AppendLine("Point at RESTART and Grab (grip / G) to play again, or at QUIT to close the game.");
 
         if (results != null) results.text = sb.ToString();
         if (credits != null) credits.text = creditsText;
         if (panel != null) panel.SetActive(true);
         if (restartButton != null) restartButton.SetActive(true);
+        if (quitButton != null) quitButton.SetActive(true);
     }
 }

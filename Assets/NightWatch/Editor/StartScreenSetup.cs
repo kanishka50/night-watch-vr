@@ -27,9 +27,9 @@ public static class StartScreenSetup
             "You are a farmer in Sri Lanka. Tonight wild elephants will come for your paddy.\n" +
             "Keep everyone alive until dawn: you, your neighbour and the elephants.", 0.9f, TextAlignmentOptions.Center);
         EditorKit.Text("Controls", panel, center + new Vector3(0f, -0.13f, 0f), rotation, new Vector2(1.3f, 0.3f),
-            "<b>Look</b>: hold right mouse      <b>Walk</b>: W A S D      <b>Teleport</b>: I\n" +
-            "<b>Point</b> at a thing (it turns yellow), then <b>G</b> to grab or press it\n" +
-            "<b>T</b>: use what you hold      <b>Shift + G / T</b>: left hand", 0.75f, TextAlignmentOptions.Center);
+            "<b>Look</b>: turn your head / hold right mouse      <b>Walk</b>: walk / W A S D      <b>Teleport</b>: thumbstick forward / I\n" +
+            "<b>Point</b> at a thing (it turns yellow), then <b>Grab</b> (grip / G) to take or press it\n" +
+            "<b>Use</b> (trigger / T) what you hold      <b>Left hand</b>: Shift + G / T", 0.75f, TextAlignmentOptions.Center);
 
         // The START button below the text.
         var buttonPos = center + new Vector3(0f, -0.42f, -0.06f);

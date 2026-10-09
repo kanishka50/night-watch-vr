@@ -1,3 +1,4 @@
+using System.Linq;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -51,7 +52,7 @@ public static class HutPropsSetup
 
         var table = EditorKit.Part("Table", PrimitiveType.Cube, root, new Vector3(TableX, FloorTop + TableHeight / 2f, 0f),
             new Vector3(0.6f, TableHeight, 2.2f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)));
-        table.isStatic = true;
+        // Not static: it shakes and tilts with the hut (HutDamage.followers).
 
         BuildFirePot(root, new Vector3(TableX, TableTop, -0.85f));
         // No pointer target: it shows while a torch or cracker is in the hand (light it here).
@@ -470,7 +471,7 @@ public static class HutPropsSetup
 
         // Restart: a green block under the results panel. Reachable with the pointer from the
         // hut or from the ground (the hut may have collapsed).
-        var restartPosition = new Vector3(0f, 2.3f, 6.9f);
+        var restartPosition = new Vector3(-0.6f, 2.3f, 6.9f);
         var restart = EditorKit.Empty("Restart", debriefRoot.transform, restartPosition).gameObject;
         EditorKit.Part("Button", PrimitiveType.Cube, restart.transform, Vector3.zero, new Vector3(0.9f, 0.3f, 0.1f),
             EditorKit.Mat("Button", new Color(0.2f, 0.6f, 0.25f)));
@@ -479,11 +480,22 @@ public static class HutPropsSetup
         EditorKit.Text("Label", restart.transform, restartPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
             new Vector2(0.8f, 0.25f), "RESTART", 1.5f, TextAlignmentOptions.Center);
 
+        // Quit: closes the game (the Windows build is full screen). Esc does the same.
+        var quitPosition = new Vector3(0.6f, 2.3f, 6.9f);
+        var quit = EditorKit.Empty("Quit", debriefRoot.transform, quitPosition).gameObject;
+        EditorKit.Part("Button", PrimitiveType.Cube, quit.transform, Vector3.zero, new Vector3(0.9f, 0.3f, 0.1f),
+            EditorKit.Mat("QuitButton", new Color(0.55f, 0.2f, 0.15f)));
+        quit.AddComponent<XRSimpleInteractable>();
+        quit.AddComponent<QuitButton>();
+        EditorKit.Text("Label", quit.transform, quitPosition + new Vector3(0f, 0f, -0.07f), Quaternion.identity,
+            new Vector2(0.8f, 0.25f), "QUIT", 1.5f, TextAlignmentOptions.Center);
+
         var dp = debriefRoot.AddComponent<DebriefPanel>();
         dp.panel = debriefPanel;
         dp.results = results;
         dp.credits = credits;
         dp.restartButton = restart;
+        dp.quitButton = quit;
     }
 
     // ---------------- Screen effects ----------------
@@ -611,7 +623,7 @@ public static class HutPropsSetup
         var hut = GameObject.Find("WatchHut");
         if (hut != null) gm.hut = hut.transform;
         // Where the player stands to read the results if the hut is gone: south of it, facing north.
-        gm.debriefSpot = EditorKit.Empty("DebriefSpot", game, new Vector3(0f, 0f, -4f));
+        gm.debriefSpot = EditorKit.Empty("DebriefSpot", game, FarmLayout.OnGround(new Vector3(0f, 0f, -4f)));
 
         // When the hut collapses, the things inside it disappear with it.
         var damage = hut != null ? hut.GetComponent<HutDamage>() : null;
@@ -619,6 +631,10 @@ public static class HutPropsSetup
         {
             var board = GameObject.Find("NoticeBoard");
             damage.hideOnCollapse = new[] { GameObject.Find("HutProps"), board };
+            damage.followers = new[] { "HutProps/Table", "HutProps/FirePot", "HutProps/Basket" }
+                .Select(path => GameObject.Find(path)?.transform)
+                .Append(board != null ? board.transform : null)
+                .Where(t => t != null).ToArray();
             damage.dustTemplate = BuildDustTemplate(game);
         }
 

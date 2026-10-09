@@ -30,7 +30,7 @@ public class HakkaPatas : PlayerAction
     {
         WarningPanel.Show("HAKKA PATAS\n\nThis is explosive bait hidden in food. It is illegal. " +
                           "It kills and maims elephants, and it puts people in danger too.\n\n" +
-                          "G: put it down        T: use it anyway");
+                          "Let go (grip / G): put it down        Use (trigger / T): use it anyway");
         if (!warned)
         {
             warned = true;

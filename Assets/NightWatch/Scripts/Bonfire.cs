@@ -41,7 +41,7 @@ public class Bonfire : PressTarget
     static bool toldBurningOut;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetOnPlay() => toldBurningOut = false;
+    public static void ResetOnPlay() => toldBurningOut = false;
 
     public static int LitCount
     {

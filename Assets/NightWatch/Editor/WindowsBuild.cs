@@ -25,6 +25,9 @@ public static class WindowsBuild
                 $"Build the Windows game into {Folder}?\nThis takes several minutes. Save the scene first.", "Build", "Cancel"))
             return;
 
+        // Controller types and company name (also set by Build Full Game).
+        StartupSetup.ProjectSettings();
+
         var options = new BuildPlayerOptions
         {
             scenes = new[] { Scene },

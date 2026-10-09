@@ -90,7 +90,7 @@ public class GroundPrep : MonoBehaviour
                 Line(1, AllFiresLit, $"Light the {Bonfire.All.Count} bonfires: east and south ({fires} of {Bonfire.All.Count})") + "\n" +
                 Line(2, FenceOn, "Switch on the fence energiser (box east of the hut)") + "\n" +
                 Line(3, InHut, "Climb into the hut (the ladder)") + "\n\n" +
-                "<size=80%>Teleport: I.   Light or switch: point at it + G.</size>";
+                "<size=80%>Teleport: thumbstick forward / I.   Light or switch: point at it + Grab (grip / G).</size>";
         }
         if (alert != null) alert.text = NoticeBoard.CurrentAlert;
     }

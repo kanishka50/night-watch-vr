@@ -38,7 +38,7 @@ public class FirePot : MonoBehaviour
     {
         NoticeBoard.Message(PlayerState.OnGround
             ? "The fire pot is up in the hut. Climb up to light it."
-            : "Bring it closer to the fire pot on the table, then press T again.");
+            : "Bring it closer to the fire pot on the table, then press Use (trigger / T) again.");
     }
 
     void Start()

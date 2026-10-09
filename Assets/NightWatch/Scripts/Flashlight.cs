@@ -42,7 +42,7 @@ public class Flashlight : PlayerAction
         if (beam != null) beam.enabled = false;
     }
 
-    protected override string Hint => "Flashlight: press T to switch it on. Find elephants in the dark.";
+    protected override string Hint => "Flashlight: press Use (trigger / T) to switch it on. Find elephants in the dark.";
 
     protected override void OnUsed()
     {

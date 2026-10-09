@@ -68,6 +68,7 @@ public static class GameSetup
         StoryIntroSetup.Build(game);
         FilmDirectorSetup.Build(game);
         StoryFilmSetup.Build(game);
+        StartupSetup.Build(game);
         TextureKit.FitUVs();
 
         AddSceneToBuild();
@@ -76,13 +77,12 @@ public static class GameSetup
     }
 
     // The scene must be in the build list for Restart (scene reload) and for the Windows build.
+    // It is the only scene (the template's SampleScene is taken off the list, not deleted).
     static void AddSceneToBuild()
     {
         var path = EditorSceneManager.GetActiveScene().path;
         if (string.IsNullOrEmpty(path)) return;
-        var scenes = EditorBuildSettings.scenes.Where(s => s.path != path).ToList();
-        scenes.Insert(0, new EditorBuildSettingsScene(path, true));
-        EditorBuildSettings.scenes = scenes.ToArray();
+        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(path, true) };
     }
 }
 
@@ -153,7 +153,8 @@ public static class EditorKit
         var tmp = go.AddComponent<TextMeshPro>();
         tmp.text = text;
         tmp.enableAutoSizing = true;
-        tmp.fontSizeMin = 0.05f;
+        // Auto-size never shrinks text below this (0.05 was unreadable).
+        tmp.fontSizeMin = 0.15f;
         tmp.fontSizeMax = maxSize;
         tmp.alignment = align;
         tmp.color = new Color(1f, 0.96f, 0.88f);

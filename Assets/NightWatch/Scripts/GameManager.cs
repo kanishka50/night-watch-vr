@@ -100,6 +100,13 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;   // in case a slow-motion moment was cut short by a restart
         ActionLog.Clear();
         PlayerState.OnGround = false;
+        // Restart reloads the scene, but these "said it once" flags live for the whole launch.
+        // Clear them so the next player gets the tool hints and messages too.
+        PlayerAction.ResetHints();
+        LadderClimb.ResetOnPlay();
+        Bonfire.ResetOnPlay();
+        ElephantAI.ResetOnPlay();
+        ElephantAI.ResetToldAngry();
         if (hut != null) ElephantAI.HutCenter = hut.position;
     }
 

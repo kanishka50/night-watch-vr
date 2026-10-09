@@ -44,7 +44,7 @@ public class Firecracker : PlayerAction, IIgnitable
         Unused.Remove(this);
     }
 
-    protected override string Hint => "Firecracker: T to light it at the fire pot, T again to throw. Throw it NEAR elephants, never at them.";
+    protected override string Hint => "Firecracker: Use (trigger / T) to light it at the fire pot, Use again to throw. Throw it NEAR elephants, never at them.";
 
     // Use (trigger): near the fire pot it lights the cracker; on a lit cracker it throws it
     // where the player is looking. Throwing by hand (letting go while moving) also works.
@@ -88,7 +88,7 @@ public class Firecracker : PlayerAction, IIgnitable
         fuseLeft = fuseSeconds;
         if (fuseLight != null) fuseLight.enabled = true;
         if (fuseSound != null) fuseSound.Play();
-        NoticeBoard.Message($"The cracker is lit! Press T now to throw it. It bursts in {fuseSeconds:0} seconds.");
+        NoticeBoard.Message($"The cracker is lit! Press Use (trigger / T) now to throw it. It bursts in {fuseSeconds:0} seconds.");
     }
 
     protected override void Update()

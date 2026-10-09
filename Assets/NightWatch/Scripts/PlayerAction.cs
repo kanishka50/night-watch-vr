@@ -74,7 +74,7 @@ public class PlayerAction : MonoBehaviour
     static readonly HashSet<System.Type> hinted = new HashSet<System.Type>();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetHints() => hinted.Clear();
+    public static void ResetHints() => hinted.Clear();
     protected virtual void OnReleased() { }
     protected virtual void OnUsed() { }
 

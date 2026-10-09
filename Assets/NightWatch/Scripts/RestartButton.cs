@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-// A button in the world. Point at it and grab (G) to start the night again.
+// A button in the world. Point at it and grab (grip / G) to start the night again.
 [RequireComponent(typeof(XRSimpleInteractable))]
 public class RestartButton : MonoBehaviour
 {
