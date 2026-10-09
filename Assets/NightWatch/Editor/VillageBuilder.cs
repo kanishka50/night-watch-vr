@@ -4,19 +4,24 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 // Builds the teammate's Elephant Village (a three.js level, converted by
 // tools/village_convert.py) around our game, with our hut at the Unity origin:
 //  - the ground as a Unity Terrain (their height grid, their 4 ground textures mixed by their
 //    splat map); the paddy field is levelled to height 0 (their terraces stepped down to the
-//    south), so our game's objects stand on it;
-//  - the tank (lake) and the flooded paddy plots as one flat water mesh;
+//    south), so our game's objects stand on it. It is the ground teleport area;
+//  - the tank (lake) and the flooded paddy plots as one flat water mesh (plots under our farm
+//    are drained, see FarmLayout);
 //  - houses, granaries, the shed, the temple, the well, haystacks and the wire fence as normal
 //    scene objects (marked Static);
 //  - every other placed thing (plants, trees, rice, rocks, garden fences, small props) as a
-//    PropSet drawn by InstancedProps, with the browser version's distance rules.
+//    PropSet drawn by InstancedProps, with the browser version's distance rules. None are drawn
+//    in the farm's open places and crop plots (FarmLayout).
 // Village coordinates have +z to the south; Unity has +z to the north. See docs/village-port.md.
-// Menu: Night Watch > Build Village. Running it again replaces the old one.
+// Built by Night Watch > Build Full Game, or alone with Night Watch > Build Village.
+// Running it again replaces the old one.
 public static class VillageBuilder
 {
     const string RootName = "Village";
@@ -185,7 +190,6 @@ public static class VillageBuilder
         BuildTerrain(root, ground, level);
         BuildWater(root, ground, level);
         BuildPlacements(root, ground, level);
-        HideOldScenery();
         AssetDatabase.SaveAssets();
     }
 
@@ -291,6 +295,12 @@ public static class VillageBuilder
         terrain.drawInstanced = true;
         terrain.drawTreesAndFoliage = false;   // our own InstancedProps draws the plants
         go.isStatic = true;
+
+        // The whole ground is a teleport target while the player is on it (switched on at run time
+        // by PlayAreaLimit). The starter rig's pointer only accepts the "Teleport" interaction layer.
+        var teleport = go.AddComponent<TeleportationArea>();
+        teleport.interactionLayers = InteractionLayerMask.GetMask("Teleport");
+        teleport.enabled = false;
     }
 
     static Texture2D LoadTexture(string path, bool normalMap)
@@ -335,6 +345,10 @@ public static class VillageBuilder
             }
             else
             {
+                var a = ToUnity(w.x0, 0f, w.z0);
+                var b = ToUnity(w.x1, 0f, w.z1);
+                if (FarmLayout.Drained(Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.z, b.z), Mathf.Max(a.x, b.x), Mathf.Max(a.z, b.z))))
+                    continue;
                 float y = w.y + ground.Shift((w.x0 + w.x1) / 2f, (w.z0 + w.z1) / 2f);
                 int o = points.Count;
                 points.Add(ToUnity(w.x0, y, w.z0));
@@ -377,7 +391,7 @@ public static class VillageBuilder
     {
         var sceneRoot = EditorKit.Group("Buildings", root);
         var groups = new List<PropSet.Group>();
-        int sceneCount = 0;
+        int sceneCount = 0, cleared = 0;
 
         foreach (var g in level.groups)
         {
@@ -401,6 +415,10 @@ public static class VillageBuilder
                 }
                 continue;
             }
+
+            poses = ClearFarm(poses, ref cleared);
+            count = poses.Length / PropSet.PoseSize;
+            if (count == 0) continue;
 
             var rule = Rules.TryGetValue(g.name, out var r) ? r : new Rule(SmallCull, false);
             float size = ModelSize(model) * MaxScale(poses);
@@ -471,7 +489,8 @@ public static class VillageBuilder
         var drawer = plants.AddComponent<InstancedProps>();
         drawer.set = set;
         drawer.cellSize = 48f;
-        Debug.Log($"Night Watch: village has {sceneCount} buildings and {set.Copies} drawn copies in {groups.Count} groups.");
+        Debug.Log($"Night Watch: village has {sceneCount} buildings and {set.Copies} drawn copies in {groups.Count} groups " +
+                  $"({cleared} copies left out of the farm's open places and crop plots).");
     }
 
     static GameObject LoadModel(string name)
@@ -502,6 +521,18 @@ public static class VillageBuilder
             poses[o + 6] = s < 0f ? 1f : s;
         }
         return poses;
+    }
+
+    // Leaves out the copies that stand in the farm's open places and crop plots.
+    static float[] ClearFarm(float[] poses, ref int cleared)
+    {
+        var kept = new List<float>(poses.Length);
+        for (int o = 0; o < poses.Length; o += PropSet.PoseSize)
+        {
+            if (FarmLayout.ClearOfPlants(new Vector3(poses[o], 0f, poses[o + 2]))) { cleared++; continue; }
+            for (int s = 0; s < PropSet.PoseSize; s++) kept.Add(poses[o + s]);
+        }
+        return kept.ToArray();
     }
 
     static float MaxScale(float[] poses)
@@ -575,28 +606,5 @@ public static class VillageBuilder
             }
         }
         return any ? bounds.extents.magnitude : 1f;
-    }
-
-    // ------------------------------------------------------------------ our old scenery
-
-    // Until the game is moved into the village (step 3), hide our coded forest and the look of our
-    // coded ground. The ground keeps its colliders, which are the ground teleport area.
-    static void HideOldScenery()
-    {
-        var forest = GameObject.Find("Blockout/Forest");
-        if (forest != null)
-        {
-            Undo.RecordObject(forest, "Hide forest");
-            forest.SetActive(false);
-        }
-        var groundRoot = GameObject.Find("Blockout/Ground");
-        if (groundRoot != null)
-        {
-            foreach (var r in groundRoot.GetComponentsInChildren<MeshRenderer>(true))
-            {
-                Undo.RecordObject(r, "Hide ground");
-                r.enabled = false;
-            }
-        }
     }
 }

@@ -7,7 +7,7 @@ using UnityEngine;
 
 // One menu item that builds the whole game in the open scene:
 //   Night Watch > Build Full Game
-// It rebuilds the blockout, the night lighting, the field (fence and crop plots), the NavMesh,
+// It rebuilds the Elephant Village (ground, water, buildings, plants), our hut, the night lighting, the field (fence and crop plots), the NavMesh,
 // the elephants and their arrivals, the tools in the hut, the screens, the game managers and
 // the afternoon jobs on the ground (bonfires, fence energiser, task board), the comfort vignette,
 // the neighbour (house door, figure, rice store, phone) and the ending card.
@@ -31,6 +31,8 @@ public static class GameSetup
         foreach (var name in new[] { "HutProps", "Elephant", "ElephantRoute", "Navigation", "Field", "Game" })
             EditorKit.Remove(name);
 
+        // The village first: the hut, the field and the ground jobs stand on its ground.
+        VillageBuilder.Build();
         BlockoutBuilder.Build(false);
         NightLighting.Apply();
         var sun = HutPropsSetup.CreateSun();

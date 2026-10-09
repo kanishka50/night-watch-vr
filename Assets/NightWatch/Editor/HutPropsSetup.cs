@@ -231,7 +231,7 @@ public static class HutPropsSetup
         var rope = EditorKit.Mat("Rope", new Color(0.75f, 0.65f, 0.40f));
         var half = BlockoutBuilder.HutSize / 2f;
 
-        var groundSpot = EditorKit.Empty("GroundSpot", root, new Vector3(0f, 0f, -half - 2f));
+        var groundSpot = EditorKit.Empty("GroundSpot", root, FarmLayout.OnGround(new Vector3(0f, 0f, -half - 2f)));
         var hutSpot = EditorKit.Empty("HutSpot", root, new Vector3(0f, FloorTop, 0.3f));
 
         var top = EditorKit.Part("LadderTop", PrimitiveType.Cube, root, new Vector3(0f, FloorTop + 0.9f, -half + 0.05f),

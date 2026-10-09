@@ -8,6 +8,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 // NavMesh is baked, so these objects do not change the baked map):
 //  - three bonfires at the open sides (east, west and south lanes)
 //  - the fence energiser east of the hut, facing the start, with a cable to the fence
+// Where they stand is in FarmLayout; each is set on the village ground.
 //  - the task board by the ladder and the player's start spot
 public static class GroundPrepSetup
 {
@@ -18,16 +19,13 @@ public static class GroundPrepSetup
     {
         var root = EditorKit.Group("GroundPrep", game);
 
-        // Beside each lane, so elephants walk past within reach of the fire.
-        BuildBonfire(root, "east", new Vector3(22.5f, 0f, -4.5f));
-        BuildBonfire(root, "west", new Vector3(-22.5f, 0f, -4.5f));
-        BuildBonfire(root, "south", new Vector3(-13f, 0f, -23.5f));
+        foreach (var (side, position) in FarmLayout.Bonfires)
+            BuildBonfire(root, side, FarmLayout.OnGround(position));
 
-        // East of the hut, in view from the start spot.
-        BuildEnergiser(root, new Vector3(2.8f, 0f, 0.5f));
-        var board = BuildTaskBoard(root, new Vector3(-1.7f, 1.5f, -2.8f));
+        BuildEnergiser(root, FarmLayout.OnGround(FarmLayout.Energiser));
+        var board = BuildTaskBoard(root, FarmLayout.OnGround(new Vector3(-1.7f, 0f, -2.8f)) + Vector3.up * 1.5f);
 
-        var start = EditorKit.Empty("StartSpot", root, StartPosition);
+        var start = EditorKit.Empty("StartSpot", root, FarmLayout.OnGround(StartPosition));
         var prep = root.gameObject.AddComponent<GroundPrep>();
         prep.startSpot = start;
         prep.tasks = board.tasks;
@@ -164,8 +162,9 @@ public static class GroundPrepSetup
         // A wooden back, so the text does not show mirrored from the hut.
         EditorKit.Part("Back", PrimitiveType.Cube, go.transform, center + Vector3.forward * 0.04f, new Vector3(1.56f, 1f, 0.03f),
             EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
-        EditorKit.Part("Post", PrimitiveType.Cube, go.transform, new Vector3(center.x, (center.y - 0.47f) / 2f, center.z + 0.05f),
-            new Vector3(0.08f, center.y - 0.47f, 0.08f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
+        float ground = center.y - 1.5f;
+        EditorKit.Part("Post", PrimitiveType.Cube, go.transform, new Vector3(center.x, ground + (1.5f - 0.47f) / 2f, center.z + 0.05f),
+            new Vector3(0.08f, 1.5f - 0.47f, 0.08f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
 
         var tasks = EditorKit.Text("Tasks", go.transform, center + Vector3.up * 0.09f, rotation, new Vector2(1.4f, 0.7f), "", 1f);
         var alert = EditorKit.Text("Alert", go.transform, center - Vector3.up * 0.38f, rotation, new Vector2(1.4f, 0.14f), "", 0.8f);

@@ -4,10 +4,10 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
-// Builds a simple shape layout (blockout) of the Night Watch level in the open scene:
-// ground, the watch hut (pela) with its ladder, the forest round the edge and the
-// neighbour's house. North is +Z. The forest has gaps (lanes) on the east, west and south
-// where elephants come in. The fence and crop plots are built by ElephantSetup.
+// Builds our coded shapes (blockout) in the open scene: the watch hut (pela) with its ladder and,
+// until it moves onto a village house (village-port.md step 3e), the neighbour's house.
+// North is +Z. The ground, trees and the rest of the village come from VillageBuilder, which
+// must run first. The fence and crop plots are built by ElephantSetup.
 // Called by Night Watch > Build Full Game (GameSetup). Running it again replaces the old one.
 public static class BlockoutBuilder
 {
@@ -17,7 +17,7 @@ public static class BlockoutBuilder
     public const float HutFloorTop = HutFloorHeight + 0.075f;
     public const float HutSize = 3.2f;
 
-    // Where the elephants' lanes through the forest are.
+    // Where the elephants come in from the east, west and south (spawn points, until step 3d).
     public const float SideLaneZ = -1f;
     public const float SouthLaneX = -10f;
 
@@ -38,7 +38,7 @@ public static class BlockoutBuilder
             Undo.DestroyObjectImmediate(old);
         }
 
-        // The VR template's 10 x 10 m plane is replaced by our own 60 x 60 m ground.
+        // The VR template's 10 x 10 m plane is replaced by the village ground.
         var templatePlane = GameObject.Find("Plane");
         if (templatePlane != null)
         {
@@ -49,9 +49,7 @@ public static class BlockoutBuilder
         var root = new GameObject(RootName);
         Undo.RegisterCreatedObjectUndo(root, "Build Blockout");
 
-        BuildGround(root.transform);
         BuildHut(root.transform);
-        BuildForest(root.transform);
         BuildVillage(root.transform);
 
         foreach (var t in root.GetComponentsInChildren<Transform>())
@@ -68,28 +66,6 @@ public static class BlockoutBuilder
         EditorSceneManager.MarkSceneDirty(root.scene);
         Selection.activeGameObject = root;
         Debug.Log("Night Watch: blockout built. Save the scene with Ctrl+S.");
-    }
-
-    // The ground is made of 10 m tiles, not one big block: each object can only be lit by
-    // 4 lamps or fires at once, so one big block would lose some of the lights.
-    static void BuildGround(Transform root)
-    {
-        var parent = Group("Ground", root);
-        var soil = Mat("Soil", new Color(0.32f, 0.25f, 0.17f));
-        var grass = Mat("Grass", new Color(0.20f, 0.30f, 0.13f));
-        for (float x = -25f; x <= 25f; x += 10f)
-        for (float z = -25f; z <= 25f; z += 10f)
-        {
-            // Bare earth under the paddy field (x -20 to 20, z -12 to 10), grass round it.
-            bool field = Mathf.Abs(x) < 20f && z > -12f && z < 10f;
-            Box("GroundTile", parent, new Vector3(x, -0.1f, z), new Vector3(10f, 0.2f, 10f), field ? soil : grass);
-        }
-        Box("Path", parent, new Vector3(0f, 0.03f, -18f), new Vector3(1.5f, 0.04f, 12f), Mat("Path", new Color(0.55f, 0.45f, 0.32f)));
-
-        // The whole ground is a teleport target while the player is on it (switched on at run time).
-        var teleportArea = parent.gameObject.AddComponent<TeleportationArea>();
-        teleportArea.interactionLayers = InteractionLayerMask.GetMask("Teleport");
-        teleportArea.enabled = false;
     }
 
     // A pela: a small hut on stilts, open on the south side where the ladder is.
@@ -127,49 +103,7 @@ public static class BlockoutBuilder
             Box("Rung", ladder, new Vector3(0f, y, ladderZ), new Vector3(0.5f, 0.04f, 0.04f), wood);
     }
 
-
-    // Dense trees on the north edge (where the elephant comes from) and a ring around the
-    // rest of the map so nobody sees the edges. Fixed seed, so the layout is the same each run.
-    static void BuildForest(Transform root)
-    {
-        var parent = Group("Forest", root);
-        var trunk = Mat("TreeTrunk", new Color(0.30f, 0.22f, 0.14f));
-        var leaves = Mat("TreeLeaves", new Color(0.12f, 0.30f, 0.12f));
-
-        var oldState = Random.state;
-        Random.InitState(42);
-
-        // North forest band. A gap is left in the middle so the elephant has a way out.
-        for (int i = 0; i < 70; i++)
-        {
-            float x = Random.Range(-29f, 29f);
-            float z = Random.Range(16f, 29f);
-            if (Mathf.Abs(x) < 3f && z < 22f) continue;
-            Tree(parent, x, z, trunk, leaves);
-        }
-
-        // East and west edges, with a lane in each where elephants come in.
-        for (int i = 0; i < 25; i++)
-        {
-            float zEast = Random.Range(-29f, 16f);
-            float zWest = Random.Range(-29f, 16f);
-            if (Mathf.Abs(zEast - SideLaneZ) > 3.5f) Tree(parent, Random.Range(25.5f, 29.5f), zEast, trunk, leaves);
-            if (Mathf.Abs(zWest - SideLaneZ) > 3.5f) Tree(parent, Random.Range(-29.5f, -25.5f), zWest, trunk, leaves);
-        }
-
-        // South edge, leaving space for the village and a lane for elephants.
-        for (int i = 0; i < 20; i++)
-        {
-            float x = Random.Range(-25f, 25f);
-            if (x > -2f && x < 9f) continue;
-            if (Mathf.Abs(x - SouthLaneX) < 3.5f) continue;
-            Tree(parent, x, Random.Range(-29.5f, -27f), trunk, leaves);
-        }
-
-        Random.state = oldState;
-    }
-
-    // The neighbour's house, 16 m south-east of the hut, just past the canal, so the player can
+    // The neighbour's house, 16 m south-east of the hut, on a bund of the paddy field, so the player can
     // help from the hut (a cracker's bang reaches 15 m). Its door and window face the hut.
     // The door, the neighbour and the rice store are built by NeighbourSetup.
     public static readonly Vector3 HouseCenter = new Vector3(7f, 0f, -17.5f);
@@ -202,7 +136,7 @@ public static class BlockoutBuilder
             return;
         }
         Undo.RecordObject(rig.transform, "Move player to the start");
-        rig.transform.SetPositionAndRotation(GroundPrepSetup.StartPosition, Quaternion.identity);
+        rig.transform.SetPositionAndRotation(FarmLayout.OnGround(GroundPrepSetup.StartPosition), Quaternion.identity);
 
         // Keep the player's head over the hut floor, with a small margin from the edge.
         var limit = rig.GetComponent<PlayAreaLimit>();
@@ -214,19 +148,11 @@ public static class BlockoutBuilder
         limit.areaSize = new Vector2(HutSize - 0.4f, HutSize - 0.4f);
         var blockout = GameObject.Find(RootName).transform;
         limit.hutFloor = blockout.Find("WatchHut/Floor").GetComponent<TeleportationArea>();
-        limit.groundArea = blockout.Find("Ground").GetComponent<TeleportationArea>();
+        // On the ground, the whole village terrain is the teleport target.
+        var terrain = GameObject.Find("Village/Terrain");
+        limit.groundArea = terrain != null ? terrain.GetComponent<TeleportationArea>() : null;
+        if (limit.groundArea == null) Debug.LogWarning("Night Watch: no Village/Terrain teleport area. Build the village first.");
         PrefabUtility.RecordPrefabInstancePropertyModifications(limit);
-    }
-
-    static void Tree(Transform parent, float x, float z, Material trunk, Material leaves)
-    {
-        float height = Random.Range(3f, 5f);
-        var tree = Group("Tree", parent);
-        tree.localPosition = new Vector3(x, 0f, z);
-        Post("Trunk", tree, 0f, 0f, 0f, height, 0.35f, trunk);
-        float size = Random.Range(2.5f, 4f);
-        var crown = Box("Crown", tree, new Vector3(0f, height + size * 0.3f, 0f), new Vector3(size, size * 1.2f, size), leaves, PrimitiveType.Sphere);
-        Object.DestroyImmediate(crown.GetComponent<Collider>());
     }
 
     static Transform Group(string name, Transform parent)

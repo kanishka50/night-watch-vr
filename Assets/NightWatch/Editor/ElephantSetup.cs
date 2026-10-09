@@ -6,7 +6,7 @@ using UnityEngine.AI;
 
 // Builds the field and the elephants (called by Night Watch > Build Full Game):
 //  - the electric fence on the north side, in sections that block elephants until broken
-//  - three crop plots (west, centre, east) that elephants eat
+//  - three crop plots beside the hut that elephants eat
 //  - the NavMesh (the map of walkable ground)
 //  - the four spawn points, a hidden stand-in elephant to copy, and the arrival manager
 public static class ElephantSetup
@@ -14,6 +14,7 @@ public static class ElephantSetup
     const float FenceZ = 12f;
     const float SectionLength = 4f;
     const string NavMeshPath = "Assets/NightWatch/NightWatchNavMesh.asset";
+    const float NavMeshSize = 100f;
 
     public static void BuildField()
     {
@@ -27,36 +28,29 @@ public static class ElephantSetup
         BuildFence(root);
     }
 
-    // The field: three plots of ripening paddy (west, centre, east), as in a Sri Lankan kumbura.
+    // The field: three plots of ripening paddy in the village's paddy field, beside the hut
+    // (FarmLayout.CropPlots). The village's own bunds (niyara) and drained ground are round them.
     //  - rice plants in rows, one mesh per plot (one draw call, light enough for this laptop)
-    //  - earth ridges (niyara) round the plots and across the middle
-    //  - a small canal (ela) along the south edge, with a plank where the path crosses
     // Each plot shrinks and turns brown as it is eaten (CropPlot).
     static void BuildCropPlots(Transform root)
     {
         var parent = EditorKit.Group("CropPlots", root);
-        var floorMat = EditorKit.Mat("PaddyFloor", new Color(0.24f, 0.26f, 0.14f));
         var plantMat = PlantMaterial();
-        float[] edges = { -20f, -7f, 7f, 20f };
-        string[] names = { "Plot_West", "Plot_Centre", "Plot_East" };
 
-        for (int i = 0; i < 3; i++)
+        foreach (var (name, area) in FarmLayout.CropPlots)
         {
-            float width = edges[i + 1] - edges[i];
-            var plot = EditorKit.Empty(names[i], parent, new Vector3((edges[i] + edges[i + 1]) / 2f, 0f, FieldCenterZ));
-            var area = plot.gameObject.AddComponent<BoxCollider>();
-            area.isTrigger = true;
-            area.center = new Vector3(0f, 0.5f, 0f);
-            area.size = new Vector3(width, 1f, FieldLength);
-
-            // Wet, dark ground under the plants.
-            EditorKit.Part("Floor", PrimitiveType.Cube, plot, new Vector3(0f, 0.01f, 0f),
-                new Vector3(width - 0.4f, 0.02f, FieldLength - 0.4f), floorMat, false);
+            var center = FarmLayout.OnGround(new Vector3(area.center.x, 0f, area.center.y));
+            var plot = EditorKit.Empty(name, parent, center);
+            var trigger = plot.gameObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.center = new Vector3(0f, 0.5f, 0f);
+            trigger.size = new Vector3(area.width, 1f, area.height);
 
             // The plants grow from y = 0, so the crop shrinks downward from the top.
+            // They keep off the bunds, which are about 1 m wide.
             var crop = new GameObject("Crop");
             crop.transform.SetParent(plot, false);
-            crop.AddComponent<MeshFilter>().sharedMesh = PlantMesh(names[i], plot.position, width - 0.6f, FieldLength - 0.6f);
+            crop.AddComponent<MeshFilter>().sharedMesh = PlantMesh(name, plot.position, area.width - 2f * BundMargin, area.height - 2f * BundMargin);
             crop.AddComponent<MeshRenderer>().sharedMaterial = plantMat;
 
             var cp = plot.gameObject.AddComponent<CropPlot>();
@@ -64,22 +58,16 @@ public static class ElephantSetup
             cp.pivotAtBase = true;
             cp.fullColor = new Color(0.50f, 0.60f, 0.22f);
         }
-
-        BuildRidges(parent, edges);
-        BuildCanal(parent, edges[0], edges[3]);
     }
 
-    const float FieldCenterZ = -1f;
-    const float FieldLength = 22f;
+    const float BundMargin = 0.7f;
     const float RowSpacing = 0.45f;
     const float PlantSpacing = 0.35f;
     const string MeshFolder = "Assets/NightWatch/Meshes";
 
-    // The yard round the hut, where nothing is planted (start spot, task board, energiser).
-    static bool InYard(Vector3 world) => world.x > -3f && world.x < 3.5f && world.z > -8.5f && world.z < 3.5f;
-
     // Rows of rice plants. Each plant is two crossed upright quads. All normals point up, so the
     // plants are lit evenly from both sides like a soft field, not as dark flat cards.
+    // None in the farm's open places (the yard and the paths, FarmLayout).
     static Mesh PlantMesh(string name, Vector3 plotCenter, float width, float length)
     {
         var vertices = new List<Vector3>();
@@ -92,9 +80,7 @@ public static class ElephantSetup
         for (float z = -length / 2f; z <= length / 2f; z += PlantSpacing)
         {
             var p = new Vector3(x + Random.Range(-0.05f, 0.05f), 0f, z + Random.Range(-0.08f, 0.08f));
-            var world = plotCenter + p;
-            if (InYard(world)) continue;
-            if (Mathf.Abs(world.z - FieldCenterZ) < 0.35f) continue;   // the middle ridge
+            if (FarmLayout.IsOpen(plotCenter + p)) continue;
 
             float height = Random.Range(0.6f, 0.8f);
             float half = Random.Range(0.12f, 0.16f);
@@ -138,36 +124,6 @@ public static class ElephantSetup
         return mat;
     }
 
-    // Low earth ridges (niyara) round the plots and across the middle. No colliders: elephants
-    // walk over them and the teleport pointer lands on the ground.
-    static void BuildRidges(Transform parent, float[] edges)
-    {
-        var group = EditorKit.Group("Ridges", parent);
-        var earth = EditorKit.Mat("Ridge", new Color(0.36f, 0.30f, 0.20f));
-        float minX = edges[0], maxX = edges[edges.Length - 1];
-        float minZ = FieldCenterZ - FieldLength / 2f, maxZ = FieldCenterZ + FieldLength / 2f;
-
-        foreach (var x in edges)
-            EditorKit.Part("Ridge", PrimitiveType.Cube, group, new Vector3(x, 0.1f, FieldCenterZ),
-                new Vector3(0.4f, 0.2f, FieldLength + 0.4f), earth, false);
-        foreach (var z in new[] { minZ, FieldCenterZ, maxZ })
-            EditorKit.Part("Ridge", PrimitiveType.Cube, group, new Vector3((minX + maxX) / 2f, 0.1f, z),
-                new Vector3(maxX - minX, 0.2f, 0.4f), earth, false);
-    }
-
-    // A small irrigation canal (ela) just south of the field, and a plank for the path.
-    static void BuildCanal(Transform parent, float minX, float maxX)
-    {
-        float z = FieldCenterZ - FieldLength / 2f - 1f;
-        var water = EditorKit.Mat("CanalWater", new Color(0.10f, 0.16f, 0.18f));
-        water.SetFloat("_Smoothness", 0.9f);
-        EditorUtility.SetDirty(water);
-        EditorKit.Part("Canal", PrimitiveType.Cube, parent, new Vector3((minX + maxX) / 2f, 0.015f, z),
-            new Vector3(maxX - minX, 0.02f, 1f), water, false);
-        EditorKit.Part("Plank", PrimitiveType.Cube, parent, new Vector3(0f, 0.05f, z),
-            new Vector3(1.6f, 0.06f, 1.4f), EditorKit.Mat("Wood", new Color(0.45f, 0.30f, 0.16f)), false);
-    }
-
     static void BuildFence(Transform root)
     {
         var parent = EditorKit.Group("ElectricFence", root);
@@ -203,8 +159,11 @@ public static class ElephantSetup
         var navigation = EditorKit.Group("Navigation", null);
         var surface = navigation.gameObject.AddComponent<NavMeshSurface>();
         // Colliders, not visible meshes: tree crowns have no collider, so only trunks block the way.
-        surface.collectObjects = CollectObjects.All;
         surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+        // Only the farm round the hut, not the whole 280 m village terrain (faster to bake).
+        surface.collectObjects = CollectObjects.Volume;
+        surface.center = new Vector3(0f, 5f, 0f);
+        surface.size = new Vector3(NavMeshSize, 40f, NavMeshSize);
         surface.BuildNavMesh();
 
         // Save the result as an asset so the scene keeps it after closing.
