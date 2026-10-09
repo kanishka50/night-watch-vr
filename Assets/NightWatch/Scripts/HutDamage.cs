@@ -20,6 +20,7 @@ public class HutDamage : MonoBehaviour
     Vector3 home;
     Quaternion targetRotation;
     float shakeTimer;
+    float shakeScale = 1f;
     bool collapsed;
 
     void Awake()
@@ -38,7 +39,7 @@ public class HutDamage : MonoBehaviour
         if (shakeTimer > 0f)
         {
             shakeTimer -= Time.deltaTime;
-            float k = shakeAmount * (shakeTimer / shakeSeconds);
+            float k = shakeAmount * shakeScale * (shakeTimer / shakeSeconds);
             transform.position = home + new Vector3(Mathf.Sin(Time.time * 60f) * k, 0f, Mathf.Cos(Time.time * 47f) * k);
         }
         else
@@ -51,11 +52,19 @@ public class HutDamage : MonoBehaviour
     public void TakeHit(int hits, Vector3 from)
     {
         shakeTimer = shakeSeconds;
+        shakeScale = 1f;
         var away = Away(from);
         Dust(home - away * 1.8f + Vector3.up * 1f);
 
         if (hits == 1) BreakSide(from);
         else if (hits >= 2) Lean(away);
+    }
+
+    // A shake with no damage (the story film's bull). scale = how much more than a game hit.
+    public void Shake(float scale)
+    {
+        shakeTimer = shakeSeconds;
+        shakeScale = scale;
     }
 
     // The part of the hut facing the elephant breaks off and falls.

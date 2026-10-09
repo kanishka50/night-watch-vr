@@ -335,6 +335,8 @@ public static class VillageBuilder
     // ------------------------------------------------------------------ water
 
     // One flat mesh: the tank (an ellipse) and the flooded paddy plots (rectangles).
+    static readonly Color WaterColor = new Color(0.20f, 0.45f, 0.60f);
+
     static void BuildWater(Transform root, Ground ground, Level level)
     {
         var points = new List<Vector3>();
@@ -387,8 +389,10 @@ public static class VillageBuilder
         mesh.RecalculateBounds();
         AssetDatabase.CreateAsset(mesh, meshPath);
 
-        var mat = EditorKit.Mat("VillageWater", new Color(0.05f, 0.09f, 0.10f));
-        mat.SetFloat("_Smoothness", 0.92f);
+        // Lake blue (the old near-black water only mirrored the sunset sky and looked brown).
+        var mat = EditorKit.Mat("VillageWater", WaterColor);
+        mat.SetColor("_BaseColor", WaterColor);
+        mat.SetFloat("_Smoothness", 0.8f);
         EditorUtility.SetDirty(mat);
 
         var go = new GameObject("Water");

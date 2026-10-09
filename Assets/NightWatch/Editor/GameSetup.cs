@@ -11,7 +11,8 @@ using UnityEngine;
 // the elephants and their arrivals, the tools in the hut, the screens, the game managers and
 // the afternoon jobs on the ground (bonfires, fence energiser, task board), the comfort vignette,
 // the neighbour (house door, figure, rice store, phone), the ending card, the start screen and the
-// story at the beginning (StoryIntro, told on an ola leaf) and the story film's director.
+// story at the beginning (StoryIntro, told on an ola leaf; switched off now), the story film's
+// director and the film show on a cloth screen that replaces the ola leaf (StoryFilm).
 // Running it again replaces everything it made before.
 public static class GameSetup
 {
@@ -64,6 +65,7 @@ public static class GameSetup
         StartScreenSetup.Build(game);
         StoryIntroSetup.Build(game);
         FilmDirectorSetup.Build(game);
+        StoryFilmSetup.Build(game);
         TextureKit.FitUVs();
 
         AddSceneToBuild();

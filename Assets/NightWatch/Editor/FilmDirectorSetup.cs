@@ -7,11 +7,13 @@ using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
 // Builds the story film's director (docs/story-film.md): the film camera, the screen on it
-// (cinema bars, the black fade, the title card in gold with a small ornament, the caption in the
-// bottom bar), the film's oil lamp in the pela and the shot list. Called by Night Watch > Build
-// Full Game, and on its own by Night Watch > Story Film > Add Film Director (no full rebuild needed).
+// (cinema bars, the black fade, the title card in gold, the caption in the
+// bottom bar), the film's oil lamp in the pela, the shot list and the elephant actors. Called by
+// Night Watch > Build Full Game, and on its own by Night Watch > Story Film > Add Film Parts (with
+// the film screen in the game, StoryFilmSetup; no full rebuild needed).
 // Night Watch > Story Film > Preview presses Play and runs the film once in the Game view.
 // Night Watch > Story Film > Stills saves one picture per second for the contact sheet.
+// Night Watch > Story Film > Record saves every frame (30 fps) for the MP4 (tools/film_make.py video).
 public static class FilmDirectorSetup
 {
     const string GameScene = "Assets/Scenes/NightWatch.unity";
@@ -50,7 +52,7 @@ public static class FilmDirectorSetup
         {
             name = "2 The stupa", seconds = 8f, orbit = true,
             center = new Vector3(106.5f, 3f, 53.5f), radius = 20f, height = 24f, fromAngle = 190f, toAngle = 250f,
-            timeOfDay = LateAfternoon, fog = ClearFog, caption = "Harvest time",
+            timeOfDay = LateAfternoon, fog = ClearFog, caption = "The village temple (dagaba)",
         },
         Card("3 Card", "The rice is ripe.\nA family's whole year grows in this field."),
         // Low along a bund south of the crop plots, toward the pela (a haystack stands by the
@@ -60,10 +62,10 @@ public static class FilmDirectorSetup
             name = "4 The paddy and the pela", seconds = 8f,
             from = new Vector3(-34f, 1.5f, -17.5f), to = new Vector3(-18f, 1.5f, -17.5f),
             lookFrom = new Vector3(-12f, 1f, -10f), lookTo = new Vector3(0f, 3.5f, 0f),
-            timeOfDay = Dusk, fog = DuskFog,
+            timeOfDay = Dusk, fog = DuskFog, caption = "The pela, a watch hut on stilts",
         },
         Card("5 Card", "At night, hungry elephants\nleave the jungle."),
-        // On the bund, looking south to the jungle edge, a slow push in. The herd comes in step 3.
+        // On the bund, looking south to the jungle edge, a slow push in, as the herd comes out.
         new FilmDirector.Shot
         {
             name = "6 The herd leaves the jungle", seconds = 10f,
@@ -91,7 +93,7 @@ public static class FilmDirectorSetup
             name = "8b The pela shakes", seconds = 2.5f, cutIn = true,
             from = new Vector3(7f, 1.7f, -4f), to = new Vector3(6.5f, 1.7f, -3.5f),
             lookFrom = new Vector3(0f, 2.6f, -1.2f), lookTo = new Vector3(0f, 2.6f, -1f),
-            timeOfDay = Night, fog = NightFog, lamp = true,
+            timeOfDay = Night, fog = NightFog, lamp = true, hutHitAt = BullHitAt, shake = 0.08f,
         },
         Card("9 Card", "When no one keeps watch,\npeople and elephants get hurt."),
         // The pela with its lamp, pulling back and up until the dark field swallows it.
@@ -108,8 +110,62 @@ public static class FilmDirectorSetup
     static FilmDirector.Shot Card(string name, string title, string subtitle = "", bool big = false) =>
         new FilmDirector.Shot { name = name, seconds = 5f, card = true, title = title, subtitle = subtitle, bigTitle = big };
 
-    [MenuItem("Night Watch/Story Film/Add Film Director")]
-    static void AddFilmDirector()
+    // Seconds into shot 8b when the bull's head hits the pela (StoryFilmSetup's bang uses it too).
+    public const float BullHitAt = 0.5f;
+
+    // The elephants (x and z of the paths on the ground). Positions from world.json: the herd
+    // walks out of the jungle in single file through the 7 m gap between the trees at x = -13
+    // and x = -6 (a rock at (-10.2, -64.5)); cows and the calf have no tusks, the bull has.
+    static FilmDirector.Actor[] Actors() => new[]
+    {
+        new FilmDirector.Actor { name = "Cow", shot = "6 The herd leaves the jungle",
+            from = new Vector3(-9.6f, 0f, -62f), to = new Vector3(-11.2f, 0f, -50f), moveStart = 0.8f, moveEnd = 9f },
+        new FilmDirector.Actor { name = "Calf", shot = "6 The herd leaves the jungle", size = 0.55f,
+            from = new Vector3(-8.8f, 0f, -66.5f), to = new Vector3(-9.6f, 0f, -55.5f), moveStart = 2.5f, moveEnd = 10f },
+        new FilmDirector.Actor { name = "Cow2", shot = "6 The herd leaves the jungle",
+            from = new Vector3(-8.4f, 0f, -71f), to = new Vector3(-8.3f, 0f, -61f), moveStart = 3f, moveEnd = 10f },
+
+        // Grazing slowly through the south-west crop plot (x -9.25..0, z -8.75..0), clear of the
+        // pela at its north-east corner (the hut reaches x and z = -1.6), all facing the camera side
+        // (south) so their heads and trunks show.
+        new FilmDirector.Actor { name = "Cow", shot = "7 The herd eats the rice", eat = true,
+            from = new Vector3(-6.4f, 0f, -3.6f), to = new Vector3(-7.1f, 0f, -5.1f), moveStart = 0f, moveEnd = 7f },
+        new FilmDirector.Actor { name = "Cow2", shot = "7 The herd eats the rice", eat = true,
+            from = new Vector3(-3f, 0f, -2.6f), to = new Vector3(-3.6f, 0f, -3.4f), moveStart = 0f, moveEnd = 7f },
+        new FilmDirector.Actor { name = "Calf", shot = "7 The herd eats the rice", size = 0.55f, eat = true,
+            from = new Vector3(-2.9f, 0f, -6.2f), to = new Vector3(-3.1f, 0f, -6.9f), moveStart = 0f, moveEnd = 7f },
+
+        // The bull runs up the bund at x = 0 toward the ladder side, ahead of the camera, then
+        // (after the cut) rears up as its head hits the pela.
+        new FilmDirector.Actor { name = "Bull", shot = "8a The bull charges", size = 1.1f, tusks = true, run = true,
+            from = new Vector3(-0.8f, 0f, -19f), to = new Vector3(-0.3f, 0f, -4.8f), moveStart = 0f, moveEnd = 4.5f },
+        new FilmDirector.Actor { name = "Bull", shot = "8b The pela shakes", size = 1.1f, tusks = true,
+            from = new Vector3(-0.3f, 0f, -4.8f), to = new Vector3(-0.3f, 0f, -4.5f), moveStart = 0f, moveEnd = 0.4f,
+            attackAt = 0.1f },
+    };
+
+    // When a shot starts in the film (seconds), by the start of its name ("8b").
+    public static float ShotStart(string name)
+    {
+        float time = 0f;
+        foreach (var shot in Shots())
+        {
+            if (shot.name.StartsWith(name + " ")) return time;
+            time += shot.seconds;
+        }
+        Debug.LogWarning($"Night Watch: no film shot called {name}.");
+        return 0f;
+    }
+
+    public static float FilmLength()
+    {
+        float time = 0f;
+        foreach (var shot in Shots()) time += shot.seconds;
+        return time;
+    }
+
+    [MenuItem("Night Watch/Story Film/Add Film Parts")]
+    static void AddFilmParts()
     {
         if (EditorApplication.isPlaying)
         {
@@ -127,11 +183,15 @@ public static class FilmDirectorSetup
             EditorUtility.DisplayDialog("Night Watch", "No Game object in the scene. Run Night Watch > Build Full Game first.", "OK");
             return;
         }
-        var old = game.transform.Find("FilmDirector");
-        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+        foreach (var name in new[] { "FilmDirector", "StoryFilm" })
+        {
+            var old = game.transform.Find(name);
+            if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+        }
         Build(game.transform);
+        StoryFilmSetup.Build(game.transform);
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
-        Debug.Log("Night Watch: film director added. Save the scene with Ctrl+S.");
+        Debug.Log("Night Watch: film director and film screen added. Save the scene with Ctrl+S.");
     }
 
     [MenuItem("Night Watch/Story Film/Preview")]
@@ -140,18 +200,22 @@ public static class FilmDirectorSetup
     [MenuItem("Night Watch/Story Film/Stills")]
     static void Stills() => Run(FilmDirector.Mode.Stills);
 
+    [MenuItem("Night Watch/Story Film/Record")]
+    static void Record() => Run(FilmDirector.Mode.Record);
+
     // Presses Play and runs the film in this mode (or runs it at once if already playing).
     static void Run(FilmDirector.Mode mode)
     {
         var director = Object.FindAnyObjectByType<FilmDirector>(FindObjectsInactive.Include);
         if (director == null)
         {
-            EditorUtility.DisplayDialog("Night Watch", "No film director in the scene. Run Night Watch > Story Film > Add Film Director first.", "OK");
+            EditorUtility.DisplayDialog("Night Watch", "No film director in the scene. Run Night Watch > Story Film > Add Film Parts first.", "OK");
             return;
         }
         if (EditorApplication.isPlaying)
         {
             if (mode == FilmDirector.Mode.Stills) director.SaveStills();
+            else if (mode == FilmDirector.Mode.Record) director.RecordFilm();
             else director.PlayFilm();
             return;
         }
@@ -164,6 +228,11 @@ public static class FilmDirectorSetup
         var root = EditorKit.Group("FilmDirector", game);
         var director = root.gameObject.AddComponent<FilmDirector>();
         director.shots = Shots();
+        director.actors = Actors();
+        // Transform.Find also finds the hidden elephant template (GameObject.Find does not).
+        director.elephantModel = game.Find("ElephantTemplate/Model")?.gameObject;
+        if (director.elephantModel == null)
+            Debug.LogWarning("Night Watch: the film has no elephant model (Game/ElephantTemplate/Model). Build the whole game.");
 
         // The film camera: a normal camera above the VR one (drawn last, so it fills the view).
         var camGo = new GameObject("FilmCamera");
@@ -234,22 +303,16 @@ public static class FilmDirectorSetup
         Box("BarTop", screen, new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -BarHeight), Vector2.zero, Color.black);
         Box("BarBottom", screen, Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, BarHeight), Color.black);
 
-        // The title card: the line above, a thin gold line with a lotus-like row of dots, then
-        // the small line below.
+        // The title card: text only (Kanishka: no line or dots under it), the line above and the
+        // small line below.
         var cardRect = Rect("Card", screen, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         director.card = cardRect.gameObject.AddComponent<CanvasGroup>();
         director.card.alpha = 0f;
 
-        director.cardTitle = Text("Title", cardRect, new Vector2(0f, 30f), new Vector2(0.5f, 0f), font, Gold, 52f, 6f,
+        director.cardTitle = Text("Title", cardRect, new Vector2(0f, 14f), new Vector2(0.5f, 0f), font, Gold, 52f, 6f,
             TextAlignmentOptions.Bottom);
-        director.cardSubtitle = Text("Subtitle", cardRect, new Vector2(0f, -32f), new Vector2(0.5f, 1f), font, PaleGold, 36f, 3f,
+        director.cardSubtitle = Text("Subtitle", cardRect, new Vector2(0f, -14f), new Vector2(0.5f, 1f), font, PaleGold, 36f, 3f,
             TextAlignmentOptions.Top);
-
-        var ornament = Rect("Ornament", cardRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
-        Box("Line", ornament, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -1f), new Vector2(220f, 1f), Gold);
-        Dot(ornament, 0f, 16f);
-        foreach (var x in new[] { -28f, 28f }) Dot(ornament, x, 8f);
-        foreach (var x in new[] { -232f, 232f }) Dot(ornament, x, 6f);
 
         // The caption, in the bottom bar.
         director.caption = Text("Caption", screen, Vector2.zero, new Vector2(0.5f, 0.5f), font, CaptionGrey, 30f, 2f,
@@ -284,15 +347,6 @@ public static class FilmDirectorSetup
         image.color = color;
         image.raycastTarget = false;
         return image;
-    }
-
-    // A small gold diamond on the ornament line.
-    static void Dot(Transform parent, float x, float size)
-    {
-        var dot = Box("Dot", parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-size, -size) * 0.5f,
-            new Vector2(size, size) * 0.5f, Gold);
-        dot.rectTransform.anchoredPosition = new Vector2(x, 0f);
-        dot.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 45f);
     }
 
     static TextMeshProUGUI Text(string name, Transform parent, Vector2 position, Vector2 pivot, TMP_FontAsset font,

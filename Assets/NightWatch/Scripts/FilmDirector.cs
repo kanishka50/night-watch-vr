@@ -9,13 +9,16 @@ using UnityEngine.UI;
 // The story film (docs/story-film.md). Runs a list of shots with its own camera (a normal
 // camera, not the VR one): title cards on black, and camera shots that glide from one spot to
 // another (or circle a point) with their own time of day and a caption in the bottom cinema bar.
+// Actors are copies of the elephant model moved along set paths (no AI, no NavMesh); the herd
+// really eats and flattens the rice, and the bull's hit shakes the hut (no damage).
 // Night Watch > Story Film > Preview presses Play and runs the film once in the Game view.
 // Night Watch > Story Film > Stills saves one picture per second of the film (for the contact
-// sheet, tools/film_make.py) and stops Play when done.
-// While it runs the game stays quiet: no story intro, no START screen, the VR camera draws nothing.
+// sheet, tools/film_make.py sheet). Night Watch > Story Film > Record saves every frame at 30 fps
+// (tools/film_make.py video makes the MP4). Both stop Play when done.
+// While it runs the game stays quiet: no story, no START screen, the VR camera draws nothing.
 public class FilmDirector : MonoBehaviour
 {
-    public enum Mode { Off, Preview, Stills }
+    public enum Mode { Off, Preview, Stills, Record }
 
     [Serializable]
     public class Shot
@@ -57,14 +60,44 @@ public class FilmDirector : MonoBehaviour
         public bool cutIn;
         [Tooltip("The oil lamp burns in the pela.")]
         public bool lamp;
+        [Tooltip("Seconds into the shot when an elephant hits the hut: it shakes, dust flies (no damage). -1 = none.")]
+        public float hutHitAt = -1f;
+        [Tooltip("How much the camera shakes at the hut hit (m).")]
+        public float shake;
     }
 
-    // Night Watch > Story Film > Preview / Stills puts the mode here for the next Play session.
+    // An elephant in one shot: walks (or runs) from one point to another between two moments of
+    // the shot and stands at either end. Eating ones lower their heads into the rice.
+    [Serializable]
+    public class Actor
+    {
+        public string name;
+        [Tooltip("The name of the shot it plays in.")]
+        public string shot;
+        [Tooltip("1 = an adult (as the game's elephants), 0.55 = a calf.")]
+        public float size = 1f;
+        public bool tusks;
+        [Tooltip("Start and end points (x, z; standing on the ground).")]
+        public Vector3 from;
+        public Vector3 to;
+        [Tooltip("Seconds into the shot when it leaves 'from' and reaches 'to'.")]
+        public float moveStart;
+        public float moveEnd = 8f;
+        public bool run;
+        [Tooltip("Eats the rice in front of it while in a crop plot.")]
+        public bool eat;
+        [Tooltip("Seconds into the shot when it rears up (Attack clip). -1 = never.")]
+        public float attackAt = -1f;
+    }
+
+    // Night Watch > Story Film > Preview / Stills / Record puts the mode here for the next Play session.
     public const string ModeKey = "NightWatch.FilmMode";
     // The film screen (bars, cards, captions) is on Unity's UI layer; title cards draw only it.
     public const int ScreenLayer = 5;
+    public const int FramesPerSecond = 30;
 
     public Shot[] shots;
+    public Actor[] actors;
 
     [Header("Parts")]
     public Camera filmCamera;
@@ -77,6 +110,8 @@ public class FilmDirector : MonoBehaviour
     [Tooltip("The film's own oil lamp in the pela (off unless a shot asks for it).")]
     public GameObject lamp;
     public Light lampLight;
+    [Tooltip("The elephant model to copy for the actors (the template's Model).")]
+    public GameObject elephantModel;
 
     [Header("Look")]
     public float fadeSeconds = 0.8f;
@@ -85,9 +120,11 @@ public class FilmDirector : MonoBehaviour
     [Tooltip("The caption appears this long after its shot starts.")]
     public float captionDelay = 1f;
     public float lampIntensity = 2.5f;
+    [Tooltip("How much faster than in the game the film's herd eats, so it shows in a few seconds.")]
+    public float eatSpeed = 2.5f;
 
     [Header("Saving pictures")]
-    [Tooltip("Stills go to <folder>\\stills (C: is short of space, so D:).")]
+    [Tooltip("Stills go to <folder>\\stills and frames to <folder>\\frames (C: is short of space, so D:).")]
     public string outputFolder = @"D:\NightWatchFilm";
     public int pictureWidth = 1920;
     public int pictureHeight = 1080;
@@ -105,13 +142,26 @@ public class FilmDirector : MonoBehaviour
         }
     }
 
+    // One actor in the scene while the film runs.
+    class Cast
+    {
+        public Actor actor;
+        public Transform root;
+        public Animator animator;
+        public string playing;
+    }
+
     StoryIntro intro;
+    StoryFilm storyFilm;
     DayNightCycle dayNight;
     Camera gameCamera;
     int gameCameraMask;
     bool startScreenWasShowing;
     Shot shown;
     Coroutine running;
+    GameObject monitor;
+    readonly List<Cast> cast = new List<Cast>();
+    readonly HashSet<Shot> hutHitDone = new HashSet<Shot>();
     // Game parts hidden while the film runs (labels, board texts, the VR hands and their rays).
     readonly List<Behaviour> hiddenTexts = new List<Behaviour>();
     readonly List<Renderer> hiddenRenderers = new List<Renderer>();
@@ -119,6 +169,7 @@ public class FilmDirector : MonoBehaviour
     void Awake()
     {
         intro = FindAnyObjectByType<StoryIntro>();
+        storyFilm = FindAnyObjectByType<StoryFilm>();
         dayNight = FindAnyObjectByType<DayNightCycle>();
         if (filmCamera != null) filmCamera.gameObject.SetActive(false);
         if (lamp != null) lamp.SetActive(false);
@@ -128,19 +179,23 @@ public class FilmDirector : MonoBehaviour
         UnityEditor.SessionState.EraseInt(ModeKey);
 #endif
         if (CurrentMode == Mode.Off) return;
-        // Before the story's own Start: it must not begin at all.
+        // Before their own Start: the story intro and the film show in the game must not begin.
         if (intro != null) intro.play = false;
+        if (storyFilm != null) storyFilm.play = false;
     }
 
     void Start()
     {
         if (CurrentMode == Mode.Preview) PlayFilm();
         else if (CurrentMode == Mode.Stills) SaveStills();
+        else if (CurrentMode == Mode.Record) RecordFilm();
     }
 
     public void PlayFilm() => Begin(Run());
 
-    public void SaveStills() => Begin(Stills());
+    public void SaveStills() => Begin(SavePictures(false));
+
+    public void RecordFilm() => Begin(SavePictures(true));
 
     void Begin(IEnumerator job)
     {
@@ -177,48 +232,59 @@ public class FilmDirector : MonoBehaviour
         Debug.Log("Night Watch film: done.");
     }
 
-    // One picture in the middle of every second of the film, saved as JPG, plus index.txt
-    // (picture, time, shot) for the contact sheet.
-    IEnumerator Stills()
+    // Stills: one picture in the middle of every second, plus index.txt (picture, time, shot)
+    // for the contact sheet. Record: every frame at 30 fps, with fixed time steps
+    // (Time.captureFramerate), so slow drawing on the laptop does not matter.
+    IEnumerator SavePictures(bool everyFrame)
     {
         yield return Prepare();
-        string folder = Path.Combine(outputFolder, "stills");
+        string folder = Path.Combine(outputFolder, everyFrame ? "frames" : "stills");
+        string prefix = everyFrame ? "frame_" : "still_";
         Directory.CreateDirectory(folder);
-        foreach (var old in Directory.GetFiles(folder, "still_*.jpg")) File.Delete(old);
+        foreach (var old in Directory.GetFiles(folder, prefix + "*.jpg")) File.Delete(old);
 
         var target = new RenderTexture(pictureWidth, pictureHeight, 24);
         filmCamera.targetTexture = target;
+        ShowMonitor(target);
         var picture = new Texture2D(pictureWidth, pictureHeight, TextureFormat.RGB24, false);
         var index = new List<string>();
         float length = Length;
-        Debug.Log($"Night Watch film: saving {Mathf.CeilToInt(length)} stills to {folder} ...");
+        int count = everyFrame ? Mathf.CeilToInt(length * FramesPerSecond) : Mathf.CeilToInt(length - 0.5f);
+        if (everyFrame) Time.captureFramerate = FramesPerSecond;
+        Debug.Log($"Night Watch film: saving {count} pictures to {folder} ...");
 
-        for (int i = 0; i + 0.5f < length; i++)
+        for (int i = 0; i < count; i++)
         {
-            FilmTime = i + 0.5f;
+            FilmTime = everyFrame ? (float)i / FramesPerSecond : i + 0.5f;
             var shot = ShowAt(FilmTime);
-            // Let the light and the plants' lists catch up with the jump, then read the picture.
-            for (int f = 0; f < 3; f++) yield return null;
-            ShowAt(FilmTime);
+            if (!everyFrame)
+            {
+                // A jump: let the light and the plants' lists catch up, then show it again.
+                for (int f = 0; f < 3; f++) yield return null;
+                ShowAt(FilmTime);
+            }
             yield return new WaitForEndOfFrame();
 
             RenderTexture.active = target;
             picture.ReadPixels(new Rect(0, 0, pictureWidth, pictureHeight), 0, 0);
             picture.Apply();
             RenderTexture.active = null;
-            string file = $"still_{i:000}.jpg";
-            File.WriteAllBytes(Path.Combine(folder, file), picture.EncodeToJPG(90));
-            index.Add($"{file}\t{FilmTime:0.0}\t{shot.name}");
+            string file = $"{prefix}{i:00000}.jpg";
+            if (!everyFrame) file = $"{prefix}{i:000}.jpg";
+            File.WriteAllBytes(Path.Combine(folder, file), picture.EncodeToJPG(everyFrame ? 92 : 90));
+            index.Add($"{file}\t{FilmTime:0.00}\t{shot.name}");
+            if (everyFrame && i % (FramesPerSecond * 10) == 0)
+                Debug.Log($"Night Watch film: recording, {FilmTime:0} of {length:0} s.");
+            if (everyFrame) yield return null;
         }
         File.WriteAllLines(Path.Combine(folder, "index.txt"), index);
 
-        filmCamera.targetTexture = null;
-        target.Release();
-        Destroy(target);
         Destroy(picture);
         running = null;
         StopFilm();
-        Debug.Log($"Night Watch film: {index.Count} stills saved in {folder}.");
+        target.Release();
+        Destroy(target);
+        Debug.Log($"Night Watch film: {index.Count} pictures saved in {folder}.");
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #endif
@@ -228,6 +294,7 @@ public class FilmDirector : MonoBehaviour
     {
         if (running != null) StopCoroutine(running);
         running = null;
+        Time.captureFramerate = 0;
         if (IsPlaying) Quiet(false);
         IsPlaying = false;
     }
@@ -245,11 +312,14 @@ public class FilmDirector : MonoBehaviour
                 gameCamera.cullingMask = 0;
             }
             HideGameParts();
+            MakeCast();
+            hutHitDone.Clear();
         }
         else
         {
             if (gameCamera != null) gameCamera.cullingMask = gameCameraMask;
             ShowGameParts();
+            ClearCast();
             if (dayNight != null)
             {
                 dayNight.progressOverride = -1f;
@@ -257,6 +327,7 @@ public class FilmDirector : MonoBehaviour
             }
             if (lamp != null) lamp.SetActive(false);
             if (filmCamera != null) filmCamera.targetTexture = null;
+            if (monitor != null) Destroy(monitor);
         }
         if (filmCamera != null) filmCamera.gameObject.SetActive(on);
         var screen = StartScreen.Instance;
@@ -266,6 +337,24 @@ public class FilmDirector : MonoBehaviour
             screen.panel.SetActive(!on && startScreenWasShowing);
         }
         shown = null;
+    }
+
+    // While pictures are saved, the Game view shows them (otherwise it would stay dark).
+    void ShowMonitor(Texture picture)
+    {
+        monitor = new GameObject("FilmMonitor");
+        var canvas = monitor.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+        var image = new GameObject("Picture", typeof(RectTransform));
+        image.transform.SetParent(monitor.transform, false);
+        var rect = (RectTransform)image.transform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+        var raw = image.AddComponent<RawImage>();
+        raw.texture = picture;
+        raw.raycastTarget = false;
     }
 
     // The game's floating labels and board texts, and everything on the VR rig (hands, rays,
@@ -297,8 +386,38 @@ public class FilmDirector : MonoBehaviour
         hiddenRenderers.Clear();
     }
 
-    // Puts everything where it is at this moment of the film and returns the shot. Uses only
-    // the time, so any moment can be shown directly.
+    // A copy of the elephant model for each actor, hidden until its shot.
+    void MakeCast()
+    {
+        ClearCast();
+        if (elephantModel == null || actors == null) return;
+        foreach (var actor in actors)
+        {
+            var root = new GameObject("FilmElephant_" + actor.name).transform;
+            root.localScale = Vector3.one * actor.size;
+            var copy = Instantiate(elephantModel, root);
+            copy.transform.localPosition = elephantModel.transform.localPosition;
+            copy.transform.localRotation = elephantModel.transform.localRotation;
+            copy.transform.localScale = elephantModel.transform.localScale;
+            copy.SetActive(true);
+            // Tusks: the second material slot of the skin; no material there = not drawn.
+            var skin = copy.GetComponentInChildren<SkinnedMeshRenderer>();
+            if (skin != null && !actor.tusks && skin.sharedMaterials.Length >= 2)
+                skin.sharedMaterials = new[] { skin.sharedMaterials[0] };
+            var animator = copy.GetComponentInChildren<Animator>();
+            if (animator != null) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            root.gameObject.SetActive(false);
+            cast.Add(new Cast { actor = actor, root = root, animator = animator });
+        }
+    }
+
+    void ClearCast()
+    {
+        foreach (var c in cast) if (c.root != null) Destroy(c.root.gameObject);
+        cast.Clear();
+    }
+
+    // Puts everything where it is at this moment of the film and returns the shot.
     Shot ShowAt(float time)
     {
         float start = 0f;
@@ -308,8 +427,10 @@ public class FilmDirector : MonoBehaviour
             bool last = i == shots.Length - 1;
             if (time < start + shot.seconds || last)
             {
+                float t = time - start;
                 // No fade out when the next shot is a straight cut.
-                ShowShot(shot, time - start, last || !shots[i + 1].cutIn);
+                ShowShot(shot, t, last || !shots[i + 1].cutIn);
+                ShowActors(shot, t);
                 return shot;
             }
             start += shot.seconds;
@@ -354,6 +475,10 @@ public class FilmDirector : MonoBehaviour
         // A small flame flicker, from the film time (the same in every run).
         if (lampLight != null) lampLight.intensity = lampIntensity * (0.8f + 0.4f * Mathf.PerlinNoise(FilmTime * 7f, 0.3f));
 
+        // The hut hit: once per run of the shot.
+        if (shot.hutHitAt >= 0f && t >= shot.hutHitAt && hutHitDone.Add(shot))
+            HitHut();
+
         // Slow at both ends, smooth in the middle.
         float e = Mathf.SmoothStep(0f, 1f, t / shot.seconds);
         Vector3 position, target;
@@ -370,9 +495,73 @@ public class FilmDirector : MonoBehaviour
             position = Vector3.Lerp(Ground(shot.from), Ground(shot.to), e);
             target = Vector3.Lerp(Ground(shot.lookFrom), Ground(shot.lookTo), e);
         }
+        // The camera shake of the hit, fading over 0.8 s.
+        if (shot.shake > 0f && shot.hutHitAt >= 0f && t >= shot.hutHitAt)
+        {
+            float k = shot.shake * Mathf.Clamp01(1f - (t - shot.hutHitAt) / 0.8f);
+            position += new Vector3(Mathf.PerlinNoise(FilmTime * 25f, 1f) - 0.5f, Mathf.PerlinNoise(FilmTime * 25f, 2f) - 0.5f, 0f) * 2f * k;
+        }
         var direction = target - position;
         if (direction.sqrMagnitude > 0.001f)
             filmCamera.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
+    }
+
+    // The bull hits the pela: it shakes and dust flies from the south side (no damage).
+    void HitHut()
+    {
+        var hut = HutDamage.Instance;
+        if (hut == null) return;
+        hut.Shake(2.5f);
+        Effects.Dust(hut.transform.position + new Vector3(0f, 1f, -2f), new Color(0.42f, 0.38f, 0.32f), 1.6f);
+    }
+
+    void ShowActors(Shot shot, float t)
+    {
+        foreach (var c in cast)
+        {
+            var a = c.actor;
+            bool active = a.shot == shot.name;
+            if (c.root.gameObject.activeSelf != active)
+            {
+                c.root.gameObject.SetActive(active);
+                c.playing = null;
+            }
+            if (!active) continue;
+
+            float k = a.moveEnd > a.moveStart ? Mathf.InverseLerp(a.moveStart, a.moveEnd, t) : 1f;
+            var way = a.to - a.from;
+            way.y = 0f;
+            var position = Vector3.Lerp(a.from, a.to, k);
+            position.y = GroundY(position);
+            var rotation = way.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(way) : c.root.rotation;
+            c.root.SetPositionAndRotation(position, rotation);
+
+            float speed = a.moveEnd > a.moveStart ? way.magnitude / (a.moveEnd - a.moveStart) : 0f;
+            bool moving = t > a.moveStart && t < a.moveEnd && speed > 0.05f;
+            // Clip speeds as ElephantBody: the feet keep pace with the ground.
+            if (a.attackAt >= 0f && t >= a.attackAt && t < a.attackAt + 1.6f) Play(c, "Attack", 1f);
+            else if (moving && a.run) Play(c, "Run", Mathf.Clamp(speed / (4.6f * a.size), 0.6f, 1.5f));
+            else if (moving) Play(c, "Walk", Mathf.Clamp(speed / (1.7f * a.size), 0.5f, 1.6f));
+            else Play(c, "Idle", 1f);
+
+            // In the rice: the feet flatten it, and an eating elephant eats in front of it.
+            var plot = CropPlot.At(position);
+            if (plot == null) continue;
+            plot.TrampleUnder(c.root);
+            if (a.eat) plot.Eat(Time.deltaTime * eatSpeed, position + rotation * Vector3.forward * (2.4f * a.size));
+        }
+    }
+
+    static void Play(Cast c, string state, float speed)
+    {
+        if (c.animator == null) return;
+        if (c.playing != state)
+        {
+            if (c.playing == null) c.animator.Play(state, 0, 0f);
+            else c.animator.CrossFadeInFixedTime(state, 0.25f);
+            c.playing = state;
+        }
+        c.animator.speed = speed;
     }
 
     void SetCard(Shot shot)
@@ -382,7 +571,7 @@ public class FilmDirector : MonoBehaviour
         if (!shot.card) return;
         cardTitle.fontSize = shot.bigTitle ? bigTitleSize : lineSize;
 
-        // The title sits above the ornament, the subtitle below; centre the whole block.
+        // The title sits above the middle, the subtitle below; centre the whole block.
         float width = cardTitle.rectTransform.sizeDelta.x;
         float titleHeight = cardTitle.GetPreferredValues(shot.title, width, 0f).y;
         float subtitleHeight = string.IsNullOrEmpty(shot.subtitle) ? 0f : cardSubtitle.GetPreferredValues(shot.subtitle, width, 0f).y;
