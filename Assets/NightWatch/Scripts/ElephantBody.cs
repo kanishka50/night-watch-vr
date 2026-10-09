@@ -52,6 +52,12 @@ public class ElephantBody : MonoBehaviour
     bool hasEat, hasDie;
     // Two bones in the middle of the body: the hit box follows them while the Die clip plays.
     Transform hips, chest;
+    // The head, and the tip of the trunk (it carries the hakka patas bait to the mouth).
+    Transform head, trunkTip;
+
+    public Transform TrunkTip => trunkTip;
+    // Where the blast happens: the head (the bait is in the mouth).
+    public Vector3 HeadPoint => head != null ? head.position : transform.TransformPoint(new Vector3(0f, 1.8f, 2.4f));
 
     public bool HasDieClip => animator != null && hasDie;
 
@@ -70,6 +76,8 @@ public class ElephantBody : MonoBehaviour
             {
                 if (bone.name == "hips") hips = bone;
                 else if (bone.name == "chest") chest = bone;
+                else if (bone.name == "head") head = bone;
+                else if (bone.name == "trunk6") trunkTip = bone;
             }
         }
     }
@@ -85,6 +93,17 @@ public class ElephantBody : MonoBehaviour
     public void SetAgitated(bool on) => agitated = on;
     public void SetPushing(bool on) => pushing = on;
     public void Eat(float seconds) => eatTimer = seconds;
+
+    // Eats from the start of the Eat clip: foot scuff, trunk down (about 1.8 s), food up to the
+    // mouth (about 3 s), chewing.
+    public void StartEating(float seconds)
+    {
+        eatTimer = seconds;
+        if (animator == null || !hasEat) return;
+        animator.speed = 1f;
+        animator.Play("Eat", 0, 0f);
+        playing = "Eat";
+    }
     public void Rear(float seconds = 0.9f)
     {
         rearTimer = seconds;

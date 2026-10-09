@@ -663,24 +663,41 @@ public class ElephantAI : MonoBehaviour
     // Hakka patas was put in the field: this elephant goes for it.
     public void GoToBait(Transform target)
     {
+        if (bait != target) baitSince = Time.time;   // called again every second: keep the first time
         bait = target;
     }
+    float baitSince;
 
+    // How far in front of the elephant's centre the trunk picks food off the ground (Eat clip:
+    // just ahead of the front feet), for a full-size elephant.
+    const float BaitReach = 1.7f;
+    // In the Eat clip (from its start): the trunk takes the food, then the food is in the mouth.
+    const float BaitPickUpAt = 1.9f, BaitInMouthAt = 3.1f;
+
+    // Walks to where its trunk reaches the bait, facing it (not on top of it).
     void GoForBait()
     {
-        followTimer -= Time.deltaTime;
-        if (followTimer <= 0f)
-        {
-            followTimer = 0.5f;
-            MoveTo(bait.position, walkSpeed * 1.5f);
-        }
         var hakka = bait.GetComponent<HakkaPatas>();
         if (hakka != null && hakka.Taken)
         {
             bait = null;   // another elephant got there first
             return;
         }
-        if (FlatDistance(transform.position, bait.position) < 2f)
+        var toBait = bait.position - transform.position;
+        toBait.y = 0f;
+        float reach = BaitReach * transform.localScale.z;
+        var eatPoint = bait.position - (toBait.sqrMagnitude > 0.01f ? toBait.normalized : transform.forward) * reach;
+        followTimer -= Time.deltaTime;
+        if (followTimer <= 0f)
+        {
+            followTimer = 0.5f;
+            MoveTo(eatPoint, walkSpeed * 1.5f);
+        }
+        bool there = FlatDistance(transform.position, eatPoint) < 0.7f
+            || (toBait.magnitude < reach + 0.8f && Vector3.Angle(transform.forward, toBait) < 40f)
+            // As near as the walk map lets it get (the bait fell somewhere it cannot stand).
+            || (Time.time - baitSince > 2f && Arrived(0.3f) && toBait.magnitude < 6f);
+        if (there)
         {
             bait = null;
             if (hakka != null) hakka.Taken = true;
@@ -694,17 +711,34 @@ public class ElephantAI : MonoBehaviour
         StartCoroutine(DieFromBait(hakka));
     }
 
-    // Eats the bait, the blast, rears up, collapses. The herd gathers round.
+    // Eats the bait (the Eat clip: the trunk picks it up and puts it in the mouth), then the blast
+    // in the mouth, then the Die clip. The herd gathers round.
     IEnumerator DieFromBait(HakkaPatas hakka)
     {
         dying = true;
         CurrentState = State.Killed;
-        if (agent.isOnNavMesh) agent.isStopped = true;
+        if (agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+        }
 
-        if (body != null) body.Eat(2f);
-        yield return new WaitForSeconds(2f);
+        // Turns to face the food.
+        if (hakka != null)
+            for (float t = 0f; t < 1f; t += Time.deltaTime)
+            {
+                FaceTowards(hakka.transform.position);
+                yield return null;
+            }
 
-        var head = transform.TransformPoint(new Vector3(0f, 1.8f, 2.4f));
+        if (body != null) body.StartEating(BaitInMouthAt + 1f);
+        yield return new WaitForSeconds(BaitPickUpAt);
+        // The trunk wraps the food and lifts it to the mouth.
+        if (hakka != null && body != null && body.TrunkTip != null) hakka.Carry(body.TrunkTip);
+        yield return new WaitForSeconds(BaitInMouthAt - BaitPickUpAt);
+
+        // It bites down: the blast is in the mouth.
+        var head = body != null ? body.HeadPoint : transform.TransformPoint(new Vector3(0f, 1.8f, 2.4f));
         if (hakka != null) hakka.Explode();
         SoundBank.PlayAt(SoundBank.Bang, head, 1f, 8f);
         BurstFlash.At(head, new Color(1f, 0.7f, 0.4f), 12f, 15f, 0.4f);

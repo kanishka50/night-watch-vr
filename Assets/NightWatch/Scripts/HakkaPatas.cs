@@ -57,7 +57,9 @@ public class HakkaPatas : PlayerAction
         var direction = target != null ? target.transform.position - transform.position
                                        : (head != null ? head.forward : transform.forward);
         direction.y = 0f;
-        float distance = Mathf.Clamp(direction.magnitude, 6f, 18f);
+        // It lands about 4 m short of the elephant, so the elephant walks up to it and eats it
+        // (aimed right at it, it fell under its feet).
+        float distance = Mathf.Clamp(direction.magnitude - (target != null ? 4f : 0f), 4f, 18f);
         direction.Normalize();
 
         // Let go first; the grab system sets its own velocity when it releases,
@@ -88,6 +90,20 @@ public class HakkaPatas : PlayerAction
         searchTimer = 1f;
         var elephant = ElephantAI.NearestActive(transform.position);
         if (elephant != null) elephant.GoToBait(transform);
+    }
+
+    // The elephant's trunk takes it: it moves with the trunk tip up to the mouth.
+    public void Carry(Transform trunkTip)
+    {
+        if (grab != null) grab.enabled = false;   // nobody can take it back now
+        if (body != null)
+        {
+            body.isKinematic = true;
+            body.interpolation = RigidbodyInterpolation.None;
+        }
+        foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
+        transform.SetParent(trunkTip, true);
+        transform.localPosition = Vector3.zero;
     }
 
     // Called by the elephant that eats it, at the moment of the blast.
