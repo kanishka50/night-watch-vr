@@ -6,7 +6,7 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
-// Builds the story film's director (docs/story-film.md): the film camera, the screen on it
+// Builds the story film's director: the film camera, the screen on it
 // (cinema bars, the black fade, the title card in gold, the caption in the
 // bottom bar), the film's oil lamp in the pela, the shot list and the elephant actors. Called by
 // Night Watch > Build Full Game, and on its own by Night Watch > Story Film > Add Film Parts (with
@@ -33,7 +33,7 @@ public static class FilmDirectorSetup
     // Fog per kind of shot: clear for the wide drone views, the game's own fog at night.
     const float ClearFog = 0.45f, DuskFog = 0.7f, NightFog = 0.8f;
 
-    // Shot list (story-film.md section 4). Camera points: x and z in the world, y above the ground.
+    // Shot list. Camera points: x and z in the world, y above the ground.
     // Hut at the origin, +z north. Night shots stay close: the night fog hides everything past
     // about 40 m.
     static FilmDirector.Shot[] Shots() => new[]
@@ -306,7 +306,7 @@ public static class FilmDirectorSetup
         Box("BarTop", screen, new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -BarHeight), Vector2.zero, Color.black);
         Box("BarBottom", screen, Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, BarHeight), Color.black);
 
-        // The title card: text only (Kanishka: no line or dots under it), the line above and the
+        // The title card: text only (no line or dots under it), the line above and the
         // small line below.
         var cardRect = Rect("Card", screen, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         director.card = cardRect.gameObject.AddComponent<CanvasGroup>();

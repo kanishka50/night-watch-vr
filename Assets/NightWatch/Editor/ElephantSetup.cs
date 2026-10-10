@@ -232,7 +232,7 @@ public static class ElephantSetup
         return EditorKit.Empty(name, parent, position);
     }
 
-    // A hidden elephant to copy: elephant.glb (elephant_animated.glb from the teammate's
+    // A hidden elephant to copy: elephant.glb (elephant_animated.glb from
     // elephant.zip; 6 clips: Idle, Walk, Run, Attack, Eat, Die; the tusks are a separate material). The model is 0.8 m tall in
     // its file; ModelScale makes an adult's back about 3.3 m high and 4.8 m long, a big Sri
     // Lankan elephant (the largest Asian elephants), a little bigger than average so it reads well

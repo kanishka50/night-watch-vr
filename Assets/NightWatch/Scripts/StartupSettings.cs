@@ -7,7 +7,7 @@ using UnityEngine.XR.Interaction.Toolkit.Inputs.Simulation;
 //  - The Windows build uses the same quality level as the editor ("Low": Performance URP Config,
 //    Forward+). Unity's own default for Windows was "Ultra", a different renderer.
 //  - The XR Interaction Simulator (keyboard and mouse pretend to be a headset) starts only when no
-//    real headset is running. It used to start always, and then it switched the real headset off.
+//    real headset is running, so it never switches a real headset off.
 [DefaultExecutionOrder(-1000)]
 public class StartupSettings : MonoBehaviour
 {

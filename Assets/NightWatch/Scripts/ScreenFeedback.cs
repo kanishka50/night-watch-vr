@@ -5,10 +5,9 @@ using UnityEngine;
 //  - Flash: a short red (or other colour) flash when the player is hurt
 //  - FadeOut / FadeIn: to and from black, for endings
 //  - Blink: a short fade to black and back when the view jumps (teleport, ladder, story scenes).
-//    Hiding the jump keeps players from feeling sick (course week 5: comfort). It replaced the
-//    round tunnel vignette, which closed to a small circle and looked odd.
+//    Hiding the jump keeps players from feeling sick (course week 5: comfort).
 //  - KnockDown: a red flash and the view goes dark, then clears (fatal: stays black). The camera
-//    itself never moves (course week 5: never move the view for the player; the old roll and drop
+//    itself never moves (course week 5: never move the view for the player; a roll or a drop
 //    could make people sick).
 //  - Inside: black while the head is inside a solid thing (BodyBlocker), so nobody sees through
 //    the inside of a wall or an elephant.

@@ -2,10 +2,9 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Video;
 
-// Builds the film at the beginning (docs/story-film.md; called by Build Full Game and by
-// Night Watch > Story Film > Add Film Parts): a VideoPlayer (full screen at run time), the sound
-// cues, and StoryFilm, which plays it before the START screen. (It used to be shown on a cloth
-// between bamboo poles in the field; now it is full screen.)
+// Builds the film at the beginning (called by Build Full Game and by Night Watch > Story Film >
+// Add Film Parts): a VideoPlayer (full screen at run time), the sound cues, and StoryFilm, which
+// plays it before the START screen.
 // The ola-leaf story (StoryIntro) is switched off: the film replaces it.
 public static class StoryFilmSetup
 {

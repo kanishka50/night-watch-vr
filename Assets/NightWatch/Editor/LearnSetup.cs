@@ -1,10 +1,10 @@
 using UnityEditor;
 using UnityEngine;
 
-// Point to learn (living-village.md, block E): invisible spots on the village's things, each with
+// Point to learn: invisible spots on the village's things, each with
 // one short fact, and the line low in the view that shows it (LearnPointer). The builders of each
 // thing call Spot (canal, kamatha, scarecrows, cattle, egrets...); GameSetup calls BuildLine.
-// Facts on screen stay short and plain. Any fact used on a slide needs a source first.
+// Facts on screen stay short and plain.
 public static class LearnSetup
 {
     public const int SpotLayer = 2;   // Ignore Raycast: unseen by XRI pointers and by the elephants

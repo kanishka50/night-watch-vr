@@ -44,8 +44,7 @@ public class ElephantBody : MonoBehaviour
     CapsuleCollider hitbox;
     Vector3 hitboxStart;
     // The fall rolls the body round its left side at the ground (half the body's width out), so
-    // it ends lying on its side on top of the ground. It used to roll round the feet and sink
-    // 0.6 to 1.4 m into the ground.
+    // it ends lying on its side on top of the ground, not sunk into it.
     static readonly Vector3 RollPivot = new Vector3(-0.9f, 0f, 0f);
 
     // The model's own clips (the older model had no Eat and no Die).

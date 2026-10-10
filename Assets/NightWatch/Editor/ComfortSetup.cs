@@ -8,8 +8,8 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning;
 //    for a snap turn (the black panel of ScreenFeedback, in front of the camera)
 //  - a short delay before the teleport and the turn, so the view is dark when it jumps
 //  - our own moves (ladder, start, story, debrief) fade the same way (PlayAreaLimit.MoveHeadTo)
-// It replaced the XR Interaction Toolkit's tunneling vignette (Kanishka, 9 Oct 2026: the view
-// closing to a small circle looked odd). Called by Night Watch > Build Full Game.
+// Used instead of the XR Interaction Toolkit's tunneling vignette. Called by Night Watch >
+// Build Full Game.
 public static class ComfortSetup
 {
     public static void Build()

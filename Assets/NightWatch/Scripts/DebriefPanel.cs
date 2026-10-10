@@ -19,7 +19,7 @@ public class DebriefPanel : MonoBehaviour
     public GameObject restartButton;
     public GameObject quitButton;
 
-    // Every third-party asset in the build (brief section 12). The full list with links and
+    // Every third-party asset in the build. The full list with links and
     // licences is CREDITS.md in the project folder; keep the two the same.
     [TextArea(3, 20)]
     public string creditsText =

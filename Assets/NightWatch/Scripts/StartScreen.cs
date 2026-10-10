@@ -2,7 +2,7 @@ using UnityEngine;
 
 // The start screen: the title, one story line, the controls in a few short lines, and a START
 // button. It stands in front of the player at the start spot. The clock does not run until
-// START is pressed (the brief asks for a clear beginning).
+// START is pressed, so the beginning is clear.
 public class StartScreen : MonoBehaviour
 {
     public static StartScreen Instance { get; private set; }

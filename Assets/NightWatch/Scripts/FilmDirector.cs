@@ -6,7 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// The story film (docs/story-film.md). Runs a list of shots with its own camera (a normal
+// The story film. Runs a list of shots with its own camera (a normal
 // camera, not the VR one): title cards on black, and camera shots that glide from one spot to
 // another (or circle a point) with their own time of day and a caption in the bottom cinema bar.
 // Actors are copies of the elephant model moved along set paths (no AI, no NavMesh); the herd

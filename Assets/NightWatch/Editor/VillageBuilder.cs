@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
-// Builds the teammate's Elephant Village (a three.js level, converted by
+// Builds the Elephant Village (a three.js level, converted by
 // tools/village_convert.py) around our game, with our hut at the Unity origin:
 //  - the ground as a Unity Terrain (their height grid, their 4 ground textures mixed by their
 //    splat map); the paddy field is levelled to height 0 (their terraces stepped down to the
@@ -20,7 +20,7 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 //  - every other placed thing (plants, trees, rice, rocks, garden fences, small props) as a
 //    PropSet drawn by InstancedProps, with the browser version's distance rules. None are drawn
 //    in the farm's open places and crop plots (FarmLayout).
-// Village coordinates have +z to the south; Unity has +z to the north. See docs/village-port.md.
+// Village coordinates have +z to the south; Unity has +z to the north.
 // Built by Night Watch > Build Full Game, or alone with Night Watch > Build Village.
 // Running it again replaces the old one.
 public static class VillageBuilder

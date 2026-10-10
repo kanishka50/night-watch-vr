@@ -420,8 +420,8 @@ public class NeighbourHouse : MonoBehaviour
         Play(limp || speed <= walkSpeed * 1.5f ? "Walk" : "Run", limp ? 0.6f : 1f);
         target.y = figure.position.y;
         FaceTowards(target);
-        // Keep the same height above the ground all the way (it used to keep one fixed height,
-        // so the figure floated or sank on slopes).
+        // Keep the same height above the ground all the way, so the figure does not float or
+        // sink on slopes.
         float lift = figure.position.y - GroundY(figure.position);
         float t = 0f;
         while (Flat(target - figure.position) > 0.05f)

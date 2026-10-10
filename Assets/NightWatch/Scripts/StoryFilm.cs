@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
-// The story at the very beginning, before the START screen: our story film (docs/story-film.md),
+// The story at the very beginning, before the START screen: our story film,
 // full screen as soon as the game starts. On the screen (simulator, Windows build) it fills the
 // whole window: the black cinema bar baked into the top of the video is cut off and the sides are
 // trimmed a little, so only the bottom bar with the captions stays black. On a headset the screen

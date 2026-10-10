@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-// Life round the paddy (living-village.md, block D), all driven by the time of day and quiet when
+// Life round the paddy, all driven by the time of day and quiet when
 // the player is far:
 //  - egrets wading in the flooded plots by day, flying off to roost at dusk (or when disturbed);
 //  - bats flitting over the field at dusk;
@@ -388,7 +388,6 @@ public static class VillageLife
             window.fade = 0.03f;
             window.maxDistance = 60f;
         }
-        // (No village dog: its barking was taken out, 10 Oct 2026.)
     }
 
     // ---------------- falling leaves ----------------

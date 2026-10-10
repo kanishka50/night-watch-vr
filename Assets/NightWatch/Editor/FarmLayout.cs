@@ -5,7 +5,7 @@ using UnityEngine;
 // spot, round the bonfires, the neighbour's back yard, the strip under the fence, and the crop
 // plots (planted with the village's rice). Used by the village builder, the field tools and the ground jobs. The village's paddy
 // plots are 9.25 x 8.75 m, with bunds (raised earth paths, about 1 m wide) along x = 0 and z = 0
-// through the hut. See docs/village-port.md.
+// through the hut.
 public static class FarmLayout
 {
     public const float PlotX = 9.25f, PlotZ = 8.75f;
@@ -26,7 +26,7 @@ public static class FarmLayout
         ("south", new Vector3(-13f, 0f, -23.5f)),
     };
 
-    // Where the elephants come from (village-port.md): north from the tank (lake) shore, south
+    // Where the elephants come from: north from the tank (lake) shore, south
     // from the jungle, and the village side from behind the houses to the north-east.
     public static readonly Vector3 SpawnNorth = new Vector3(0f, 0f, 32f);
     public static readonly Vector3 SpawnSouth = new Vector3(-13f, 0f, -62f);

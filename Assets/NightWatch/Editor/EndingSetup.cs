@@ -57,8 +57,8 @@ public static class EndingSetup
     }
 
     // A panel in the world that floats in front of the view and follows the head loosely (XRI
-    // LazyFollow: it catches up when the head turns or moves past a small limit). It replaced text
-    // fixed to the camera (brief section 5: spatial UI, not a flat overlay stuck to the face).
+    // LazyFollow: it catches up when the head turns or moves past a small limit). Spatial UI,
+    // not a flat overlay stuck to the face.
     public static GameObject FollowPanel(string name, Transform cam, Vector3 offset)
     {
         var old = cam.Find(name);
